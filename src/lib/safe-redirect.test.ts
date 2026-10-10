@@ -15,8 +15,8 @@ describe("safeInternalPath", () => {
   });
 
   it("rejects backslash and control-character variants", () => {
-    expect(safeInternalPath("/\\\\evil.example")).toBe("/app");
-    expect(safeInternalPath("/app\\\\..\\\\auth")).toBe("/app");
+    expect(safeInternalPath("/\\evil.example")).toBe("/app");
+    expect(safeInternalPath("/app\\..\\auth")).toBe("/app");
     expect(safeInternalPath("/app\nLocation: https://evil.example")).toBe("/app");
   });
 
