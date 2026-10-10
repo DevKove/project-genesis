@@ -134,6 +134,57 @@ export type Database = {
           },
         ]
       }
+      user_notifications: {
+        Row: {
+          association_id: string | null
+          created_at: string
+          id: string
+          message: string
+          notification_type: string
+          read_at: string | null
+          recipient_id: string
+          request_id: string | null
+          title: string
+        }
+        Insert: {
+          association_id?: string | null
+          created_at?: string
+          id?: string
+          message: string
+          notification_type: string
+          read_at?: string | null
+          recipient_id: string
+          request_id?: string | null
+          title: string
+        }
+        Update: {
+          association_id?: string | null
+          created_at?: string
+          id?: string
+          message?: string
+          notification_type?: string
+          read_at?: string | null
+          recipient_id?: string
+          request_id?: string | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_notifications_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_notifications_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "association_join_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       associations: {
         Row: {
           address: string | null
