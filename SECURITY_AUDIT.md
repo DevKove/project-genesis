@@ -39,9 +39,9 @@ The tracked local `.env` file still references the older project `zuyeoozbdprcqw
 
 RLS is enabled and the policy definitions were inspected, but cross-tenant isolation has not yet been proven with two distinct authenticated users in separate associations. Complete adversarial tests for SELECT, INSERT, UPDATE, DELETE, invitation role combinations, membership changes, and platform-admin access before release.
 
-### 3. Security-definer RPC surface — FOLLOW-UP REQUIRED
+### 3. Security-definer RPC surface — HARDENED, CONTINUOUS REVIEW REQUIRED
 
-`create_association` and `accept_invitation` are intentionally used as authenticated RPCs and must retain their server-side checks. The four membership/role helper functions are caller-bound, but remain in the exposed `public` schema and are still callable as RPCs by authenticated users. Consider moving them to a non-exposed schema and updating all RLS policy references. Re-run Supabase Security Advisors after any change.
+`create_association` and `accept_invitation` remain authenticated RPCs because the client calls them. Both now use an empty `search_path` and schema-qualified object references. Invitation acceptance revalidates the email, invitation status/expiry, inviter's current role, and leadership-role restrictions, and it preserves an existing member role. The Security Advisor still flags these functions because they are authenticated-executable `SECURITY DEFINER` RPCs; retain this as a documented exception and revisit if the product can use a safer authorization boundary.
 
 ### 4. Audit-log data minimization — IMPROVED, RETENTION STILL OPEN
 
@@ -56,6 +56,8 @@ No Storage policies were found in the inspected schema. Keep client access denie
 The authenticated route tree remains incomplete compared with the product specification. Resident/unit CRUD, announcement management, member/invitation administration, audit history, association settings, finance, governance, and subscription/billing flows need implementation and end-to-end verification. The current security PR's quality workflow must complete successfully before merge. Lint, dependency scanning, secret scanning, and deployed smoke tests remain separate checks.
 
 ## Release acceptance checklist
+
+- [x] Harden the two authenticated RPCs with empty search paths, input validation, inviter checks, and no role downgrade.
 
 - [x] Optimize RLS policy `auth.uid()` expressions to avoid repeated per-row evaluation.
 
