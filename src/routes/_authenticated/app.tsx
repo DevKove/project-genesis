@@ -53,7 +53,11 @@ function Shell({ email }: { email: string }) {
 
   // Only routes that exist in the generated route tree are linked here. Restore other
   // modules after their pages and authorization checks have been implemented.
-  const nav = [\n    { to: "/app", label: "Painel", icon: LayoutDashboard, exact: true },\n    { to: "/app/unidades", label: "Unidades", icon: Home, exact: false },\n    { to: "/app/moradores", label: "Moradores", icon: Users, exact: false },\n  ] as const;
+  const nav = [
+    { to: "/app", label: "Painel", icon: LayoutDashboard, exact: true },
+    { to: "/app/unidades", label: "Unidades", icon: Home, exact: false },
+    { to: "/app/moradores", label: "Moradores", icon: Users, exact: false },
+  ] as const;
 
   return (
     <div className="flex min-h-screen">
