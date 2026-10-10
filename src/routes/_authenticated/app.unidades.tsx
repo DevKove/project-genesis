@@ -294,7 +294,7 @@ function UnitsPage() {
       <div className="mt-4 flex items-center justify-between gap-3 text-sm text-muted-foreground">
         <span>{total} unidade(s)</span>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" disabled={page === 0 || units.isLoading} onClick={() => setPage((value) => Math.max(0, value - 1)}><ChevronLeft className="mr-1 h-4 w-4" /> Anterior</Button>
+          <Button variant="outline" size="sm" disabled={page === 0 || units.isLoading} onClick={() => setPage((value) => Math.max(0, value - 1))}><ChevronLeft className="mr-1 h-4 w-4" /> Anterior</Button>
           <span>Página {page + 1} de {totalPages}</span>
           <Button variant="outline" size="sm" disabled={page + 1 >= totalPages || units.isLoading} onClick={() => setPage((value) => value + 1)}>Próxima <ChevronRight className="ml-1 h-4 w-4" /></Button>
         </div>
