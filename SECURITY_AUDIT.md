@@ -31,7 +31,7 @@ Supabase project: `ivajgtokxrzwnspihllr`
 
 ### 1. Environment configuration mismatch
 
-The tracked `.env` file still references the older project `zuyeoozbdprcqwjzilgf`, while `supabase/config.toml` references `ivajgtokxrzwnspihllr`. The tracked production environment file also needs to be verified against the selected project. Do not deploy until the URL and publishable key are a matching pair for the intended project. The publishable key is designed for browser use; never commit a service-role/secret key or database password, and never put privileged credentials in `VITE_*` variables.
+The tracked local `.env` file still references the older project `zuyeoozbdprcqwjzilgf` and an old Lovable proxy URL/key. The tracked `.env.production` URL and publishable key were checked against the selected project and match `ivajgtokxrzwnspihllr`. Local development will continue to use the wrong backend until `.env` is updated. The publishable key is designed for browser use; never commit a service-role/secret key or database password, and never put privileged credentials in `VITE_*` variables.
 
 ### 2. Tenant isolation and role authorization — PARTIALLY VERIFIED
 
