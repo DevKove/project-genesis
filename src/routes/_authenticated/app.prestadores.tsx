@@ -144,10 +144,13 @@ function VendorsPage() {
           documentAttached = true;
         } catch {
           if (uploadedPath) await supabase.storage.from("identity-documents").remove([uploadedPath]);
-          toast.warning("Cadastro salvo, mas o documento não foi anexado. Edite o cadastro e tente novamente.");
         }
       }
-      toast.success(identityFile && documentAttached ? "Prestador salvo com documento anexado." : editing ? "Prestador atualizado." : "Prestador cadastrado.");
+      if (identityFile && !documentAttached) {
+        toast.warning("Cadastro salvo, mas o documento não foi anexado. Edite o cadastro e tente novamente.");
+      } else {
+        toast.success(identityFile ? "Prestador salvo com documento anexado." : editing ? "Prestador atualizado." : "Prestador cadastrado.");
+      }
       setFormOpen(false);
       setEditing(null);
       await queryClient.invalidateQueries({ queryKey: ["vendors", associationId] });
