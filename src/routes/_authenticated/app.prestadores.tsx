@@ -2,7 +2,7 @@ import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Building2, ChevronLeft, ChevronRight, Pencil, Plus, Search, X } from "lucide-react";
+import { Building2, ChevronLeft, ChevronRight, FileText, Pencil, Plus, Search, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAssoc } from "@/lib/assoc-context";
 import { isManager } from "@/lib/roles";
@@ -15,6 +15,33 @@ import type { Database } from "@/integrations/supabase/types";
 
 type VendorRow = Database["public"]["Tables"]["vendors"]["Row"];
 const PAGE_SIZE = 25;
+const IDENTITY_DOCUMENT_MAX_BYTES = 10 * 1024 * 1024;
+const IDENTITY_DOCUMENT_TYPES: Record<string, string> = {
+  pdf: "application/pdf", jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", webp: "image/webp",
+};
+function validateIdentityDocument(file: File | null): string | null {
+  if (!file) return null;
+  const extension = file.name.split(".").pop()?.toLowerCase() ?? "";
+  const expectedMime = IDENTITY_DOCUMENT_TYPES[extension];
+  if (!expectedMime || (file.type && file.type !== expectedMime)) return "Formato inválido. Envie PDF, JPG, JPEG, PNG ou WEBP.";
+  if (file.size <= 0 || file.size > IDENTITY_DOCUMENT_MAX_BYTES) return "O documento deve ter até 10 MB.";
+  return null;
+}
+async function uploadIdentityDocument(associationId: string, entity: "residents" | "vendors", recordId: string, file: File) {
+  const extension = file.name.split(".").pop()?.toLowerCase() ?? "";
+  const mimeType = IDENTITY_DOCUMENT_TYPES[extension];
+  const path = \`\${associationId}/\${entity}/\${recordId}/\${crypto.randomUUID()}.\${extension}\`;
+  const { error } = await supabase.storage.from("identity-documents").upload(path, file, { contentType: mimeType, upsert: false });
+  if (error) throw error;
+  return { path, name: file.name, mimeType, size: file.size };
+}
+async function openIdentityDocument(path: string) {
+  const tab = window.open("about:blank", "_blank");
+  if (!tab) { toast.error("Permita abrir uma nova aba para visualizar o documento."); return; }
+  const { data, error } = await supabase.storage.from("identity-documents").createSignedUrl(path, 60);
+  if (error || !data?.signedUrl) { tab.close(); toast.error("Não foi possível abrir o documento. Verifique suas permissões."); return; }
+  tab.location.href = data.signedUrl;
+}
 const CATEGORIES = {
   manutencao: "Manutenção",
   limpeza: "Limpeza",
@@ -50,7 +77,7 @@ function VendorsPage() {
     queryFn: async () => {
       if (!associationId) return { items: [] as VendorRow[], count: 0 };
       let query = supabase.from("vendors")
-        .select("id,association_id,name,service_category,contact_name,phone,email,notes,is_active,created_by,created_at,updated_at", { count: "exact" })
+        .select("id,association_id,name,service_category,contact_name,phone,email,notes,is_active,identity_document_path,identity_document_name,identity_document_mime_type,identity_document_size_bytes,created_by,created_at,updated_at", { count: "exact" })
         .eq("association_id", associationId)
         .order("name", { ascending: true });
       if (search.trim()) query = query.ilike("name", `%${search.trim()}%`);
@@ -78,42 +105,55 @@ function VendorsPage() {
     const name = String(form.get("name") ?? "").trim();
     const service_category = String(form.get("service_category") ?? "outros");
     const optional = (key: string) => String(form.get(key) ?? "").trim() || null;
+    const fileValue = form.get("identity_document");
+    const identityFile = fileValue instanceof File && fileValue.size > 0 ? fileValue : null;
+    const documentValidation = validateIdentityDocument(identityFile);
+    if (documentValidation) { toast.error(documentValidation); return; }
     const payload = {
-      name,
-      service_category,
-      contact_name: optional("contact_name"),
-      phone: optional("phone"),
-      email: optional("email"),
-      notes: optional("notes"),
+      name, service_category, contact_name: optional("contact_name"), phone: optional("phone"),
+      email: optional("email"), notes: optional("notes"),
     };
-    if (name.length < 2 || name.length > 160) {
-      toast.error("O nome deve ter entre 2 e 160 caracteres.");
-      return;
-    }
+    if (name.length < 2 || name.length > 160) { toast.error("O nome deve ter entre 2 e 160 caracteres."); return; }
     setSaving(true);
     try {
+      let recordId = editing?.id ?? null;
       if (editing) {
         const { data, error } = await supabase.from("vendors").update(payload)
           .eq("id", editing.id).eq("association_id", associationId).select("id").maybeSingle();
         if (error) throw error;
-        if (!data) {
-          toast.error("Prestador não encontrado ou sem permissão para alterá-lo.");
-          return;
-        }
-        toast.success("Prestador atualizado.");
+        if (!data) { toast.error("Prestador não encontrado ou sem permissão para alterá-lo."); return; }
+        recordId = data.id;
       } else {
-        const { error } = await supabase.from("vendors").insert({ ...payload, association_id: associationId, created_by: userId });
+        const { data, error } = await supabase.from("vendors")
+          .insert({ ...payload, association_id: associationId, created_by: userId }).select("id").single();
         if (error) throw error;
-        toast.success("Prestador cadastrado.");
+        recordId = data.id;
       }
+      let documentAttached = false;
+      if (identityFile && recordId) {
+        let uploadedPath: string | null = null;
+        try {
+          const uploaded = await uploadIdentityDocument(associationId, "vendors", recordId, identityFile);
+          uploadedPath = uploaded.path;
+          const { data, error } = await supabase.from("vendors").update({
+            identity_document_path: uploaded.path, identity_document_name: uploaded.name,
+            identity_document_mime_type: uploaded.mimeType, identity_document_size_bytes: uploaded.size,
+          }).eq("id", recordId).eq("association_id", associationId).select("id").maybeSingle();
+          if (error || !data) throw error ?? new Error("Não foi possível vincular o documento.");
+          if (editing?.identity_document_path) await supabase.storage.from("identity-documents").remove([editing.identity_document_path]);
+          documentAttached = true;
+        } catch {
+          if (uploadedPath) await supabase.storage.from("identity-documents").remove([uploadedPath]);
+          toast.warning("Cadastro salvo, mas o documento não foi anexado. Edite o cadastro e tente novamente.");
+        }
+      }
+      toast.success(identityFile && documentAttached ? "Prestador salvo com documento anexado." : editing ? "Prestador atualizado." : "Prestador cadastrado.");
       setFormOpen(false);
       setEditing(null);
       await queryClient.invalidateQueries({ queryKey: ["vendors", associationId] });
     } catch {
       toast.error("Não foi possível salvar o prestador. Verifique os dados e suas permissões.");
-    } finally {
-      setSaving(false);
-    }
+    } finally { setSaving(false); }
   }
 
   async function toggleActive(vendor: VendorRow) {
@@ -162,6 +202,7 @@ function VendorsPage() {
           <div><Label htmlFor="vendor-phone">Telefone</Label><Input id="vendor-phone" name="phone" type="tel" maxLength={40} defaultValue={editing?.phone ?? ""} /></div>
           <div><Label htmlFor="vendor-email">E-mail</Label><Input id="vendor-email" name="email" type="email" maxLength={254} defaultValue={editing?.email ?? ""} /></div>
         </div>
+        <div className="sm:col-span-2"><Label htmlFor="vendor-identity-document">Documento com foto (opcional)</Label><Input id="vendor-identity-document" name="identity_document" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp" /><p className="mt-1 text-xs text-muted-foreground">PDF, JPG, JPEG, PNG ou WEBP. Máximo de 10 MB. O arquivo fica privado e só gestores autorizados podem acessá-lo.</p>{editing?.identity_document_name && <p className="mt-1 text-xs text-muted-foreground">Documento atual: {editing.identity_document_name}</p>}</div>
         <div><Label htmlFor="vendor-notes">Observações</Label><Textarea id="vendor-notes" name="notes" maxLength={3000} rows={3} defaultValue={editing?.notes ?? ""} /></div>
         <div className="flex flex-wrap gap-2"><Button type="submit" disabled={saving}>{saving ? "Salvando…" : "Salvar prestador"}</Button><Button type="button" variant="outline" onClick={() => { setFormOpen(false); setEditing(null); }}>Cancelar</Button></div>
       </form>}
@@ -172,7 +213,7 @@ function VendorsPage() {
           vendors.data?.items.length ? <div className="divide-y">{vendors.data.items.map((vendor) => <article key={vendor.id} className="p-4 sm:p-5">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><h2 className="font-semibold">{vendor.name}</h2><span className="rounded-full bg-muted px-2.5 py-1 text-xs">{CATEGORIES[vendor.service_category as keyof typeof CATEGORIES] ?? vendor.service_category}</span><span className="rounded-full bg-muted px-2.5 py-1 text-xs">{vendor.is_active ? "Ativo" : "Inativo"}</span></div>
-                {vendor.contact_name && <p className="mt-2 text-sm">Contato: {vendor.contact_name}</p>}{vendor.phone && <p className="mt-1 text-sm text-muted-foreground">Telefone: {vendor.phone}</p>}{vendor.email && <p className="mt-1 text-sm text-muted-foreground">E-mail: {vendor.email}</p>}{vendor.notes && <p className="mt-2 whitespace-pre-wrap text-sm">{vendor.notes}</p>}
+                {vendor.contact_name && <p className="mt-2 text-sm">Contato: {vendor.contact_name}</p>}{vendor.phone && <p className="mt-1 text-sm text-muted-foreground">Telefone: {vendor.phone}</p>}{vendor.email && <p className="mt-1 text-sm text-muted-foreground">E-mail: {vendor.email}</p>}{vendor.notes && <p className="mt-2 whitespace-pre-wrap text-sm">{vendor.notes}</p>}{vendor.identity_document_path && <Button variant="outline" size="sm" onClick={() => void openIdentityDocument(vendor.identity_document_path!)}><FileText className="mr-1 h-4 w-4" /> Documento</Button>}
               </div>
               <div className="flex gap-2"><Button variant="outline" size="sm" onClick={() => openEdit(vendor)}><Pencil className="mr-1 h-4 w-4" /> Editar</Button><Button variant="outline" size="sm" disabled={changingId === vendor.id} onClick={() => void toggleActive(vendor)}>{vendor.is_active ? "Desativar" : "Reativar"}</Button></div>
             </div>
