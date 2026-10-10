@@ -9,70 +9,71 @@ Supabase project: `ivajgtokxrzwnspihllr`
 - The application uses TanStack Start, React/TypeScript, and Supabase.
 - Authenticated routes validate the current user through Supabase Auth and fail closed when session validation fails.
 - Redirect targets are restricted to internal paths by `src/lib/safe-redirect.ts`.
-- Vitest tests and a production build are configured in GitHub Actions.
-- The latest observed `main` quality workflow run for commit `8f7c2daaf91e4c3cd25ddf06cd5b99940888344f` completed successfully. This does not prove the current pull request or database is fully tested.
-- The current `supabase/config.toml` references project `ivajgtokxrzwnspihllr`.
-- The repository now has a Supabase migration baseline mirrored from `drizzle/migrations/0000_migration.sql`, plus a security migration matching the version applied to the connected database.
+- GitHub Actions runs Vitest and a production build. The latest observed main quality/build run at this snapshot completed successfully on commit `fcd838d390af4adb4d0469fc4378e8b0002af7c0`; this does not prove the current feature branch is tested.
+- `supabase/config.toml` references project `ivajgtokxrzwnspihllr`.
+- The repository includes a Supabase migration baseline mirrored from `drizzle/migrations/0000_migration.sql` and subsequent security/integrity migrations.
 
 ## Database findings verified against the connected project
 
 - The project is reachable through the connected Supabase account and reports `ACTIVE_HEALTHY`.
 - RLS is enabled on the application tables `profiles`, `user_roles`, `associations`, `association_members`, `units`, `residents`, `invitations`, `announcements`, and `audit_logs`.
-- RLS is also enabled on the inspected Storage tables. No Storage policies were present in the inspected schema; uploads are therefore not configured for ordinary client access and must not be considered implemented.
-- The initial security migration was applied to the connected project as version `20261010175741`; the private-schema migration was applied as version `20261010180237`; the audit-data minimization/index migration was applied as version `20261010180557`; historical audit cleanup was applied as version `20261010180851`; RLS InitPlan optimization was applied as version `20261010181026`.
-- Trigger-only `SECURITY DEFINER` functions `audit_trigger()` and `handle_new_user()` no longer grant `EXECUTE` to `PUBLIC`, `anon`, or `authenticated`. Existing database triggers remain present.
-- Membership/role helper functions now live in the non-exposed `private` schema. They return a positive result only when the requested user ID matches `auth.uid()`. The schema is not exposed through PostgREST; authenticated retains schema usage and function execution for RLS policy evaluation, while `anon` does not.
-- Invitation creation/update policies now prevent presidents and secretaries from assigning the administrator role or other leadership roles. Invitation acceptance locks the invitation row and checks that the inviter still has the required role.
-- Post-migration verification confirmed there are zero copies of the four helpers in `public`, all four are in `private`, the authenticated caller's own membership helper result remained true, a lookup using an unrelated user ID returned false, anonymous helper execution is denied, and 24 RLS policies reference the private helpers.
-- Transaction-level RLS simulations using two distinct JWT subject IDs and two synthetic associations verified tenant isolation for associations, association members, units, residents, announcements, invitations, and audit logs. Cross-tenant unit INSERT/UPDATE and membership UPDATE attempts affected no rows or were denied. All test data was rolled back; this does not replace end-to-end testing with two real Supabase Auth accounts.
-- The audit trigger now records sanitized snapshots: CPF, email, phone, birth date, notes, invitation token, address, CNPJ, full name, announcement body, and other configured sensitive keys are omitted from snapshot values; changed/redacted field names are retained for accountability. A transaction test through the authenticated RLS path verified sensitive test values were not copied into audit details and that the trigger still executes.
-- Indexes were added for the four foreign-key patterns previously reported by the Performance Advisor: announcements.association_id, invitations.association_id, residents.association_id, and residents.unit_id.
-- The Supabase Security Advisor no longer reports the two trigger functions, but it still reports authenticated-executable `SECURITY DEFINER` functions. Current findings include `accept_invitation`, `create_association`, and the four helper functions. The helper functions now validate caller identity, but moving them to a non-exposed schema and updating policy references remains a stronger follow-up.
-- Supabase Auth's leaked-password protection is disabled and still requires configuration.
+- RLS is enabled on the inspected Storage tables, but no Storage policies were present. Client uploads are not implemented and should remain denied until tenant-scoped policies are designed and tested.
+- Applied migration versions recorded by the connected project: `20261010175741` (helper and invitation hardening), `20261010180237` (private helper schema), `20261010180557` (audit snapshot minimization and FK indexes), `20261010180851` (historical audit cleanup), `20261010181026` (RLS InitPlan optimization), `20261010181344` and `20261010181450` (exposed RPC hardening, idempotently retried), and `20261010182029` (resident integrity constraints).
+- Trigger-only `SECURITY DEFINER` functions `audit_trigger()` and `handle_new_user()` no longer grant `EXECUTE` to `PUBLIC`, `anon`, or `authenticated`. Existing triggers remain present and were exercised by transactional tests.
+- Membership/role helper functions live in the non-exposed `private` schema. They return a positive result only when the requested user ID matches `auth.uid()`. The `authenticated` role retains the schema/function grants required for RLS evaluation; `anon` does not.
+- Invitation policies prevent presidents and secretaries from assigning administrator or other leadership roles. Invitation acceptance locks the invitation row, requires a non-null account email matching the invite, revalidates inviter authority and role hierarchy, rejects legacy leadership invitations from non-admins, and does not overwrite an existing membership role.
+- The two authenticated RPCs `create_association` and `accept_invitation` now use an empty `search_path` and schema-qualified object references. Association creation validates name length, CNPJ shape, city length, and UF format. Transaction tests confirmed invalid inputs are rejected and valid association creation assigns the creator the admin role.
+- The Supabase Security Advisor no longer reports the trigger functions or private helpers. It still reports the two intentional authenticated `SECURITY DEFINER` RPCs and leaked-password protection being disabled. Keep the RPC warnings documented and re-review their authorization whenever the implementation changes.
+- RLS transaction simulations used two distinct JWT subject IDs and two synthetic associations. They verified isolation for associations, association members, units, residents, announcements, invitations, and audit logs; cross-tenant unit INSERT/UPDATE and membership UPDATE attempts were denied or affected zero rows. All test data was rolled back. These tests do not replace end-to-end testing with two real Supabase Auth accounts.
+- New audit snapshots omit configured sensitive values (CPF, email, phone, birth date, notes, invitation token, address, CNPJ, full name, announcement body, and related fields) while retaining changed-field names. A transactional test confirmed sensitive test values were not copied into audit details.
+- A one-time cleanup scrubbed historical audit snapshots. Verification found four audit rows total, two marked as historically redacted, and zero rows still containing the inspected CPF, email, phone, token, notes, or announcement-body keys.
+- Four FK indexes were added for announcements, invitations, and resident association/unit lookups. The Performance Advisor no longer reports `auth_rls_initplan`; direct `auth.uid()` calls in public RLS policy expressions were rewritten to scalar subqueries. The newly added indexes currently appear unused until workload statistics accumulate; review real query plans before considering removal.
+- The resident table now validates CPF checksums/format and enforces normalized CPF uniqueness per association. A composite foreign key prevents a resident from linking to a unit in a different association. A transaction test confirmed invalid/repeated-digit CPF and normalized duplicates are rejected, cross-association unit links fail, and deleting a unit clears only `unit_id`.
 
 ## Remaining security and release blockers
 
-### 1. Environment configuration mismatch
+### 1. Local environment mismatch
 
-The tracked local `.env` file still references the older project `zuyeoozbdprcqwjzilgf` and an old Lovable proxy URL/key. The tracked `.env.production` URL and publishable key were checked against the selected project and match `ivajgtokxrzwnspihllr`. Local development will continue to use the wrong backend until `.env` is updated. The publishable key is designed for browser use; never commit a service-role/secret key or database password, and never put privileged credentials in `VITE_*` variables.
+The tracked local `.env` still references the older project `zuyeoozbdprcqwjzilgf` and an old Lovable proxy/key. The tracked `.env.production` URL and publishable key were checked against the selected project and match `ivajgtokxrzwnspihllr`. Local development will continue to use the wrong backend until `.env` is updated. Never commit a service-role/secret key or database password, and never put privileged credentials in `VITE_*` variables.
 
-### 2. Tenant isolation and role authorization — PARTIALLY VERIFIED
+### 2. Authentication configuration
 
-RLS is enabled and the policy definitions were inspected, but cross-tenant isolation has not yet been proven with two distinct authenticated users in separate associations. Complete adversarial tests for SELECT, INSERT, UPDATE, DELETE, invitation role combinations, membership changes, and platform-admin access before release.
+Supabase Auth leaked-password protection is disabled. It must be enabled in the Supabase Dashboard's Auth password-security settings; this connection does not expose the Auth configuration toggle. MFA policy, recovery flow, email verification, redirect allow-lists, and rate limits still need a documented end-to-end review.
 
-### 3. Security-definer RPC surface — HARDENED, CONTINUOUS REVIEW REQUIRED
+### 3. Tenant isolation and role authorization — PARTIALLY VERIFIED
 
-`create_association` and `accept_invitation` remain authenticated RPCs because the client calls them. Both now use an empty `search_path` and schema-qualified object references. Invitation acceptance revalidates the email, invitation status/expiry, inviter's current role, and leadership-role restrictions, and it preserves an existing member role. The Security Advisor still flags these functions because they are authenticated-executable `SECURITY DEFINER` RPCs; retain this as a documented exception and revisit if the product can use a safer authorization boundary.
+The SQL/RLS policy layer passed transaction-level isolation simulations with two distinct subject IDs. Before release, repeat adversarial tests using two real Supabase Auth accounts in separate associations, including SELECT, INSERT, UPDATE, DELETE, invitation role combinations, membership changes, profile visibility, and platform-admin access.
 
-### 4. Audit-log data minimization — IMPROVED, RETENTION STILL OPEN
+### 4. Audit and LGPD governance
 
-`audit_trigger()` now omits configured personal/sensitive values from new audit snapshots while retaining changed-field names. A transactional test confirmed CPF, email, phone, and free-text note values were not stored in the audit details. Historical audit rows were scrubbed by a one-time migration. Continue checking the redaction list whenever new fields are introduced and define audit-log retention/deletion requirements under LGPD. Review the redaction list as new columns/modules are introduced, and define audit-log retention/deletion requirements under LGPD.
+New and historical audit snapshots have been redacted, but retention/deletion periods and the operational process for data-subject requests still need definition. Review the redaction list whenever new fields or modules are introduced.
 
 ### 5. Storage policies
 
-No Storage policies were found in the inspected schema. Keep client access denied until private buckets, tenant-scoped object paths, and SELECT/INSERT/UPDATE/DELETE policies are designed and tested.
+No Storage policies were found. Keep uploads disabled until private buckets, tenant-scoped object paths, signed URL handling, and SELECT/INSERT/UPDATE/DELETE policies are designed and tested.
 
-### 6. Functional completeness and verification
+### 6. Product completeness
 
-The authenticated route tree remains incomplete compared with the product specification. Resident/unit CRUD, announcement management, member/invitation administration, audit history, association settings, finance, governance, and subscription/billing flows need implementation and end-to-end verification. The current security PR's quality workflow must complete successfully before merge. Lint, dependency scanning, secret scanning, and deployed smoke tests remain separate checks.
+The current feature branch adds initial units and residents management pages with association-scoped queries, pagination, create/edit forms, guarded unit deletion, resident deactivation, and masked CPF display. The current branch still needs CI and browser verification. Announcements, member/invitation administration screens, audit history UI, association settings, finance, governance, subscription/billing, support, and central SaaS administration remain incomplete compared with the product specification.
+
+### 7. Delivery and operational checks
+
+The current repository quality workflow tests and builds, but lint triage, dependency/secret scanning, backup-restore rehearsal, monitoring/alerting, production smoke tests, and real multi-user end-to-end tests remain open. The Cloudflare deployment workflow is currently skipped unless its documented enable flag and credentials are configured.
 
 ## Release acceptance checklist
 
-- [x] Harden the two authenticated RPCs with empty search paths, input validation, inviter checks, and no role downgrade.
-
-- [x] Optimize RLS policy `auth.uid()` expressions to avoid repeated per-row evaluation.
-
-- [ ] Align `.env` and deployment configuration with the selected Supabase project without committing privileged secrets.
-- [ ] Enable leaked-password protection in Supabase Auth.
-- [ ] Move caller-bound helper functions out of exposed API schemas or otherwise remove unnecessary RPC exposure.
-- [ ] Test cross-tenant reads/writes with two distinct users and associations.
-- [ ] Test invitation role authorization, expiry, email matching, and replay/concurrent acceptance.
-- [x] Redact configured PII and invitation tokens from new audit snapshots; review the redaction list when new fields are added.
-- [x] Sanitize historical audit-log snapshots created before the redaction migration.
-- [ ] Design and test tenant-scoped Storage policies before implementing uploads.
-- [ ] Obtain successful CI test/build results for the security pull request.
-- [ ] Complete required product modules, dependency/secret scans, lint triage, and deployed smoke tests.
+- [x] Harden membership/role helper functions and move them out of the exposed API schema.
+- [x] Harden invitation role policies and the authenticated invitation/association RPCs.
+- [x] Redact sensitive fields from new audit snapshots and scrub historical audit details.
+- [x] Optimize direct `auth.uid()` policy expressions to remove `auth_rls_initplan` findings.
+- [x] Enforce CPF validation/normalized uniqueness and same-association resident-to-unit integrity.
+- [ ] Update local `.env` to match the selected Supabase project without adding privileged secrets.
+- [ ] Enable leaked-password protection and review Auth configuration.
+- [ ] Repeat tenant-isolation and invitation tests with two real authenticated users.
+- [ ] Design and test tenant-scoped Storage policies before enabling uploads.
+- [ ] Complete browser/end-to-end tests for units and residents.
+- [ ] Complete remaining product modules, lint triage, dependency/secret scans, backup/restore testing, and deployed smoke tests.
 
 ## Status
 
-**Partially remediated; not certified production-ready.** A targeted database security migration has been applied and verified, but the environment mismatch, remaining RPC advisory findings, Auth configuration, audit-log minimization, cross-tenant testing, Storage policy design, and missing product modules remain open.
+**Partially remediated; not certified production-ready.** Several high-priority database security issues are fixed and verified, but Auth configuration, the local environment mismatch, real-account isolation testing, Storage policy design, operational controls, and substantial product modules remain open.

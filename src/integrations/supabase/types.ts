@@ -303,11 +303,11 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "residents_unit_id_fkey"
-            columns: ["unit_id"]
+            foreignKeyName: "residents_association_unit_fk"
+            columns: ["association_id", "unit_id"]
             isOneToOne: false
             referencedRelation: "units"
-            referencedColumns: ["id"]
+            referencedColumns: ["association_id", "id"]
           },
         ]
       }
