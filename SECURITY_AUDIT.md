@@ -107,3 +107,12 @@ The current repository quality workflow tests and builds, but lint triage, depen
 ## Status
 
 **Partially remediated; not certified production-ready.** Several high-priority database security issues are fixed and verified, but Auth configuration, the local environment mismatch, real-account isolation testing, Storage policy design, operational controls, and substantial product modules remain open.
+
+
+### Service requests module (proposed in PR #17; conflict-resolved branch)
+
+- Adds association-scoped service requests with server-side category, priority, status, and text-length constraints, plus indexes for association/status feeds and creator history.
+- Members may create and read their own requests; authorized association managers may read all requests in their association and update workflow status.
+- A database trigger prevents changing a request's identity, association, or creator after creation.
+- Audit metadata omits request titles, descriptions, and resolution notes to avoid duplicating free text in audit logs.
+- The migration is repository-only and has **not** been applied to the remote Supabase project. CI, SQL review, and adversarial isolation tests with real authenticated accounts remain required.
