@@ -37,9 +37,13 @@ Supabase project: `ivajgtokxrzwnspihllr`
 
 ## Remaining security and release blockers
 
-### 1. Local environment mismatch
+### 1. Local environment configuration
 
-The tracked local `.env` still references the older project `zuyeoozbdprcqwjzilgf` and an old Lovable proxy/key. The tracked `.env.production` URL and publishable key were checked against the selected project and match `ivajgtokxrzwnspihllr`. Local development will continue to use the wrong backend until `.env` is updated. Never commit a service-role/secret key or database password, and never put privileged credentials in `VITE_*` variables.
+- The previously tracked `.env` referenced the older Supabase project and has been removed from the proposed branch. The branch adds a sanitized `.env.example` and ignores local `.env` files.
+- After merging/checking out this change, each developer must create a local `.env` by copying `.env.example` and supplying the selected project's values. Do not commit the resulting local file.
+- The tracked `.env.production` is retained for the existing static build workflow; inspection found only the public Supabase URL and publishable key in it. Those values are not privileged credentials, but RLS and backend authorization remain mandatory.
+- No service-role key, database password, or other secret was read into the report or added to the repository.
+- This repository cleanup does not update a developer's existing local filesystem automatically and does not change remote Supabase settings.
 
 ### 2. Authentication configuration
 
@@ -61,12 +65,20 @@ No Storage policies were found. Keep uploads disabled until private buckets, ten
 
 The current main branch includes units/residents management and member-facing announcements. This feature branch adds a member directory, admin-only role changes/removals, invitation creation/cancellation/link copying, and an authenticated invitation-acceptance page. A database trigger prevents membership identity changes and loss of the last administrator. CI and browser verification are still required for this branch. Audit history UI, association settings, finance, governance, subscription/billing, support, and central SaaS administration remain incomplete compared with the product specification.
 
+### Incidents module (proposed in PR #16; conflict-resolved branch)
+
+- Adds association-scoped incident reports, database constraints, feed indexes, and RLS.
+- Members may create incidents for themselves and read their own reports; authorized association managers may read all reports for that association and update workflow status.
+- A database trigger prevents changing the incident ID, association, or creator and checks that any assigned user belongs to the same association.
+- Audit snapshots contain workflow metadata only and omit titles, descriptions, and resolution notes.
+- The migration is repository-only and has not been applied to the remote Supabase project. CI, SQL review, and adversarial tests with real Auth users remain required.
+
 ### Vendors module (proposed in PR #18)
 
 - Adds a private, association-scoped vendor directory with categories, contact details, notes, and active/inactive status.
-- Only authorized association managers can read or change vendor records; tenant identity and creator are immutable.
+- Only authorized association managers can read or change vendor records; database triggers prevent changing vendor identity, association, or creator after creation.
 - Audit events omit vendor names, contact details, and free-text notes.
-- The migration is repository-only and has not been applied to the remote Supabase project. CI and role-isolation tests remain required.
+- The migration is repository-only and has not been applied to the remote Supabase project. CI, SQL review, and role-isolation tests remain required.
 
 ### 7. Delivery and operational checks
 
@@ -84,7 +96,8 @@ The current repository quality workflow tests and builds, but lint triage, depen
 - [x] Prevent duplicate pending invitations for the same email in an association.
 - [x] Limit direct profile reads and expose only minimal member-directory fields to co-members.
 - [x] Serialize last-administrator checks to avoid concurrent association lockout.
-- [ ] Update local `.env` to match the selected Supabase project without adding privileged secrets.
+- [x] Remove the stale tracked local `.env` from the proposed branch and add a sanitized `.env.example`.
+- [ ] After checkout/merge, configure each developer's untracked local `.env` from `.env.example` for `ivajgtokxrzwnspihllr`.
 - [ ] Enable leaked-password protection and review Auth configuration.
 - [ ] Repeat tenant-isolation and invitation tests with two real authenticated users.
 - [ ] Design and test tenant-scoped Storage policies before enabling uploads.
