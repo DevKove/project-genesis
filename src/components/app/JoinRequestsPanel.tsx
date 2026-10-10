@@ -57,6 +57,10 @@ export function JoinRequestsPanel({
       return;
     }
     toast.success(decision === "aprovado" ? "Membro aprovado e acesso liberado." : "Solicitação recusada.");
+    const { error: emailError } = await supabase.functions.invoke("notify-association-join-request", {
+      body: { request_id: request.id, event: "reviewed" },
+    });
+    if (emailError) toast.warning("A decisão foi salva, mas o e-mail não foi enviado. Confira a configuração do serviço de e-mail.");
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ["association-join-requests", associationId] }),
       queryClient.invalidateQueries({ queryKey: ["members", associationId] }),
