@@ -82,7 +82,7 @@ BEGIN
   WHERE u.id = auth.uid();
 
   IF user_email IS NULL THEN
-    RAISE EXCEPTION 'A conta precisa ter um e-mail verificado para aceitar este convite'
+    RAISE EXCEPTION 'A conta precisa ter um e-mail para aceitar este convite'
       USING ERRCODE = '28000';
   END IF;
 
