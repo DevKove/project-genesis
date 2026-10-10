@@ -1,8 +1,10 @@
+import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { BellRing, Check, Clock3, UserRound, X } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 
 type JoinRequest = {
   id: string;
@@ -25,6 +27,7 @@ export function JoinRequestsPanel({
   canManage: boolean;
 }) {
   const queryClient = useQueryClient();
+  const [reviewNotes, setReviewNotes] = useState<Record<string, string>>({});
   const requests = useQuery({
     queryKey: ["association-join-requests", associationId],
     enabled: Boolean(associationId && canManage),
@@ -46,7 +49,7 @@ export function JoinRequestsPanel({
     const { data, error } = await supabase.rpc("review_association_join_request", {
       _request_id: request.id,
       _decision: decision,
-      _note: null,
+      _note: reviewNotes[request.id]?.trim() || null,
     });
     if (error) {
       toast.error(error.code === "42501" ? "Somente o administrador pode analisar solicitações." : "Não foi possível atualizar a solicitação. Atualize a lista e tente novamente.");
@@ -99,6 +102,15 @@ export function JoinRequestsPanel({
                 <div className="flex items-center gap-2 font-medium"><UserRound className="h-4 w-4 shrink-0 text-muted-foreground" /><span className="break-words">{request.full_name}</span></div>
                 <p className="mt-1 break-all text-sm text-muted-foreground">{request.email}</p>
                 <p className="mt-1 text-xs text-muted-foreground">Solicitado em {new Date(request.requested_at).toLocaleString("pt-BR")}</p>
+                <Textarea
+                  aria-label={`Observação para ${request.full_name}`}
+                  placeholder="Observação opcional para a decisão (até 500 caracteres)"
+                  maxLength={500}
+                  rows={2}
+                  className="mt-3 max-w-xl text-sm"
+                  value={reviewNotes[request.id] ?? ""}
+                  onChange={(event) => setReviewNotes((notes) => ({ ...notes, [request.id]: event.target.value }))}
+                />
               </div>
               <div className="flex shrink-0 flex-wrap gap-2">
                 <Button size="sm" onClick={() => void review(request, "aprovado")}><Check className="mr-1.5 h-4 w-4" /> Aprovar</Button>
