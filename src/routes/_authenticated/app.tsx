@@ -21,10 +21,24 @@ function AppLayout() {
 }
 
 function Shell({ email }: { email: string }) {
-  const { memberships, current, setCurrentId, loading } = useAssoc();
+  const { memberships, current, setCurrentId, loading, error, refetch } = useAssoc();
   const navigate = useNavigate();
 
-  if (loading) return <div className="flex min-h-screen items-center justify-center text-muted-foreground">Carregando…</div>;
+  if (loading) return <div className="flex min-h-screen items-center justify-center text-muted-foreground">Carregando associações…</div>;
+
+  if (error) {
+    return (
+      <div className="flex min-h-screen items-center justify-center p-6">
+        <div className="w-full max-w-lg rounded-xl border bg-card p-6 shadow-soft">
+          <h1 className="text-xl font-semibold">Não foi possível carregar suas associações</h1>
+          <p className="mt-2 text-sm text-muted-foreground">Verifique sua conexão e as permissões da conta. Nenhum cadastro será iniciado enquanto esses dados não forem carregados.</p>
+          <button className="mt-5 rounded-lg bg-primary px-4 py-2 text-sm text-primary-foreground disabled:opacity-50" onClick={() => void refetch()}>Tentar novamente</button>
+          <button className="ml-3 mt-5 text-sm text-muted-foreground hover:text-foreground" onClick={() => void supabase.auth.signOut()}>Sair</button>
+        </div>
+      </div>
+    );
+  }
+
   if (!current)
     return (
       <div className="flex min-h-screen items-center justify-center p-6">
