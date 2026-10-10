@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Download, FileDown, FileText, Printer, Save, WandSparkles } from "lucide-react";
+import { FileDown, FileText, Printer, Save, WandSparkles } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -150,7 +150,8 @@ export function DocumentTemplateBuilder({
   const [documentTitle, setDocumentTitle] = useState("");
   const [saving, setSaving] = useState(false);
   const template = templates.find((item) => item.id === templateId) ?? templates[0];
-  const generatedBody = useMemo(() => template.build(values, associationName, city ?? ""), [template, values, associationName, city]);
+  const normalizedValues = useMemo(() => Object.fromEntries(template.fields.map((field) => [field.id, values[field.id]?.trim() || (field.required ? "________________" : "")])), [template, values]);
+  const generatedBody = useMemo(() => template.build(normalizedValues, associationName, city ?? ""), [template, normalizedValues, associationName, city]);
   const ready = template.fields.filter((field) => field.required).every((field) => Boolean(values[field.id]?.trim()));
 
   function chooseTemplate(nextId: string) {
@@ -175,7 +176,7 @@ export function DocumentTemplateBuilder({
       toast.error("Preencha os campos obrigatórios antes de gerar o documento.");
       return;
     }
-    const popup = window.open("", "_blank", "noopener,noreferrer");
+    const popup = window.open("", "_blank");
     if (!popup) {
       toast.error("O navegador bloqueou a janela. Permita pop-ups para imprimir ou salvar em PDF.");
       return;
