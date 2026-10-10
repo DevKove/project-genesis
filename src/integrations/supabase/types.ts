@@ -87,6 +87,7 @@ export type Database = {
       association_join_requests: {
         Row: {
           association_id: string
+          association_name: string
           email: string
           full_name: string
           id: string
@@ -99,6 +100,7 @@ export type Database = {
         }
         Insert: {
           association_id: string
+          association_name: string
           email: string
           full_name: string
           id?: string
@@ -111,6 +113,7 @@ export type Database = {
         }
         Update: {
           association_id?: string
+          association_name?: string
           email?: string
           full_name?: string
           id?: string
