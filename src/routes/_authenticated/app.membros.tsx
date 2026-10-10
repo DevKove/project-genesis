@@ -13,8 +13,8 @@ import { Label } from "@/components/ui/label";
 import type { Database } from "@/integrations/supabase/types";
 
 type MemberRow = Database["public"]["Tables"]["association_members"]["Row"];
-type ProfileRow = Pick<Database["public"]["Tables"]["profiles"]["Row"], "id" | "full_name" | "phone" | "avatar_url">;
-type MemberWithProfile = MemberRow & { profile: ProfileRow | null };
+type MemberDirectoryRow = Pick<Database["public"]["Views"]["association_member_directory"]["Row"], "user_id" | "full_name">;
+type MemberWithProfile = MemberRow & { profile: { full_name: string | null } | null };
 type InvitationRow = Database["public"]["Tables"]["invitations"]["Row"];
 const PAGE_SIZE = 25;
 
@@ -60,21 +60,22 @@ function MembersPage() {
 
       const rows = data ?? [];
       const userIds = [...new Set(rows.map((member) => member.user_id))];
-      let profiles: ProfileRow[] = [];
+      let directory: MemberDirectoryRow[] = [];
       if (userIds.length) {
-        const { data: profileData, error: profileError } = await supabase
-          .from("profiles")
-          .select("id,full_name,phone,avatar_url")
-          .in("id", userIds);
-        if (profileError) throw profileError;
-        profiles = (profileData ?? []) as ProfileRow[];
+        const { data: directoryData, error: directoryError } = await supabase
+          .from("association_member_directory")
+          .select("user_id,full_name")
+          .eq("association_id", associationId)
+          .in("user_id", userIds);
+        if (directoryError) throw directoryError;
+        directory = (directoryData ?? []) as MemberDirectoryRow[];
       }
 
       return {
-        items: rows.map((member) => ({
-          ...member,
-          profile: profiles.find((profile) => profile.id === member.user_id) ?? null,
-        })),
+        items: rows.map((member) => {
+          const entry = directory.find((item) => item.user_id === member.user_id);
+          return { ...member, profile: entry ? { full_name: entry.full_name } : null };
+        }),
         count: count ?? 0,
       };
     },
@@ -344,7 +345,7 @@ function MembersPage() {
                     const isSelf = member.user_id === userId;
                     return (
                       <tr key={member.id} className="hover:bg-muted/20">
-                        <td className="px-4 py-3"><div className="font-medium">{member.profile?.full_name || "Nome não informado"}</div><div className="text-xs text-muted-foreground">{member.profile?.phone || `Conta vinculada · ${member.user_id.slice(0, 8)}…`}{isSelf ? " · Você" : ""}</div></td>
+                        <td className="px-4 py-3"><div className="font-medium">{member.profile?.full_name || "Nome não informado"}</div><div className="text-xs text-muted-foreground">{member.profile ? "Perfil cadastrado" : "Perfil não preenchido"}{isSelf ? " · Você" : ""}</div></td>
                         <td className="px-4 py-3">
                           {canManageMembers && !isSelf ? <select aria-label={`Papel de ${member.profile?.full_name || member.user_id}`} className="h-9 rounded-md border border-input bg-background px-2 text-sm" value={draftRole} onChange={(event) => setRoleDrafts((drafts) => ({ ...drafts, [member.id]: event.target.value as AssocRole }))}>{ALL_ROLES.map((value) => <option key={value} value={value}>{ROLE_LABELS[value]}</option>)}</select> : <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-medium">{ROLE_LABELS[member.role] ?? member.role}</span>}
                         </td>
