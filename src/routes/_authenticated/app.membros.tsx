@@ -10,6 +10,7 @@ import { PageHeader, EmptyState } from "@/components/app/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { JoinRequestsPanel } from "@/components/app/JoinRequestsPanel";
 import type { Database } from "@/integrations/supabase/types";
 
 type MemberRow = Database["public"]["Tables"]["association_members"]["Row"];
@@ -272,6 +273,8 @@ function MembersPage() {
         description="Consulte os membros da associação e gerencie acessos conforme seu papel."
         action={canInvite ? <Button onClick={() => { setInviteFormOpen(true); setCreatedInvite(null); }}><MailPlus className="mr-2 h-4 w-4" /> Convidar membro</Button> : undefined}
       />
+
+      {associationId && <JoinRequestsPanel associationId={associationId} userId={userId} canManage={role === "admin"} />}
 
       {createdInvite && (
         <section className="mb-6 space-y-3 rounded-xl border border-primary/30 bg-primary/5 p-5">
