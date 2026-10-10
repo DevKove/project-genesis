@@ -24,6 +24,7 @@ Supabase project: `ivajgtokxrzwnspihllr`
 - Membership/role helper functions now live in the non-exposed `private` schema. They return a positive result only when the requested user ID matches `auth.uid()`. The schema is not exposed through PostgREST; authenticated retains schema usage and function execution for RLS policy evaluation, while `anon` does not.
 - Invitation creation/update policies now prevent presidents and secretaries from assigning the administrator role or other leadership roles. Invitation acceptance locks the invitation row and checks that the inviter still has the required role.
 - Post-migration verification confirmed there are zero copies of the four helpers in `public`, all four are in `private`, the authenticated caller's own membership helper result remained true, a lookup using an unrelated user ID returned false, anonymous helper execution is denied, and 24 RLS policies reference the private helpers.
+- Transaction-level RLS simulations using two distinct JWT subject IDs and two synthetic associations verified tenant isolation for associations, association members, units, residents, announcements, invitations, and audit logs. Cross-tenant unit INSERT/UPDATE and membership UPDATE attempts affected no rows or were denied. All test data was rolled back; this does not replace end-to-end testing with two real Supabase Auth accounts.
 - The audit trigger now records sanitized snapshots: CPF, email, phone, birth date, notes, invitation token, address, CNPJ, full name, announcement body, and other configured sensitive keys are omitted from snapshot values; changed/redacted field names are retained for accountability. A transaction test through the authenticated RLS path verified sensitive test values were not copied into audit details and that the trigger still executes.
 - Indexes were added for the four foreign-key patterns previously reported by the Performance Advisor: announcements.association_id, invitations.association_id, residents.association_id, and residents.unit_id.
 - The Supabase Security Advisor no longer reports the two trigger functions, but it still reports authenticated-executable `SECURITY DEFINER` functions. Current findings include `accept_invitation`, `create_association`, and the four helper functions. The helper functions now validate caller identity, but moving them to a non-exposed schema and updating policy references remains a stronger follow-up.
@@ -39,9 +40,9 @@ The tracked local `.env` file still references the older project `zuyeoozbdprcqw
 
 RLS is enabled and the policy definitions were inspected, but cross-tenant isolation has not yet been proven with two distinct authenticated users in separate associations. Complete adversarial tests for SELECT, INSERT, UPDATE, DELETE, invitation role combinations, membership changes, and platform-admin access before release.
 
-### 3. Security-definer RPC surface — FOLLOW-UP REQUIRED
+### 3. Security-definer RPC surface — HARDENED, CONTINUOUS REVIEW REQUIRED
 
-`create_association` and `accept_invitation` are intentionally used as authenticated RPCs and must retain their server-side checks. The four membership/role helper functions are caller-bound, but remain in the exposed `public` schema and are still callable as RPCs by authenticated users. Consider moving them to a non-exposed schema and updating all RLS policy references. Re-run Supabase Security Advisors after any change.
+`create_association` and `accept_invitation` remain authenticated RPCs because the client calls them. Both now use an empty `search_path` and schema-qualified object references. Invitation acceptance revalidates the email, invitation status/expiry, inviter's current role, and leadership-role restrictions, and it preserves an existing member role. The Security Advisor still flags these functions because they are authenticated-executable `SECURITY DEFINER` RPCs; retain this as a documented exception and revisit if the product can use a safer authorization boundary.
 
 ### 4. Audit-log data minimization — IMPROVED, RETENTION STILL OPEN
 
@@ -56,6 +57,8 @@ No Storage policies were found in the inspected schema. Keep client access denie
 The authenticated route tree remains incomplete compared with the product specification. Resident/unit CRUD, announcement management, member/invitation administration, audit history, association settings, finance, governance, and subscription/billing flows need implementation and end-to-end verification. The current security PR's quality workflow must complete successfully before merge. Lint, dependency scanning, secret scanning, and deployed smoke tests remain separate checks.
 
 ## Release acceptance checklist
+
+- [x] Harden the two authenticated RPCs with empty search paths, input validation, inviter checks, and no role downgrade.
 
 - [x] Optimize RLS policy `auth.uid()` expressions to avoid repeated per-row evaluation.
 
