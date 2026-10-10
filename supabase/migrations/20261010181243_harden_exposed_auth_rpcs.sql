@@ -25,13 +25,13 @@ BEGIN
     RAISE EXCEPTION 'Não autenticado' USING ERRCODE = '28000';
   END IF;
 
-  normalized_name := pg_catalog.btrim(pg_catalog.coalesce(_name, ''));
+  normalized_name := pg_catalog.btrim(coalesce(_name, ''));
   IF pg_catalog.char_length(normalized_name) < 3
      OR pg_catalog.char_length(normalized_name) > 120 THEN
     RAISE EXCEPTION 'Nome da associação inválido' USING ERRCODE = '22023';
   END IF;
 
-  normalized_cnpj := pg_catalog.nullif(pg_catalog.btrim(pg_catalog.coalesce(_cnpj, '')), '');
+  normalized_cnpj := nullif(pg_catalog.btrim(coalesce(_cnpj, '')), '');
   IF normalized_cnpj IS NOT NULL AND (
     pg_catalog.length(pg_catalog.regexp_replace(normalized_cnpj, '[^0-9]', '', 'g')) <> 14
     OR normalized_cnpj !~ '^[0-9./ -]+$'
@@ -39,12 +39,12 @@ BEGIN
     RAISE EXCEPTION 'CNPJ inválido' USING ERRCODE = '22023';
   END IF;
 
-  normalized_city := pg_catalog.nullif(pg_catalog.btrim(pg_catalog.coalesce(_city, '')), '');
+  normalized_city := nullif(pg_catalog.btrim(coalesce(_city, '')), '');
   IF normalized_city IS NOT NULL AND pg_catalog.char_length(normalized_city) > 120 THEN
     RAISE EXCEPTION 'Cidade inválida' USING ERRCODE = '22023';
   END IF;
 
-  normalized_state := pg_catalog.nullif(pg_catalog.upper(pg_catalog.btrim(pg_catalog.coalesce(_state, ''))), '');
+  normalized_state := nullif(pg_catalog.upper(pg_catalog.btrim(coalesce(_state, ''))), '');
   IF normalized_state IS NOT NULL AND normalized_state !~ '^[A-Z]{2}$' THEN
     RAISE EXCEPTION 'UF inválida' USING ERRCODE = '22023';
   END IF;
