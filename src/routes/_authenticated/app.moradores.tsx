@@ -2,7 +2,7 @@ import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { CheckCircle2, ChevronLeft, ChevronRight, Pencil, Plus, Search, UserRoundX, X } from "lucide-react";
+import { CheckCircle2, ChevronLeft, ChevronRight, FileText, Pencil, Plus, Search, UserRoundX, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAssoc } from "@/lib/assoc-context";
 import { isManager, isValidCPF, maskCPF, RELATION_LABELS, type ResidentRelation } from "@/lib/roles";
@@ -16,6 +16,33 @@ import type { Database } from "@/integrations/supabase/types";
 type ResidentRow = Database["public"]["Tables"]["residents"]["Row"];
 type UnitOption = Pick<Database["public"]["Tables"]["units"]["Row"], "id" | "identifier">;
 const PAGE_SIZE = 25;
+const IDENTITY_DOCUMENT_MAX_BYTES = 10 * 1024 * 1024;
+const IDENTITY_DOCUMENT_TYPES: Record<string, string> = {
+  pdf: "application/pdf", jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", webp: "image/webp",
+};
+function validateIdentityDocument(file: File | null): string | null {
+  if (!file) return null;
+  const extension = file.name.split(".").pop()?.toLowerCase() ?? "";
+  const expectedMime = IDENTITY_DOCUMENT_TYPES[extension];
+  if (!expectedMime || (file.type && file.type !== expectedMime)) return "Formato inválido. Envie PDF, JPG, JPEG, PNG ou WEBP.";
+  if (file.size <= 0 || file.size > IDENTITY_DOCUMENT_MAX_BYTES) return "O documento deve ter até 10 MB.";
+  return null;
+}
+async function uploadIdentityDocument(associationId: string, entity: "residents" | "vendors", recordId: string, file: File) {
+  const extension = file.name.split(".").pop()?.toLowerCase() ?? "";
+  const mimeType = IDENTITY_DOCUMENT_TYPES[extension];
+  const path = \`\${associationId}/\${entity}/\${recordId}/\${crypto.randomUUID()}.\${extension}\`;
+  const { error } = await supabase.storage.from("identity-documents").upload(path, file, { contentType: mimeType, upsert: false });
+  if (error) throw error;
+  return { path, name: file.name, mimeType, size: file.size };
+}
+async function openIdentityDocument(path: string) {
+  const tab = window.open("about:blank", "_blank");
+  if (!tab) { toast.error("Permita abrir uma nova aba para visualizar o documento."); return; }
+  const { data, error } = await supabase.storage.from("identity-documents").createSignedUrl(path, 60);
+  if (error || !data?.signedUrl) { tab.close(); toast.error("Não foi possível abrir o documento. Verifique suas permissões."); return; }
+  tab.location.href = data.signedUrl;
+}
 
 export const Route = createFileRoute("/_authenticated/app/moradores")({
   head: () => ({ meta: [{ title: "Moradores — Morada360" }] }),
@@ -64,7 +91,7 @@ function ResidentsPage() {
       if (!associationId) return { items: [] as ResidentRow[], count: 0 };
       let query = supabase
         .from("residents")
-        .select("id,association_id,unit_id,full_name,cpf,email,phone,birth_date,relation,is_active,lgpd_consent,notes,created_at,updated_at", { count: "exact" })
+        .select("id,association_id,unit_id,full_name,cpf,email,phone,birth_date,relation,is_active,lgpd_consent,notes,identity_document_path,identity_document_name,identity_document_mime_type,identity_document_size_bytes,created_at,updated_at", { count: "exact" })
         .eq("association_id", associationId)
         .order("full_name", { ascending: true });
 
@@ -92,111 +119,82 @@ function ResidentsPage() {
 
   async function saveResident(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!associationId) return;
-
+    if (!associationId || !manager) return;
     const form = new FormData(event.currentTarget);
     const fullName = String(form.get("full_name") ?? "").trim();
     const cpfInput = String(form.get("cpf") ?? "").trim();
     const cpfDigits = cpfInput.replace(/\D/g, "");
-    if (fullName.length < 2 || fullName.length > 160) {
-      toast.error("Informe o nome completo (de 2 a 160 caracteres).");
-      return;
-    }
-    if (cpfInput && !isValidCPF(cpfInput)) {
-      toast.error("O CPF informado é inválido. Confira os 11 dígitos.");
-      return;
-    }
-
+    const fileValue = form.get("identity_document");
+    const identityFile = fileValue instanceof File && fileValue.size > 0 ? fileValue : null;
+    const documentValidation = validateIdentityDocument(identityFile);
+    if (documentValidation) { toast.error(documentValidation); return; }
+    if (fullName.length < 2 || fullName.length > 160) { toast.error("Informe o nome completo (de 2 a 160 caracteres)."); return; }
+    if (cpfInput && !isValidCPF(cpfInput)) { toast.error("O CPF informado é inválido. Confira os 11 dígitos."); return; }
     const nullable = (key: string) => String(form.get(key) ?? "").trim() || null;
     const relation = String(form.get("relation") ?? "proprietario") as ResidentRelation;
     const unitId = String(form.get("unit_id") ?? "") || null;
     const payload = {
-      full_name: fullName,
-      cpf: cpfDigits || null,
-      email: nullable("email"),
-      phone: nullable("phone"),
-      birth_date: nullable("birth_date"),
-      relation,
-      unit_id: unitId,
-      is_active: form.get("is_active") === "on",
-      lgpd_consent: form.get("lgpd_consent") === "on",
-      notes: nullable("notes"),
+      full_name: fullName, cpf: cpfDigits || null, email: nullable("email"), phone: nullable("phone"),
+      birth_date: nullable("birth_date"), relation, unit_id: unitId,
+      is_active: form.get("is_active") === "on", lgpd_consent: form.get("lgpd_consent") === "on", notes: nullable("notes"),
     };
-
     setSaving(true);
     try {
       if (cpfDigits) {
-        let duplicateQuery = supabase
-          .from("residents")
-          .select("id")
-          .eq("association_id", associationId)
-          .eq("cpf", cpfDigits);
+        let duplicateQuery = supabase.from("residents").select("id").eq("association_id", associationId).eq("cpf", cpfDigits);
         if (editing) duplicateQuery = duplicateQuery.neq("id", editing.id);
         const { data: duplicate, error: duplicateError } = await duplicateQuery.limit(1).maybeSingle();
         if (duplicateError) throw duplicateError;
-        if (duplicate) {
-          toast.error("Já existe um morador com esse CPF nesta associação.");
-          return;
-        }
+        if (duplicate) { toast.error("Já existe um morador com esse CPF nesta associação."); return; }
       }
-
+      let recordId = editing?.id ?? null;
       if (editing) {
-        const { data, error } = await supabase
-          .from("residents")
-          .update(payload)
-          .eq("id", editing.id)
-          .eq("association_id", associationId)
-          .select("id")
-          .maybeSingle();
+        const { data, error } = await supabase.from("residents").update(payload)
+          .eq("id", editing.id).eq("association_id", associationId).select("id").maybeSingle();
         if (error) {
-          if (error.code === "23505") {
-            toast.error("Já existe um morador com esse CPF nesta associação.");
-            return;
-          }
-          if (error.code === "23514") {
-            toast.error("Os dados do CPF não passaram na validação.");
-            return;
-          }
-          if (error.code === "23503") {
-            toast.error("A unidade selecionada não pertence a esta associação.");
-            return;
-          }
+          if (error.code === "23505") { toast.error("Já existe um morador com esse CPF nesta associação."); return; }
+          if (error.code === "23514") { toast.error("Os dados do CPF não passaram na validação."); return; }
+          if (error.code === "23503") { toast.error("A unidade selecionada não pertence a esta associação."); return; }
           throw error;
         }
-        if (!data) {
-          toast.error("Morador não encontrado ou sem permissão para alterá-lo.");
-          return;
-        }
-        toast.success("Cadastro do morador atualizado.");
+        if (!data) { toast.error("Morador não encontrado ou sem permissão para alterá-lo."); return; }
+        recordId = data.id;
       } else {
-        const { error } = await supabase.from("residents").insert({ ...payload, association_id: associationId });
+        const { data, error } = await supabase.from("residents").insert({ ...payload, association_id: associationId }).select("id").single();
         if (error) {
-          if (error.code === "23505") {
-            toast.error("Já existe um morador com esse CPF nesta associação.");
-            return;
-          }
-          if (error.code === "23514") {
-            toast.error("Os dados do CPF não passaram na validação.");
-            return;
-          }
-          if (error.code === "23503") {
-            toast.error("A unidade selecionada não pertence a esta associação.");
-            return;
-          }
+          if (error.code === "23505") { toast.error("Já existe um morador com esse CPF nesta associação."); return; }
+          if (error.code === "23514") { toast.error("Os dados do CPF não passaram na validação."); return; }
+          if (error.code === "23503") { toast.error("A unidade selecionada não pertence a esta associação."); return; }
           throw error;
         }
-        toast.success("Morador cadastrado.");
+        recordId = data.id;
       }
-
+      let documentAttached = false;
+      if (identityFile && recordId) {
+        let uploadedPath: string | null = null;
+        try {
+          const uploaded = await uploadIdentityDocument(associationId, "residents", recordId, identityFile);
+          uploadedPath = uploaded.path;
+          const { data, error } = await supabase.from("residents").update({
+            identity_document_path: uploaded.path, identity_document_name: uploaded.name,
+            identity_document_mime_type: uploaded.mimeType, identity_document_size_bytes: uploaded.size,
+          }).eq("id", recordId).eq("association_id", associationId).select("id").maybeSingle();
+          if (error || !data) throw error ?? new Error("Não foi possível vincular o documento.");
+          if (editing?.identity_document_path) await supabase.storage.from("identity-documents").remove([editing.identity_document_path]);
+          documentAttached = true;
+        } catch {
+          if (uploadedPath) await supabase.storage.from("identity-documents").remove([uploadedPath]);
+          toast.warning("Cadastro salvo, mas o documento não foi anexado. Edite o cadastro e tente novamente.");
+        }
+      }
+      toast.success(identityFile && documentAttached ? "Cadastro salvo com documento anexado." : editing ? "Cadastro do morador atualizado." : "Morador cadastrado.");
       setFormOpen(false);
       setEditing(null);
       await queryClient.invalidateQueries({ queryKey: ["residents", associationId] });
       await queryClient.invalidateQueries({ queryKey: ["stats", associationId] });
     } catch {
       toast.error("Não foi possível salvar o morador. Verifique os dados e suas permissões.");
-    } finally {
-      setSaving(false);
-    }
+    } finally { setSaving(false); }
   }
 
   async function toggleActive(resident: ResidentRow) {
@@ -279,6 +277,7 @@ function ResidentsPage() {
             <div><Label htmlFor="resident-birth-date">Data de nascimento</Label><Input id="resident-birth-date" name="birth_date" type="date" defaultValue={editing?.birth_date ?? ""} /></div>
             <div><Label htmlFor="resident-unit">Unidade</Label><select id="resident-unit" name="unit_id" defaultValue={editing?.unit_id ?? ""} className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"><option value="">Sem unidade vinculada</option>{(unitOptions.data ?? []).map((unit) => <option key={unit.id} value={unit.id}>{unit.identifier}</option>)}</select></div>
           </div>
+          <div className="sm:col-span-2"><Label htmlFor="resident-identity-document">Documento com foto (opcional)</Label><Input id="resident-identity-document" name="identity_document" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp" /><p className="mt-1 text-xs text-muted-foreground">PDF, JPG, JPEG, PNG ou WEBP. Máximo de 10 MB. O arquivo fica privado e só gestores autorizados podem acessá-lo.</p>{editing?.identity_document_name && <p className="mt-1 text-xs text-muted-foreground">Documento atual: {editing.identity_document_name}</p>}</div>
           <div><Label htmlFor="resident-notes">Observações internas</Label><Textarea id="resident-notes" name="notes" maxLength={2000} rows={3} defaultValue={editing?.notes ?? ""} /></div>
           <div className="flex flex-col gap-3 rounded-lg bg-muted/30 p-3 sm:flex-row sm:items-center">
             <label className="flex items-center gap-2 text-sm"><input type="checkbox" name="is_active" defaultChecked={editing?.is_active ?? true} className="h-4 w-4 rounded border-input" /> Cadastro ativo</label>
@@ -318,7 +317,7 @@ function ResidentsPage() {
                     <td className="px-4 py-3">{unitLabel(resident.unit_id)}</td>
                     <td className="px-4 py-3">{RELATION_LABELS[resident.relation] ?? resident.relation}</td>
                     <td className="px-4 py-3"><span className={resident.is_active ? "rounded-full bg-emerald-500/10 px-2.5 py-1 text-xs text-emerald-700" : "rounded-full bg-muted px-2.5 py-1 text-xs text-muted-foreground"}>{resident.is_active ? "Ativo" : "Inativo"}</span></td>
-                    <td className="px-4 py-3"><div className="flex justify-end gap-1"><Button variant="ghost" size="icon" aria-label={`Editar morador ${resident.full_name}`} onClick={() => startEdit(resident)}><Pencil className="h-4 w-4" /></Button><Button variant="ghost" size="icon" aria-label={resident.is_active ? "Desativar morador" : "Reativar morador"} disabled={changingStatus === resident.id} onClick={() => void toggleActive(resident)}>{resident.is_active ? <UserRoundX className="h-4 w-4 text-destructive" /> : <CheckCircle2 className="h-4 w-4 text-emerald-600" />}</Button></div></td>
+                    <td className="px-4 py-3"><div className="flex justify-end gap-1">{resident.identity_document_path && <Button variant="ghost" size="icon" aria-label="Abrir documento do morador" onClick={() => void openIdentityDocument(resident.identity_document_path!)}><FileText className="h-4 w-4" /></Button>}<Button variant="ghost" size="icon" aria-label={`Editar morador ${resident.full_name}`} onClick={() => startEdit(resident)}><Pencil className="h-4 w-4" /></Button><Button variant="ghost" size="icon" aria-label={resident.is_active ? "Desativar morador" : "Reativar morador"} disabled={changingStatus === resident.id} onClick={() => void toggleActive(resident)}>{resident.is_active ? <UserRoundX className="h-4 w-4 text-destructive" /> : <CheckCircle2 className="h-4 w-4 text-emerald-600" />}</Button></div></td>
                   </tr>
                 ))}
               </tbody>
