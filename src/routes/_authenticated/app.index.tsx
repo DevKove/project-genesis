@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { Home, Users, UserCog, Megaphone } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -11,14 +11,16 @@ export const Route = createFileRoute("/_authenticated/app/")({ component: Dashbo
 async function count(table: "units" | "residents" | "association_members" | "announcements", assoc: string, extra?: (q: any) => any) {
   let q = supabase.from(table).select("id", { count: "exact", head: true }).eq("association_id", assoc);
   if (extra) q = extra(q);
-  const { count: c } = await q;
+  const { count: c, error } = await q;
+  if (error) throw error;
   return c ?? 0;
 }
 
 function Dashboard() {
   const { current } = useAssoc();
-  const assoc = current!.association_id;
-  const manager = isManager(current!.role);
+  if (!current) return null;
+  const assoc = current.association_id;
+  const manager = isManager(current.role);
   const stats = useQuery({
     queryKey: ["stats", assoc],
     queryFn: async () => ({
@@ -31,7 +33,12 @@ function Dashboard() {
   });
   const latest = useQuery({
     queryKey: ["announcements", assoc, "latest"],
-    queryFn: async () => (await supabase.from("announcements").select("id,title,created_at").eq("association_id", assoc).order("created_at", { ascending: false }).limit(5)).data ?? [],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("announcements").select("id,title,created_at")
+        .eq("association_id", assoc).order("created_at", { ascending: false }).limit(5);
+      if (error) throw error;
+      return data ?? [];
+    },
   });
   const s = stats.data;
   const cards = [
@@ -42,21 +49,22 @@ function Dashboard() {
   ];
   return (
     <>
-      <PageHeader title={current!.associations?.name ?? ""} description="Visão geral da associação" />
+      <PageHeader title={current.associations?.name ?? ""} description="Visão geral da associação" />
+      {stats.isError && <div role="alert" className="mb-4 rounded-lg border border-destructive/40 bg-destructive/5 p-4 text-sm"><p>Não foi possível carregar os indicadores. Verifique as permissões de acesso e sua conexão.</p><button className="mt-2 font-medium underline" onClick={() => void stats.refetch()}>Tentar novamente</button></div>}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {cards.filter((c) => c.show).map((c) => (
           <div key={c.label} className="rounded-xl border bg-card p-5 shadow-soft">
             <div className="flex items-center justify-between text-sm text-muted-foreground">{c.label}<c.icon className="h-4 w-4 text-accent" /></div>
-            <div className="mt-2 font-display text-4xl font-bold">{c.value ?? "—"}</div>
+            <div className="mt-2 font-display text-4xl font-bold">{stats.isError ? "—" : (c.value ?? "—")}</div>
             <div className="text-xs text-muted-foreground">{c.sub}</div>
           </div>
         ))}
       </div>
       <div className="mt-8 rounded-xl border bg-card p-6">
-        <div className="mb-4 flex items-center justify-between"><h2 className="text-xl font-semibold">Últimos comunicados</h2></div>
-        {latest.data?.length ? (
+        <div className="mb-4 flex items-center justify-between"><h2 className="text-xl font-semibold">Últimos comunicados</h2>{latest.isError && <button className="text-sm font-medium underline" onClick={() => void latest.refetch()}>Tentar novamente</button>}</div>
+        {latest.isError ? <p role="alert" className="text-sm text-destructive">Não foi possível carregar os comunicados.</p> : latest.data?.length ? (
           <ul className="divide-y">{latest.data.map((a) => <li key={a.id} className="flex justify-between py-3 text-sm"><span>{a.title}</span><span className="text-muted-foreground">{new Date(a.created_at).toLocaleDateString("pt-BR")}</span></li>)}</ul>
-        ) : <p className="text-sm text-muted-foreground">Nenhum comunicado ainda.</p>}
+        ) : <p className="text-sm text-muted-foreground">{latest.isLoading ? "Carregando comunicados…" : "Nenhum comunicado ainda."}</p>}
       </div>
     </>
   );
