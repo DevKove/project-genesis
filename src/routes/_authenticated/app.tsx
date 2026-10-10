@@ -1,8 +1,8 @@
 import { createFileRoute, Link, Outlet, useNavigate } from "@tanstack/react-router";
-import { Building2, LayoutDashboard, Home, Users, UserCog, Megaphone, ScrollText, Settings, LogOut, UserCircle } from "lucide-react";
+import { Building2, LayoutDashboard, LogOut } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { AssocProvider, useAssoc } from "@/lib/assoc-context";
-import { ROLE_LABELS, isManager, canSeeAudit, canInvite } from "@/lib/roles";
+import { ROLE_LABELS } from "@/lib/roles";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CreateAssociation } from "@/components/app/CreateAssociation";
 
@@ -23,7 +23,6 @@ function AppLayout() {
 function Shell({ email }: { email: string }) {
   const { memberships, current, setCurrentId, loading } = useAssoc();
   const navigate = useNavigate();
-  const role = current?.role;
 
   if (loading) return <div className="flex min-h-screen items-center justify-center text-muted-foreground">Carregando…</div>;
   if (!current)
@@ -33,14 +32,14 @@ function Shell({ email }: { email: string }) {
           <h1 className="text-3xl font-bold">Crie sua associação</h1>
           <p className="mb-6 mt-2 text-muted-foreground">Você ainda não participa de nenhuma associação. Crie uma agora ou peça um convite ao administrador.</p>
           <CreateAssociation />
-          <button className="mt-6 text-sm text-muted-foreground hover:text-foreground" onClick={() => supabase.auth.signOut()}>Sair</button>
+          <button className="mt-6 text-sm text-muted-foreground hover:text-foreground" onClick={() => void supabase.auth.signOut()}>Sair</button>
         </div>
       </div>
     );
 
-  const nav = [
-    { to: "/app", label: "Painel", icon: LayoutDashboard, show: true, exact: true },
-  ] as const;
+  // Only routes that exist in the generated route tree are linked here. Restore other
+  // modules after their pages and authorization checks have been implemented.
+  const nav = [{ to: "/app", label: "Painel", icon: LayoutDashboard, exact: true }] as const;
 
   return (
     <div className="flex min-h-screen">
@@ -49,29 +48,29 @@ function Shell({ email }: { email: string }) {
         <Select value={current.association_id} onValueChange={(v) => (v === "__new" ? navigate({ to: "/app/nova" }) : setCurrentId(v))}>
           <SelectTrigger className="mb-6 border-sidebar-border bg-sidebar-accent text-sidebar-accent-foreground"><SelectValue /></SelectTrigger>
           <SelectContent>
-            {memberships.map((m) => <SelectItem key={m.association_id} value={m.association_id}>{m.associations?.name}</SelectItem>)}
+            {memberships.map((m) => <SelectItem key={m.association_id} value={m.association_id}>{m.associations?.name ?? "Associação sem nome"}</SelectItem>)}
             <SelectItem value="__new">+ Nova associação</SelectItem>
           </SelectContent>
         </Select>
         <nav className="flex-1 space-y-1">
-          {nav.filter((n) => n.show).map((n) => (
-            <Link key={n.to} to={n.to} activeOptions={{ exact: "exact" in n }} className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground" activeProps={{ className: "bg-sidebar-accent text-sidebar-accent-foreground font-semibold" }}>
+          {nav.map((n) => (
+            <Link key={n.to} to={n.to} activeOptions={{ exact: n.exact }} className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground" activeProps={{ className: "bg-sidebar-accent text-sidebar-accent-foreground font-semibold" }}>
               <n.icon className="h-4 w-4" /> {n.label}
             </Link>
           ))}
         </nav>
         <div className="border-t border-sidebar-border pt-4 text-xs">
           <div className="truncate px-2">{email}</div>
-          <div className="px-2 text-sidebar-primary">{ROLE_LABELS[current.role]}</div>
-          <button onClick={() => supabase.auth.signOut()} className="mt-3 flex w-full items-center gap-2 rounded-lg px-2 py-2 hover:bg-sidebar-accent"><LogOut className="h-4 w-4" /> Sair</button>
+          <div className="px-2 text-sidebar-primary">{ROLE_LABELS[current.role] ?? current.role}</div>
+          <button onClick={() => void supabase.auth.signOut()} className="mt-3 flex w-full items-center gap-2 rounded-lg px-2 py-2 hover:bg-sidebar-accent"><LogOut className="h-4 w-4" /> Sair</button>
         </div>
       </aside>
       <div className="flex-1">
         <div className="flex items-center justify-between border-b bg-card px-4 py-3 md:hidden">
-          <span className="font-semibold">{current.associations?.name}</span>
-          <select className="rounded border bg-background px-2 py-1 text-sm" value="" onChange={(e) => e.target.value && navigate({ to: e.target.value })}>
+          <span className="font-semibold">{current.associations?.name ?? "Morada360"}</span>
+          <select aria-label="Navegação" className="rounded border bg-background px-2 py-1 text-sm" value="" onChange={(e) => e.target.value && navigate({ to: e.target.value })}>
             <option value="">Menu</option>
-            {nav.filter((n) => n.show).map((n) => <option key={n.to} value={n.to}>{n.label}</option>)}
+            {nav.map((n) => <option key={n.to} value={n.to}>{n.label}</option>)}
           </select>
         </div>
         <main className="mx-auto max-w-6xl p-6 md:p-10"><Outlet key={current.association_id} /></main>
