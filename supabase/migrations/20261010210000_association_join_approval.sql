@@ -116,6 +116,68 @@ CREATE TRIGGER create_association_join_request_after_signup
   FOR EACH ROW
   EXECUTE FUNCTION public.create_association_join_request_for_new_user();
 
+-- Allow OAuth-created accounts to request access after authentication, without granting membership.
+CREATE OR REPLACE FUNCTION public.request_association_membership(_association_id uuid)
+RETURNS text
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO ''
+AS $function$
+DECLARE
+  requester uuid := auth.uid();
+  applicant_email text;
+  applicant_name text;
+  selected_association_name text;
+BEGIN
+  IF requester IS NULL THEN
+    RAISE EXCEPTION 'Não autenticado' USING ERRCODE = '28000';
+  END IF;
+
+  SELECT pg_catalog.lower(pg_catalog.btrim(COALESCE(u.email, ''))),
+         pg_catalog.left(
+           COALESCE(
+             NULLIF(pg_catalog.btrim(u.raw_user_meta_data ->> 'full_name'), ''),
+             pg_catalog.split_part(COALESCE(u.email, 'Membro'), '@', 1)
+           ),
+           160
+         )
+  INTO applicant_email, applicant_name
+  FROM auth.users AS u
+  WHERE u.id = requester;
+
+  IF applicant_email IS NULL OR applicant_email = '' THEN
+    RAISE EXCEPTION 'A conta precisa ter um e-mail válido' USING ERRCODE = '28000';
+  END IF;
+
+  SELECT a.name INTO selected_association_name
+  FROM public.associations AS a
+  WHERE a.id = _association_id AND a.status = 'ativa';
+
+  IF selected_association_name IS NULL THEN
+    RAISE EXCEPTION 'Associação não encontrada ou inativa' USING ERRCODE = '22023';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1 FROM public.association_members AS m
+    WHERE m.association_id = _association_id AND m.user_id = requester
+  ) THEN
+    RETURN 'membro';
+  END IF;
+
+  INSERT INTO public.association_join_requests
+    (association_id, association_name, user_id, full_name, email)
+  VALUES
+    (_association_id, selected_association_name, requester, applicant_name, applicant_email)
+  ON CONFLICT (association_id, user_id) WHERE status = 'pendente'
+  DO NOTHING;
+
+  RETURN 'pendente';
+END;
+$function$;
+
+REVOKE EXECUTE ON FUNCTION public.request_association_membership(uuid) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.request_association_membership(uuid) TO authenticated;
+
 -- Approval/rejection is atomic and can only be performed by an administrator of that association.
 CREATE OR REPLACE FUNCTION public.review_association_join_request(
   _request_id uuid,
