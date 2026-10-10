@@ -6,7 +6,7 @@ import type { AssocRole } from "./roles";
 export type Membership = {
   association_id: string;
   role: AssocRole;
-  associations: { id: string; name: string; city: string | null; state: string | null } | null;
+  associations: { id: string; name: string; city: string | null; state: string | null; logo_url: string | null } | null;
 };
 
 type Ctx = {
@@ -28,7 +28,7 @@ export function AssocProvider({ userId, children }: { userId: string; children: 
     queryFn: async () => {
       const { data, error } = await supabase
         .from("association_members")
-        .select("association_id, role, associations(id, name, city, state)")
+        .select("association_id, role, associations(id, name, city, state, logo_url)")
         .eq("user_id", userId)
         .order("created_at");
       if (error) throw error;
