@@ -61,6 +61,13 @@ No Storage policies were found. Keep uploads disabled until private buckets, ten
 
 The current main branch includes units/residents management and member-facing announcements. This feature branch adds a member directory, admin-only role changes/removals, invitation creation/cancellation/link copying, and an authenticated invitation-acceptance page. A database trigger prevents membership identity changes and loss of the last administrator. CI and browser verification are still required for this branch. Audit history UI, association settings, finance, governance, subscription/billing, support, and central SaaS administration remain incomplete compared with the product specification.
 
+### Vendors module (proposed in PR #18)
+
+- Adds a private, association-scoped vendor directory with categories, contact details, notes, and active/inactive status.
+- Only authorized association managers can read or change vendor records; tenant identity and creator are immutable.
+- Audit events omit vendor names, contact details, and free-text notes.
+- The migration is repository-only and has not been applied to the remote Supabase project. CI and role-isolation tests remain required.
+
 ### 7. Delivery and operational checks
 
 The current repository quality workflow tests and builds, but lint triage, dependency/secret scanning, backup-restore rehearsal, monitoring/alerting, production smoke tests, and real multi-user end-to-end tests remain open. The Cloudflare deployment workflow is currently skipped unless its documented enable flag and credentials are configured.
