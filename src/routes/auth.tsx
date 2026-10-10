@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Building2 } from "lucide-react";
 
-type Search = { redirect?: string };
+type Search = { redirect?: string | undefined };
 
 function safePath(p?: string) {
   if (!p || !p.startsWith("/") || p.startsWith("//")) return "/app";
@@ -17,7 +17,7 @@ function safePath(p?: string) {
 }
 
 export const Route = createFileRoute("/auth")({
-  validateSearch: (s: Record<string, unknown>): Search => ({ redirect: typeof s.redirect === "string" ? s.redirect : undefined }),
+  validateSearch: (s: Record<string, unknown>): Search => ({ redirect: typeof s["redirect"] === "string" ? s["redirect"] : undefined }),
   head: () => ({
     meta: [
       { title: "Entrar — Morada360" },
@@ -60,7 +60,7 @@ function AuthPage() {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
     const password = String(f.get("password"));
-    if (password.length < 8) return toast.error("A senha precisa ter ao menos 8 caracteres");
+    if (password.length < 8) { toast.error("A senha precisa ter ao menos 8 caracteres"); return; }
     setLoading(true);
     const { error } = await supabase.auth.signUp({
       email: String(f.get("email")),
@@ -68,7 +68,7 @@ function AuthPage() {
       options: { emailRedirectTo: window.location.origin + target, data: { full_name: String(f.get("name")) } },
     });
     setLoading(false);
-    if (error) return toast.error(error.message);
+    if (error) { toast.error(error.message); return; }
     toast.success("Conta criada! Confirme seu e-mail para entrar.");
   }
 
@@ -80,7 +80,7 @@ function AuthPage() {
 
   async function forgot() {
     const email = (document.getElementById("li-email") as HTMLInputElement)?.value;
-    if (!email) return toast.error("Informe seu e-mail acima");
+    if (!email) { toast.error("Informe seu e-mail acima"); return; }
     const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin + "/reset-password" });
     if (error) toast.error(error.message);
     else toast.success("Enviamos um link de redefinição para seu e-mail.");
