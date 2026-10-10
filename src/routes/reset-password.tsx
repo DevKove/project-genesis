@@ -25,9 +25,9 @@ function Reset() {
   const navigate = useNavigate();
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (pw.length < 8) return toast.error("Mínimo de 8 caracteres");
+    if (pw.length < 8) { toast.error("Mínimo de 8 caracteres"); return; }
     const { error } = await supabase.auth.updateUser({ password: pw });
-    if (error) return toast.error(error.message);
+    if (error) { toast.error(error.message); return; }
     toast.success("Senha atualizada");
     navigate({ to: "/app" });
   }

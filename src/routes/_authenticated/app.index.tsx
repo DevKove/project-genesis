@@ -53,7 +53,7 @@ function Dashboard() {
         ))}
       </div>
       <div className="mt-8 rounded-xl border bg-card p-6">
-        <div className="mb-4 flex items-center justify-between"><h2 className="text-xl font-semibold">Últimos comunicados</h2><Link to="/app/comunicados" className="text-sm text-primary">Ver todos</Link></div>
+        <div className="mb-4 flex items-center justify-between"><h2 className="text-xl font-semibold">Últimos comunicados</h2></div>
         {latest.data?.length ? (
           <ul className="divide-y">{latest.data.map((a) => <li key={a.id} className="flex justify-between py-3 text-sm"><span>{a.title}</span><span className="text-muted-foreground">{new Date(a.created_at).toLocaleDateString("pt-BR")}</span></li>)}</ul>
         ) : <p className="text-sm text-muted-foreground">Nenhum comunicado ainda.</p>}

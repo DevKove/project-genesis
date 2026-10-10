@@ -40,13 +40,6 @@ function Shell({ email }: { email: string }) {
 
   const nav = [
     { to: "/app", label: "Painel", icon: LayoutDashboard, show: true, exact: true },
-    { to: "/app/portal", label: "Meu portal", icon: UserCircle, show: true },
-    { to: "/app/comunicados", label: "Comunicados", icon: Megaphone, show: true },
-    { to: "/app/unidades", label: "Unidades", icon: Home, show: isManager(role) },
-    { to: "/app/moradores", label: "Moradores", icon: Users, show: isManager(role) },
-    { to: "/app/membros", label: "Membros e convites", icon: UserCog, show: canInvite(role) },
-    { to: "/app/auditoria", label: "Auditoria", icon: ScrollText, show: canSeeAudit(role) },
-    { to: "/app/configuracoes", label: "Associação", icon: Settings, show: canSeeAudit(role) },
   ] as const;
 
   return (

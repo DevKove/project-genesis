@@ -13,14 +13,14 @@ export function CreateAssociation({ onDone }: { onDone?: () => void }) {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
     setBusy(true);
-    const { data, error } = await supabase.rpc("create_association", {
+    const { data, error } = await supabase.rpc("create_association", ({
       _name: String(f.get("name")),
       _cnpj: String(f.get("cnpj") || "") || undefined,
       _city: String(f.get("city") || "") || undefined,
       _state: String(f.get("state") || "") || undefined,
-    });
+    }) as { _name: string });
     setBusy(false);
-    if (error) return toast.error(error.message);
+    if (error) { toast.error(error.message); return; }
     toast.success("Associação criada");
     setCurrentId(data as string);
     refetch();
