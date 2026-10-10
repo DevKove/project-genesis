@@ -31,7 +31,9 @@ ALTER TABLE public.vendors
       AND identity_document_mime_type IS NULL AND identity_document_size_bytes IS NULL)
     OR
     (identity_document_path IS NOT NULL AND identity_document_name IS NOT NULL
+      AND identity_document_mime_type IS NOT NULL
       AND identity_document_mime_type IN ('application/pdf', 'image/jpeg', 'image/png', 'image/webp')
+      AND identity_document_size_bytes IS NOT NULL
       AND identity_document_size_bytes BETWEEN 1 AND 10485760)
   );
 
