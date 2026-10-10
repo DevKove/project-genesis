@@ -1,5 +1,5 @@
 import { createFileRoute, Link, Outlet, useNavigate } from "@tanstack/react-router";
-import { Building2, LayoutDashboard, LogOut } from "lucide-react";
+import { Building2, Home, LayoutDashboard, LogOut, Users } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { AssocProvider, useAssoc } from "@/lib/assoc-context";
 import { ROLE_LABELS } from "@/lib/roles";
@@ -53,7 +53,7 @@ function Shell({ email }: { email: string }) {
 
   // Only routes that exist in the generated route tree are linked here. Restore other
   // modules after their pages and authorization checks have been implemented.
-  const nav = [{ to: "/app", label: "Painel", icon: LayoutDashboard, exact: true }] as const;
+  const nav = [\n    { to: "/app", label: "Painel", icon: LayoutDashboard, exact: true },\n    { to: "/app/unidades", label: "Unidades", icon: Home, exact: false },\n    { to: "/app/moradores", label: "Moradores", icon: Users, exact: false },\n  ] as const;
 
   return (
     <div className="flex min-h-screen">
