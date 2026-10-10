@@ -51,8 +51,6 @@ function Shell({ email }: { email: string }) {
       </div>
     );
 
-  // Only routes that exist in the generated route tree are linked here. Restore other
-  // modules after their pages and authorization checks have been implemented.
   const nav = [
     { to: "/app", label: "Painel", icon: LayoutDashboard, exact: true },
     { to: "/app/unidades", label: "Unidades", icon: Home, exact: false },
@@ -63,15 +61,19 @@ function Shell({ email }: { email: string }) {
     { to: "/app/solicitacoes", label: "Solicitações", icon: ClipboardList, exact: false },
     { to: "/app/membros", label: "Membros", icon: UserCog, exact: false },
     { to: "/app/auditoria", label: "Auditoria", icon: History, exact: false },
-    { to: "/app/configuracoes", label: "Configurações", icon: Settings, exact: false },
     { to: "/app/prestadores", label: "Prestadores", icon: Building2, exact: false },
+    { to: "/app/configuracoes", label: "Configurações", icon: Settings, exact: false },
   ] as const;
   const visibleNav = nav.filter((item) => (item.to !== "/app/auditoria" && item.to !== "/app/configuracoes") || current.role === "admin" || current.role === "presidente");
+  const associationLogo = current.associations?.logo_url;
 
   return (
     <div className="flex min-h-screen">
       <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col bg-sidebar p-4 text-sidebar-foreground md:flex">
-        <div className="mb-6 flex items-center gap-2 px-2 text-lg font-semibold"><Building2 className="h-5 w-5 text-sidebar-primary" /> Morada360</div>
+        <div className="mb-6 flex min-w-0 items-center gap-2 px-2 text-lg font-semibold">
+          {associationLogo ? <img src={associationLogo} alt="" className="h-8 w-8 shrink-0 rounded-md bg-white object-contain p-0.5" /> : <Building2 className="h-5 w-5 shrink-0 text-sidebar-primary" />}
+          <span className="truncate">{current.associations?.name ?? "Morada360"}</span>
+        </div>
         <Select value={current.association_id} onValueChange={(v) => (v === "__new" ? navigate({ to: "/app/nova" }) : setCurrentId(v))}>
           <SelectTrigger className="mb-6 border-sidebar-border bg-sidebar-accent text-sidebar-accent-foreground"><SelectValue /></SelectTrigger>
           <SelectContent>
@@ -79,10 +81,10 @@ function Shell({ email }: { email: string }) {
             <SelectItem value="__new">+ Nova associação</SelectItem>
           </SelectContent>
         </Select>
-        <nav className="flex-1 space-y-1">
+        <nav className="flex-1 space-y-1 overflow-y-auto">
           {visibleNav.map((n) => (
             <Link key={n.to} to={n.to} activeOptions={{ exact: n.exact }} className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground" activeProps={{ className: "bg-sidebar-accent text-sidebar-accent-foreground font-semibold" }}>
-              <n.icon className="h-4 w-4" /> {n.label}
+              <n.icon className="h-4 w-4 shrink-0" /> {n.label}
             </Link>
           ))}
         </nav>
@@ -92,15 +94,18 @@ function Shell({ email }: { email: string }) {
           <button onClick={() => void supabase.auth.signOut()} className="mt-3 flex w-full items-center gap-2 rounded-lg px-2 py-2 hover:bg-sidebar-accent"><LogOut className="h-4 w-4" /> Sair</button>
         </div>
       </aside>
-      <div className="flex-1">
-        <div className="flex items-center justify-between border-b bg-card px-4 py-3 md:hidden">
-          <span className="font-semibold">{current.associations?.name ?? "Morada360"}</span>
-          <select aria-label="Navegação" className="rounded border bg-background px-2 py-1 text-sm" value="" onChange={(e) => e.target.value && navigate({ to: e.target.value })}>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center justify-between gap-3 border-b bg-card px-4 py-3 md:hidden">
+          <div className="flex min-w-0 items-center gap-2">
+            {associationLogo ? <img src={associationLogo} alt="" className="h-8 w-8 shrink-0 rounded-md object-contain" /> : null}
+            <span className="truncate font-semibold">{current.associations?.name ?? "Morada360"}</span>
+          </div>
+          <select aria-label="Navegação" className="max-w-[45%] rounded border bg-background px-2 py-2 text-sm" value="" onChange={(e) => e.target.value && navigate({ to: e.target.value })}>
             <option value="">Menu</option>
-            {nav.map((n) => <option key={n.to} value={n.to}>{n.label}</option>)}
+            {visibleNav.map((n) => <option key={n.to} value={n.to}>{n.label}</option>)}
           </select>
         </div>
-        <main className="mx-auto max-w-6xl p-6 md:p-10"><Outlet key={current.association_id} /></main>
+        <main className="mx-auto max-w-6xl p-4 sm:p-6 md:p-10"><Outlet key={current.association_id} /></main>
       </div>
     </div>
   );
