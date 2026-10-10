@@ -33,6 +33,8 @@ function AuthPage() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [termsAccepted, setTermsAccepted] = useState(false);
+  const [associations, setAssociations] = useState<Array<{ id: string; name: string; city: string | null; state: string | null }>>([]);
+  const [loadingAssociations, setLoadingAssociations] = useState(true);
 
   useEffect(() => {
     let active = true;
@@ -49,6 +51,22 @@ function AuthPage() {
       data.subscription.unsubscribe();
     };
   }, [navigate, target]);
+
+  useEffect(() => {
+    let active = true;
+    supabase.rpc("list_associations_for_signup").then(({ data, error }) => {
+      if (!active) return;
+      if (error) toast.error("Não foi possível carregar a lista de associações.");
+      else setAssociations(data ?? []);
+      setLoadingAssociations(false);
+    }).catch(() => {
+      if (active) {
+        setLoadingAssociations(false);
+        toast.error("Não foi possível carregar a lista de associações.");
+      }
+    });
+    return () => { active = false; };
+  }, []);
 
   async function signIn(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -71,6 +89,11 @@ function AuthPage() {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
     const password = String(f.get("password"));
+    const requestedAssociationId = String(f.get("association_id") ?? "");
+    if (!requestedAssociationId) {
+      toast.error("Selecione sua associação ou indique que deseja cadastrar uma nova.");
+      return;
+    }
     if (!termsAccepted) {
       toast.error("É necessário aceitar os Termos de Uso e o Aviso de Privacidade para criar a conta.");
       return;
@@ -86,14 +109,14 @@ function AuthPage() {
         password,
         options: {
           emailRedirectTo: buildAppUrl(target, window.location.origin, import.meta.env.BASE_URL),
-          data: { full_name: String(f.get("name")).trim(), accepted_terms_version: "2026-10-10-v1", accepted_terms_at: new Date().toISOString(), privacy_notice_version: "2026-10-10-v1" },
+          data: { full_name: String(f.get("name")).trim(), association_id: requestedAssociationId === "__new__" ? null : requestedAssociationId, accepted_terms_version: "2026-10-10-v1", accepted_terms_at: new Date().toISOString(), privacy_notice_version: "2026-10-10-v1" },
         },
       });
       if (error) {
         toast.error("Não foi possível criar a conta. Confira os dados e tente novamente.");
         return;
       }
-      toast.success("Conta criada! Confirme seu e-mail para entrar.");
+      toast.success(requestedAssociationId === "__new__" ? "Conta criada! Confirme seu e-mail para continuar e cadastrar a associação." : "Conta criada! Confirme seu e-mail. Depois, o administrador da associação precisará aprovar seu acesso.");
     } catch {
       toast.error("Não foi possível criar a conta agora. Verifique sua conexão e tente novamente.");
     } finally {
@@ -181,6 +204,7 @@ function AuthPage() {
               <form onSubmit={signUp} className="mt-4 space-y-4">
                 <div><Label htmlFor="su-name">Nome completo</Label><Input id="su-name" name="name" autoComplete="name" minLength={2} required /></div>
                 <div><Label htmlFor="su-email">E-mail</Label><Input id="su-email" name="email" type="email" autoComplete="email" required /></div>
+                <div><Label htmlFor="su-association">Associação</Label><select id="su-association" name="association_id" required defaultValue="" disabled={loading || loadingAssociations} className="mt-1 h-10 w-full rounded-md border border-input bg-background px-3 text-sm"><option value="" disabled>Selecione sua associação</option>{associations.map((association) => <option key={association.id} value={association.id}>{association.name}{association.city ? ` — ${association.city}` : ""}{association.state ? `/${association.state}` : ""}</option>)}<option value="__new__">Minha associação ainda não está cadastrada</option></select><p className="mt-1 text-xs text-muted-foreground">Se escolher uma associação existente, seu acesso ficará pendente até a aprovação do administrador.</p></div>
                 <div><Label htmlFor="su-pw">Senha</Label><Input id="su-pw" name="password" type="password" autoComplete="new-password" minLength={8} required /></div>
                 <div className="flex items-start gap-2 text-sm leading-5 text-muted-foreground"><input id="su-terms" type="checkbox" checked={termsAccepted} onChange={(e) => setTermsAccepted(e.target.checked)} required className="mt-1 h-4 w-4 shrink-0 accent-primary" /><div><label htmlFor="su-terms">Li e aceito os Termos de Uso e declaro estar ciente do Aviso de Privacidade.</label><div className="mt-1"><Link to="/termos-de-uso" className="text-foreground underline underline-offset-4">Ler Termos de Uso</Link><span> · </span><Link to="/privacidade" className="text-foreground underline underline-offset-4">Ler Aviso de Privacidade</Link></div></div></div>
                 <Button type="submit" className="w-full" disabled={loading}>{loading ? "Aguarde…" : "Criar conta"}</Button>
