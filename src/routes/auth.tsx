@@ -43,11 +43,16 @@ function AuthPage() {
     const finishSignIn = async (userId: string) => {
       if (handledSession.current === userId) return;
       handledSession.current = userId;
-      if (association_id && association_id !== "__new__") {
-        const { error } = await supabase.rpc("request_association_membership", { _association_id: association_id });
-        if (error) toast.error("Não foi possível registrar a solicitação de acesso à associação.");
+      try {
+        if (association_id && association_id !== "__new__") {
+          const { error } = await supabase.rpc("request_association_membership", { _association_id: association_id });
+          if (error) toast.error("Não foi possível registrar a solicitação de acesso à associação.");
+        }
+      } catch {
+        toast.error("Não foi possível registrar a solicitação de acesso à associação.");
+      } finally {
+        if (active) void navigate({ to: target });
       }
-      if (active) void navigate({ to: target });
     };
     supabase.auth.getSession().then(({ data, error }) => {
       if (active && !error && data.session) void finishSignIn(data.session.user.id);
