@@ -155,11 +155,15 @@ function DocumentsPage() {
         upsert: false,
       });
       if (uploadError) {
-        await supabase.from("documents").update({ deleted_at: new Date().toISOString() }).eq("id", documentId).eq("association_id", associationId);
-        metadataId = null;
+        const { error: cleanupError } = await supabase.from("documents")
+          .update({ deleted_at: new Date().toISOString() })
+          .eq("id", documentId)
+          .eq("association_id", associationId);
+        if (!cleanupError) metadataId = null;
         throw uploadError;
       }
 
+      metadataId = null;
       toast.success("Documento enviado com segurança.");
       setFormOpen(false);
       await queryClient.invalidateQueries({ queryKey: ["documents", associationId] });
