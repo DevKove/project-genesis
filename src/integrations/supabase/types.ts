@@ -704,6 +704,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: { city: string | null; id: string; name: string; state: string | null }[]
       }
+      request_association_membership: {
+        Args: { _association_id: string }
+        Returns: string
+      }
       review_association_join_request: {
         Args: { _decision: string; _note?: string | null; _request_id: string }
         Returns: string
