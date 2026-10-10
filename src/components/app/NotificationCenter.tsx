@@ -16,7 +16,7 @@ type NotificationRow = {
   read_at: string | null;
 };
 
-export function NotificationCenter({ userId, canManage }: { userId: string; canManage: boolean }) {
+export function NotificationCenter({ userId }: { userId: string }) {
   const queryClient = useQueryClient();
   const notifications = useQuery({
     queryKey: ["user-notifications", userId],
