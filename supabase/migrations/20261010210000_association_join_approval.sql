@@ -70,7 +70,7 @@ SET search_path TO ''
 AS $function$
 DECLARE
   requested_association uuid;
-  association_name text;
+  selected_association_name text;
   applicant_name text;
   applicant_email text;
 BEGIN
@@ -80,11 +80,11 @@ BEGIN
   END IF;
 
   requested_association := (NEW.raw_user_meta_data ->> 'association_id')::uuid;
-  SELECT a.name INTO association_name
+  SELECT a.name INTO selected_association_name
   FROM public.associations AS a
   WHERE a.id = requested_association AND a.status = 'ativa';
 
-  IF association_name IS NULL THEN
+  IF selected_association_name IS NULL THEN
     RETURN NEW;
   END IF;
 
@@ -101,7 +101,7 @@ BEGIN
   INSERT INTO public.association_join_requests
     (association_id, association_name, user_id, full_name, email)
   VALUES
-    (requested_association, association_name, NEW.id, applicant_name, applicant_email)
+    (requested_association, selected_association_name, NEW.id, applicant_name, applicant_email)
   ON CONFLICT (association_id, user_id) WHERE status = 'pendente'
   DO NOTHING;
 
