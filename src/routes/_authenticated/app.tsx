@@ -1,5 +1,5 @@
 import { createFileRoute, Link, Outlet, useNavigate } from "@tanstack/react-router";
-import { Building2, Home, LayoutDashboard, LogOut, Users } from "lucide-react";
+import { Building2, Home, LayoutDashboard, LogOut, Megaphone, Users } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { AssocProvider, useAssoc } from "@/lib/assoc-context";
 import { ROLE_LABELS } from "@/lib/roles";
@@ -57,6 +57,7 @@ function Shell({ email }: { email: string }) {
     { to: "/app", label: "Painel", icon: LayoutDashboard, exact: true },
     { to: "/app/unidades", label: "Unidades", icon: Home, exact: false },
     { to: "/app/moradores", label: "Moradores", icon: Users, exact: false },
+    { to: "/app/comunicados", label: "Comunicados", icon: Megaphone, exact: false },
   ] as const;
 
   return (

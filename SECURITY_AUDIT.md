@@ -29,6 +29,7 @@ Supabase project: `ivajgtokxrzwnspihllr`
 - A one-time cleanup scrubbed historical audit snapshots. Verification found four audit rows total, two marked as historically redacted, and zero rows still containing the inspected CPF, email, phone, token, notes, or announcement-body keys.
 - Four FK indexes were added for announcements, invitations, and resident association/unit lookups. The Performance Advisor no longer reports `auth_rls_initplan`; direct `auth.uid()` calls in public RLS policy expressions were rewritten to scalar subqueries. The newly added indexes currently appear unused until workload statistics accumulate; review real query plans before considering removal.
 - The resident table now validates CPF checksums/format and enforces normalized CPF uniqueness per association. A composite foreign key prevents a resident from linking to a unit in a different association. A transaction test confirmed invalid/repeated-digit CPF and normalized duplicates are rejected, cross-association unit links fail, and deleting a unit clears only `unit_id`.
+- Announcements now have database-enforced title/body length bounds and a tenant-feed index for association, pin state, and creation time.
 
 ## Remaining security and release blockers
 
@@ -54,7 +55,7 @@ No Storage policies were found. Keep uploads disabled until private buckets, ten
 
 ### 6. Product completeness
 
-The current feature branch adds initial units and residents management pages with association-scoped queries, pagination, create/edit forms, guarded unit deletion, resident deactivation, and masked CPF display. The current branch still needs CI and browser verification. Announcements, member/invitation administration screens, audit history UI, association settings, finance, governance, subscription/billing, support, and central SaaS administration remain incomplete compared with the product specification.
+The current main branch includes initial units and residents management pages with association-scoped queries, pagination, create/edit forms, guarded unit deletion, resident deactivation, and masked CPF display. The current feature branch adds member-facing announcements with manager-only create/edit/pin/delete controls, association-scoped pagination/search, and database length bounds. CI and browser verification are still required for this announcements branch. Member/invitation administration screens, audit history UI, association settings, finance, governance, subscription/billing, support, and central SaaS administration remain incomplete compared with the product specification.
 
 ### 7. Delivery and operational checks
 
@@ -67,6 +68,7 @@ The current repository quality workflow tests and builds, but lint triage, depen
 - [x] Redact sensitive fields from new audit snapshots and scrub historical audit details.
 - [x] Optimize direct `auth.uid()` policy expressions to remove `auth_rls_initplan` findings.
 - [x] Enforce CPF validation/normalized uniqueness and same-association resident-to-unit integrity.
+- [x] Enforce server-side announcement title/body bounds.
 - [ ] Update local `.env` to match the selected Supabase project without adding privileged secrets.
 - [ ] Enable leaked-password protection and review Auth configuration.
 - [ ] Repeat tenant-isolation and invitation tests with two real authenticated users.
