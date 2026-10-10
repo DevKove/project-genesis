@@ -1,5 +1,5 @@
 import { createFileRoute, Link, Outlet, useNavigate } from "@tanstack/react-router";
-import { Building2, Home, LayoutDashboard, LogOut, Megaphone, UserCog, Users } from "lucide-react";
+import { Building2, History, Home, LayoutDashboard, LogOut, Megaphone, UserCog, Users } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { AssocProvider, useAssoc } from "@/lib/assoc-context";
 import { ROLE_LABELS } from "@/lib/roles";
@@ -59,7 +59,9 @@ function Shell({ email }: { email: string }) {
     { to: "/app/moradores", label: "Moradores", icon: Users, exact: false },
     { to: "/app/comunicados", label: "Comunicados", icon: Megaphone, exact: false },
     { to: "/app/membros", label: "Membros", icon: UserCog, exact: false },
+    { to: "/app/auditoria", label: "Auditoria", icon: History, exact: false },
   ] as const;
+  const visibleNav = nav.filter((item) => item.to !== "/app/auditoria" || current.role === "admin" || current.role === "presidente");
 
   return (
     <div className="flex min-h-screen">
@@ -73,7 +75,7 @@ function Shell({ email }: { email: string }) {
           </SelectContent>
         </Select>
         <nav className="flex-1 space-y-1">
-          {nav.map((n) => (
+          {visibleNav.map((n) => (
             <Link key={n.to} to={n.to} activeOptions={{ exact: n.exact }} className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground" activeProps={{ className: "bg-sidebar-accent text-sidebar-accent-foreground font-semibold" }}>
               <n.icon className="h-4 w-4" /> {n.label}
             </Link>
