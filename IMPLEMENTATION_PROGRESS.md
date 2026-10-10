@@ -10,6 +10,7 @@ This file tracks delivery against `instrucoes.md`. A checkbox is marked complete
 - [x] Security/integrity migrations exist for tenant policies, invitations, audit minimization, and resident integrity (see `SECURITY_AUDIT.md`).
 - [x] Base-aware callback URL helper covers signup confirmation, OAuth and password recovery for root and sub-path deployments; unit tests are included in PR #14.
 - [x] Incident module implementation is proposed in PR #15 with tenant RLS, server-side bounds, role-controlled status updates, and redacted audit metadata.
+- [x] Incident module implementation is proposed in PR #15 with tenant RLS, server-side bounds, role-controlled status updates, and redacted audit metadata.
 - [ ] Merge and verify PR #14 (includes the environment-config changes from PR #11).
 - [ ] Enable leaked-password protection and complete the Supabase Auth configuration review.
 - [ ] Complete end-to-end tests with two real authenticated users in separate associations.
