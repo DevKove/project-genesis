@@ -470,6 +470,59 @@ export type Database = {
           },
         ]
       }
+      vendors: {
+        Row: {
+          association_id: string
+          contact_name: string | null
+          created_at: string
+          created_by: string
+          email: string | null
+          id: string
+          is_active: boolean
+          name: string
+          notes: string | null
+          phone: string | null
+          service_category: string
+          updated_at: string
+        }
+        Insert: {
+          association_id: string
+          contact_name?: string | null
+          created_at?: string
+          created_by: string
+          email?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          notes?: string | null
+          phone?: string | null
+          service_category?: string
+          updated_at?: string
+        }
+        Update: {
+          association_id?: string
+          contact_name?: string | null
+          created_at?: string
+          created_by?: string
+          email?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          notes?: string | null
+          phone?: string | null
+          service_category?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vendors_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           id: string

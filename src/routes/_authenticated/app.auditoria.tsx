@@ -14,6 +14,7 @@ const PAGE_SIZE = 25;
 
 const ENTITY_LABELS: Record<string, string> = {
   associations: "Associação",
+  vendors: "Prestadores",
   association_members: "Membros",
   units: "Unidades",
   residents: "Moradores",

@@ -73,6 +73,13 @@ The current main branch includes units/residents management and member-facing an
 - Audit snapshots contain workflow metadata only and omit titles, descriptions, and resolution notes.
 - The migration is repository-only and has not been applied to the remote Supabase project. CI, SQL review, and adversarial tests with real Auth users remain required.
 
+### Vendors module (proposed in PR #18)
+
+- Adds a private, association-scoped vendor directory with categories, contact details, notes, and active/inactive status.
+- Only authorized association managers can read or change vendor records; database triggers prevent changing vendor identity, association, or creator after creation.
+- Audit events omit vendor names, contact details, and free-text notes.
+- The migration is repository-only and has not been applied to the remote Supabase project. CI, SQL review, and role-isolation tests remain required.
+
 ### 7. Delivery and operational checks
 
 The current repository quality workflow tests and builds, but lint triage, dependency/secret scanning, backup-restore rehearsal, monitoring/alerting, production smoke tests, and real multi-user end-to-end tests remain open. The Cloudflare deployment workflow is currently skipped unless its documented enable flag and credentials are configured.
