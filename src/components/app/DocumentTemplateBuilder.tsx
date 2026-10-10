@@ -168,7 +168,7 @@ export function DocumentTemplateBuilder({
     anchor.href = url;
     anchor.download = `${slugify(title)}.html`;
     anchor.click();
-    URL.revokeObjectURL(url);
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
   function printPdf() {
@@ -244,7 +244,7 @@ export function DocumentTemplateBuilder({
             {template.fields.map((field) => <div key={field.id} className={field.multiline ? "sm:col-span-2" : ""}><Label htmlFor={`template-${field.id}`}>{field.label}{field.required ? " *" : ""}</Label>{field.multiline ? <Textarea id={`template-${field.id}`} value={values[field.id] ?? ""} required={field.required} maxLength={8000} rows={4} placeholder={field.placeholder} onChange={(event) => setValues((old) => ({ ...old, [field.id]: event.target.value }))} /> : <Input id={`template-${field.id}`} value={values[field.id] ?? ""} required={field.required} maxLength={1000} placeholder={field.placeholder} onChange={(event) => setValues((old) => ({ ...old, [field.id]: event.target.value }))} />}</div>)}
           </div>
           <p className="text-xs text-muted-foreground">* Campos obrigatórios. Os modelos são pontos de partida: confira os dados e a conformidade com o estatuto e as regras da associação antes de usar.</p>
-          <div className="flex flex-wrap gap-2"><Button onClick={printPdf} disabled={!ready}><Printer className="mr-2 h-4 w-4" /> Imprimir / salvar PDF</Button><Button variant="outline" onClick={downloadHtml}><FileDown className="mr-2 h-4 w-4" /> Exportar HTML</Button><Button variant="outline" onClick={saveDocument} disabled={!ready || saving}>{saving ? <><Save className="mr-2 h-4 w-4 animate-pulse" /> Salvando…</> : <><Save className="mr-2 h-4 w-4" /> Salvar no sistema</>}</Button></div>
+          <div className="flex flex-wrap gap-2"><Button onClick={printPdf} disabled={!ready}><Printer className="mr-2 h-4 w-4" /> Imprimir / salvar PDF</Button><Button variant="outline" onClick={downloadHtml} disabled={!ready}><FileDown className="mr-2 h-4 w-4" /> Exportar HTML</Button><Button variant="outline" onClick={saveDocument} disabled={!ready || saving}>{saving ? <><Save className="mr-2 h-4 w-4 animate-pulse" /> Salvando…</> : <><Save className="mr-2 h-4 w-4" /> Salvar no sistema</>}</Button></div>
         </div>
         <div className="min-w-0 rounded-lg border bg-muted/20 p-3 sm:p-5">
           <div className="mb-3 flex items-center gap-2 text-sm font-medium"><FileText className="h-4 w-4" /> Pré-visualização</div>
