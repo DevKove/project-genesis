@@ -19,6 +19,7 @@ const ENTITY_LABELS: Record<string, string> = {
   residents: "Moradores",
   invitations: "Convites",
   announcements: "Comunicados",
+  incidents: "Ocorrências",
 };
 
 const ACTION_LABELS: Record<string, string> = {
