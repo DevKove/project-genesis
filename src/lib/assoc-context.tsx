@@ -15,7 +15,8 @@ type Ctx = {
   current: Membership | null;
   setCurrentId: (id: string) => void;
   loading: boolean;
-  refetch: () => void;
+  error: boolean;
+  refetch: () => Promise<unknown>;
 };
 
 const AssocCtx = createContext<Ctx | null>(null);
@@ -35,9 +36,20 @@ export function AssocProvider({ userId, children }: { userId: string; children: 
     },
   });
   const [currentId, setCurrentIdState] = useState<string | null>(null);
-  useEffect(() => setCurrentIdState(localStorage.getItem(KEY)), []);
+  useEffect(() => {
+    try {
+      setCurrentIdState(localStorage.getItem(KEY));
+    } catch {
+      // The app remains usable if browser storage is disabled.
+      setCurrentIdState(null);
+    }
+  }, []);
   const setCurrentId = (id: string) => {
-    localStorage.setItem(KEY, id);
+    try {
+      localStorage.setItem(KEY, id);
+    } catch {
+      // Keep selection in memory when persistent storage is unavailable.
+    }
     setCurrentIdState(id);
   };
   const memberships = q.data ?? [];
@@ -46,7 +58,15 @@ export function AssocProvider({ userId, children }: { userId: string; children: 
     [memberships, currentId],
   );
   return (
-    <AssocCtx.Provider value={{ userId, memberships, current, setCurrentId, loading: q.isLoading, refetch: () => q.refetch() }}>
+    <AssocCtx.Provider value={{
+      userId,
+      memberships,
+      current,
+      setCurrentId,
+      loading: q.isLoading,
+      error: q.isError,
+      refetch: () => q.refetch(),
+    }}>
       {children}
     </AssocCtx.Provider>
   );
