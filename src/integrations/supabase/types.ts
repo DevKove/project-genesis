@@ -353,6 +353,10 @@ export type Database = {
       }
       residents: {
         Row: {
+          identity_document_mime_type: string | null
+          identity_document_name: string | null
+          identity_document_path: string | null
+          identity_document_size_bytes: number | null
           association_id: string
           birth_date: string | null
           cpf: string | null
@@ -370,6 +374,10 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
+          identity_document_mime_type?: string | null
+          identity_document_name?: string | null
+          identity_document_path?: string | null
+          identity_document_size_bytes?: number | null
           association_id: string
           birth_date?: string | null
           cpf?: string | null
@@ -387,6 +395,10 @@ export type Database = {
           user_id?: string | null
         }
         Update: {
+          identity_document_mime_type?: string | null
+          identity_document_name?: string | null
+          identity_document_path?: string | null
+          identity_document_size_bytes?: number | null
           association_id?: string
           birth_date?: string | null
           cpf?: string | null
@@ -522,6 +534,10 @@ export type Database = {
       }
       vendors: {
         Row: {
+          identity_document_mime_type: string | null
+          identity_document_name: string | null
+          identity_document_path: string | null
+          identity_document_size_bytes: number | null
           association_id: string
           contact_name: string | null
           created_at: string
@@ -536,6 +552,10 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          identity_document_mime_type?: string | null
+          identity_document_name?: string | null
+          identity_document_path?: string | null
+          identity_document_size_bytes?: number | null
           association_id: string
           contact_name?: string | null
           created_at?: string
@@ -550,6 +570,10 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          identity_document_mime_type?: string | null
+          identity_document_name?: string | null
+          identity_document_path?: string | null
+          identity_document_size_bytes?: number | null
           association_id?: string
           contact_name?: string | null
           created_at?: string
