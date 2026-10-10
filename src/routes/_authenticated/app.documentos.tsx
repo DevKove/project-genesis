@@ -2,7 +2,8 @@ import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Download, FileText, Plus, Search, Trash2, Upload, X } from "lucide-react";
+import { Download, FileText, Plus, Search, Trash2, Upload, X, WandSparkles } from "lucide-react";
+import { DocumentTemplateBuilder } from "@/components/app/DocumentTemplateBuilder";
 import { supabase } from "@/integrations/supabase/client";
 import { useAssoc } from "@/lib/assoc-context";
 import { isManager } from "@/lib/roles";
@@ -67,6 +68,7 @@ function DocumentsPage() {
   const [visibilityFilter, setVisibilityFilter] = useState("all");
   const [page, setPage] = useState(0);
   const [formOpen, setFormOpen] = useState(false);
+  const [templateBuilderOpen, setTemplateBuilderOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<DocumentRow | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -233,8 +235,18 @@ function DocumentsPage() {
       <PageHeader
         title="Documentos"
         description="Arquivos privados da associação, com acesso controlado por papel e vínculo."
-        action={manager ? <Button onClick={() => setFormOpen(true)}><Plus className="mr-2 h-4 w-4" /> Enviar documento</Button> : undefined}
+        action={manager ? <div className="flex flex-wrap gap-2"><Button variant="outline" onClick={() => setTemplateBuilderOpen((open) => !open)}><WandSparkles className="mr-2 h-4 w-4" /> Criar por modelo</Button><Button onClick={() => setFormOpen(true)}><Plus className="mr-2 h-4 w-4" /> Enviar documento</Button></div> : undefined}
       />
+
+      {templateBuilderOpen && manager && associationId && (
+        <DocumentTemplateBuilder
+          associationId={associationId}
+          associationName={current.associations?.name ?? "Associação"}
+          city={current.associations?.city}
+          userId={userId}
+          onSaved={() => queryClient.invalidateQueries({ queryKey: ["documents", associationId] })}
+        />
+      )}
 
       <div className="mb-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         <div className="relative">
