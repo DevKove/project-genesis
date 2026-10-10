@@ -224,6 +224,7 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          association_code?: string
           city?: string | null
           cnpj?: string | null
           created_at?: string
