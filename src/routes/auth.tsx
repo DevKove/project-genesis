@@ -33,10 +33,9 @@ function AuthPage() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [termsAccepted, setTermsAccepted] = useState(false);
-  const [selectedAssociationId, setSelectedAssociationId] = useState("");
+  const [associationCode, setAssociationCode] = useState("");
+  const [createNewAssociation, setCreateNewAssociation] = useState(false);
   const handledSession = useRef<string | null>(null);
-  const [associations, setAssociations] = useState<Array<{ id: string; name: string; city: string | null; state: string | null }>>([]);
-  const [loadingAssociations, setLoadingAssociations] = useState(true);
 
   useEffect(() => {
     let active = true;
@@ -85,22 +84,6 @@ function AuthPage() {
     };
   }, [association_id, navigate, target]);
 
-  useEffect(() => {
-    let active = true;
-    supabase.rpc("list_associations_for_signup").then(({ data, error }) => {
-      if (!active) return;
-      if (error) toast.error("Não foi possível carregar a lista de associações.");
-      else setAssociations(data ?? []);
-      setLoadingAssociations(false);
-    }).catch(() => {
-      if (active) {
-        setLoadingAssociations(false);
-        toast.error("Não foi possível carregar a lista de associações.");
-      }
-    });
-    return () => { active = false; };
-  }, []);
-
   async function signIn(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
@@ -122,10 +105,19 @@ function AuthPage() {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
     const password = String(f.get("password"));
-    const requestedAssociationId = selectedAssociationId;
-    if (!requestedAssociationId) {
-      toast.error("Selecione sua associação ou indique que deseja cadastrar uma nova.");
-      return;
+    let requestedAssociationId: string | null = null;
+    if (!createNewAssociation) {
+      const code = associationCode.trim();
+      if (!/^\d{6}$/.test(code)) {
+        toast.error("Informe o código da associação com exatamente 6 dígitos.");
+        return;
+      }
+      const { data: matches, error: lookupError } = await supabase.rpc("lookup_association_by_code", { _code: code });
+      if (lookupError || !matches?.length) {
+        toast.error("Código não encontrado. Confira os 6 dígitos com a administração da associação.");
+        return;
+      }
+      requestedAssociationId = matches[0].id;
     }
     if (!termsAccepted) {
       toast.error("É necessário aceitar os Termos de Uso e o Aviso de Privacidade para criar a conta.");
@@ -149,7 +141,7 @@ function AuthPage() {
         toast.error("Não foi possível criar a conta. Confira os dados e tente novamente.");
         return;
       }
-      toast.success(requestedAssociationId === "__new__" ? "Conta criada! Confirme seu e-mail para continuar e cadastrar a associação." : "Conta criada! Confirme seu e-mail. Depois, o administrador da associação precisará aprovar seu acesso.");
+      toast.success(createNewAssociation ? "Conta criada! Confirme seu e-mail para continuar e cadastrar a associação." : "Conta criada! Confirme seu e-mail. Depois, o administrador da associação precisará aprovar seu acesso.");
     } catch {
       toast.error("Não foi possível criar a conta agora. Verifique sua conexão e tente novamente.");
     } finally {
@@ -158,16 +150,26 @@ function AuthPage() {
   }
 
   async function google() {
-    if (!selectedAssociationId) {
-      toast.error("Selecione a associação antes de continuar com Google.");
-      return;
+    let requestedAssociationId = "__new__";
+    if (!createNewAssociation) {
+      const code = associationCode.trim();
+      if (!/^\d{6}$/.test(code)) {
+        toast.error("Informe o código da associação com exatamente 6 dígitos.");
+        return;
+      }
+      const { data: matches, error: lookupError } = await supabase.rpc("lookup_association_by_code", { _code: code });
+      if (lookupError || !matches?.length) {
+        toast.error("Código não encontrado. Confira os 6 dígitos com a administração da associação.");
+        return;
+      }
+      requestedAssociationId = matches[0].id;
     }
     setLoading(true);
     try {
       // BASE_URL is "/" on a root deployment and "/project-genesis/" on GitHub Pages.
       const callback = new URL(buildAppUrl("/auth", window.location.origin, import.meta.env.BASE_URL));
       callback.searchParams.set("redirect", target);
-      callback.searchParams.set("association_id", selectedAssociationId);
+      callback.searchParams.set("association_id", requestedAssociationId);
 
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
@@ -223,7 +225,7 @@ function AuthPage() {
       <div className="flex items-center justify-center p-6">
         <div className="w-full max-w-sm">
           <h2 className="mb-6 text-3xl font-bold">Bem-vindo</h2>
-          <div className="mb-4 space-y-1.5"><Label htmlFor="auth-association">Associação</Label><select id="auth-association" value={selectedAssociationId} onChange={(event) => setSelectedAssociationId(event.target.value)} disabled={loading || loadingAssociations} className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"><option value="">Selecione sua associação</option>{associations.map((association) => <option key={association.id} value={association.id}>{association.name}{association.city ? ` — ${association.city}` : ""}{association.state ? `/${association.state}` : ""}</option>)}<option value="__new__">Minha associação ainda não está cadastrada</option></select><p className="text-xs text-muted-foreground">Para novos cadastros e acesso com Google, escolha a associação. O acesso a uma associação existente depende de aprovação administrativa.</p></div>
+          <div className="mb-4 space-y-2"><Label htmlFor="auth-association-code">Código da associação</Label><Input id="auth-association-code" value={associationCode} onChange={(event) => setAssociationCode(event.target.value.replace(/\D/g, "").slice(0, 6))} inputMode="numeric" autoComplete="off" maxLength={6} placeholder="Digite os 6 dígitos" disabled={loading || createNewAssociation} /><p className="text-xs text-muted-foreground">Peça o código de 6 dígitos à administração da associação. O acesso a uma associação existente depende de aprovação administrativa.</p><label className="flex items-start gap-2 text-sm text-muted-foreground"><input type="checkbox" checked={createNewAssociation} onChange={(event) => setCreateNewAssociation(event.target.checked)} disabled={loading} className="mt-1 h-4 w-4 shrink-0 accent-primary" /><span>Minha associação ainda não está cadastrada</span></label></div>
           <Button variant="outline" className="mb-4 w-full" onClick={google} disabled={loading}>Continuar com Google</Button>
           <div className="mb-4 text-center text-xs text-muted-foreground">ou</div>
           <Tabs defaultValue="login">
@@ -243,7 +245,7 @@ function AuthPage() {
               <form onSubmit={signUp} className="mt-4 space-y-4">
                 <div><Label htmlFor="su-name">Nome completo</Label><Input id="su-name" name="name" autoComplete="name" minLength={2} required /></div>
                 <div><Label htmlFor="su-email">E-mail</Label><Input id="su-email" name="email" type="email" autoComplete="email" required /></div>
-                <p className="text-xs text-muted-foreground">Associação selecionada acima: {associations.find((association) => association.id === selectedAssociationId)?.name ?? (selectedAssociationId === "__new__" ? "nova associação" : "nenhuma")}.</p>
+                <p className="text-xs text-muted-foreground">{createNewAssociation ? "Você poderá cadastrar uma nova associação após confirmar o e-mail." : associationCode.length === 6 ? `Código informado: ${associationCode}` : "Informe o código de 6 dígitos da sua associação acima."}</p>
                 <div><Label htmlFor="su-pw">Senha</Label><Input id="su-pw" name="password" type="password" autoComplete="new-password" minLength={8} required /></div>
                 <div className="flex items-start gap-2 text-sm leading-5 text-muted-foreground"><input id="su-terms" type="checkbox" checked={termsAccepted} onChange={(e) => setTermsAccepted(e.target.checked)} required className="mt-1 h-4 w-4 shrink-0 accent-primary" /><div><label htmlFor="su-terms">Li e aceito os Termos de Uso e declaro estar ciente do Aviso de Privacidade.</label><div className="mt-1"><Link to="/termos-de-uso" className="text-foreground underline underline-offset-4">Ler Termos de Uso</Link><span> · </span><Link to="/privacidade" className="text-foreground underline underline-offset-4">Ler Aviso de Privacidade</Link></div></div></div>
                 <Button type="submit" className="w-full" disabled={loading}>{loading ? "Aguarde…" : "Criar conta"}</Button>
