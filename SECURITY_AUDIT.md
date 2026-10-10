@@ -19,11 +19,13 @@ Supabase project: `ivajgtokxrzwnspihllr`
 - The project is reachable through the connected Supabase account and reports `ACTIVE_HEALTHY`.
 - RLS is enabled on the application tables `profiles`, `user_roles`, `associations`, `association_members`, `units`, `residents`, `invitations`, `announcements`, and `audit_logs`.
 - RLS is also enabled on the inspected Storage tables. No Storage policies were present in the inspected schema; uploads are therefore not configured for ordinary client access and must not be considered implemented.
-- The initial security migration was applied to the connected project as version `20261010175741`; the follow-up private-schema migration was applied as version `20261010180237`.
+- The initial security migration was applied to the connected project as version `20261010175741`; the private-schema migration was applied as version `20261010180237`; the audit-data minimization/index migration was applied as version `20261010180557`.
 - Trigger-only `SECURITY DEFINER` functions `audit_trigger()` and `handle_new_user()` no longer grant `EXECUTE` to `PUBLIC`, `anon`, or `authenticated`. Existing database triggers remain present.
 - Membership/role helper functions now live in the non-exposed `private` schema. They return a positive result only when the requested user ID matches `auth.uid()`. The schema is not exposed through PostgREST; authenticated retains schema usage and function execution for RLS policy evaluation, while `anon` does not.
 - Invitation creation/update policies now prevent presidents and secretaries from assigning the administrator role or other leadership roles. Invitation acceptance locks the invitation row and checks that the inviter still has the required role.
-- Post-migration verification confirmed there are zero copies of the four helpers in `public`, all four are in `private`, the authenticated caller's own membership helper result remained true, a lookup using an unrelated user ID returned false, anonymous helper execution is denied, and 24 RLS policies now reference the private helpers.
+- Post-migration verification confirmed there are zero copies of the four helpers in `public`, all four are in `private`, the authenticated caller's own membership helper result remained true, a lookup using an unrelated user ID returned false, anonymous helper execution is denied, and 24 RLS policies reference the private helpers.
+- The audit trigger now records sanitized snapshots: CPF, email, phone, birth date, notes, invitation token, address, CNPJ, full name, announcement body, and other configured sensitive keys are omitted from snapshot values; changed/redacted field names are retained for accountability. A transaction test through the authenticated RLS path verified sensitive test values were not copied into audit details and that the trigger still executes.
+- Indexes were added for the four foreign-key patterns previously reported by the Performance Advisor: announcements.association_id, invitations.association_id, residents.association_id, and residents.unit_id.
 - The Supabase Security Advisor no longer reports the two trigger functions, but it still reports authenticated-executable `SECURITY DEFINER` functions. Current findings include `accept_invitation`, `create_association`, and the four helper functions. The helper functions now validate caller identity, but moving them to a non-exposed schema and updating policy references remains a stronger follow-up.
 - Supabase Auth's leaked-password protection is disabled and still requires configuration.
 
@@ -41,9 +43,9 @@ RLS is enabled and the policy definitions were inspected, but cross-tenant isola
 
 `create_association` and `accept_invitation` are intentionally used as authenticated RPCs and must retain their server-side checks. The four membership/role helper functions are caller-bound, but remain in the exposed `public` schema and are still callable as RPCs by authenticated users. Consider moving them to a non-exposed schema and updating all RLS policy references. Re-run Supabase Security Advisors after any change.
 
-### 4. Audit-log data minimization
+### 4. Audit-log data minimization — IMPROVED, RETENTION STILL OPEN
 
-`audit_trigger()` currently records full row snapshots in `audit_logs.details`. This may duplicate personal or sensitive fields such as CPF, contact details, invitation tokens, and free-text notes. Redact sensitive fields before storing audit snapshots and verify retention/access requirements under LGPD.
+`audit_trigger()` now omits configured personal/sensitive values from new audit snapshots while retaining changed-field names. A transactional test confirmed CPF, email, phone, and free-text note values were not stored in the audit details. Historical audit rows created before this migration have not yet been scrubbed; a one-time backfill is still required before release. Review the redaction list as new columns/modules are introduced, and define audit-log retention/deletion requirements under LGPD.
 
 ### 5. Storage policies
 
@@ -60,7 +62,8 @@ The authenticated route tree remains incomplete compared with the product specif
 - [ ] Move caller-bound helper functions out of exposed API schemas or otherwise remove unnecessary RPC exposure.
 - [ ] Test cross-tenant reads/writes with two distinct users and associations.
 - [ ] Test invitation role authorization, expiry, email matching, and replay/concurrent acceptance.
-- [ ] Redact PII and invitation tokens from audit snapshots.
+- [x] Redact configured PII and invitation tokens from new audit snapshots; review the redaction list when new fields are added.
+- [ ] Sanitize historical audit-log snapshots created before the redaction migration.
 - [ ] Design and test tenant-scoped Storage policies before implementing uploads.
 - [ ] Obtain successful CI test/build results for the security pull request.
 - [ ] Complete required product modules, dependency/secret scans, lint triage, and deployed smoke tests.
