@@ -4,6 +4,7 @@
 CREATE TABLE public.association_join_requests (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   association_id uuid NOT NULL REFERENCES public.associations(id) ON DELETE CASCADE,
+  association_name text NOT NULL,
   user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   full_name text NOT NULL,
   email text NOT NULL,
@@ -98,9 +99,9 @@ BEGIN
   END IF;
 
   INSERT INTO public.association_join_requests
-    (association_id, user_id, full_name, email)
+    (association_id, association_name, user_id, full_name, email)
   VALUES
-    (requested_association, NEW.id, applicant_name, applicant_email)
+    (requested_association, association_name, NEW.id, applicant_name, applicant_email)
   ON CONFLICT (association_id, user_id) WHERE status = 'pendente'
   DO NOTHING;
 
