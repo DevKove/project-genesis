@@ -8,7 +8,8 @@ This file tracks delivery against `instrucoes.md`. A checkbox is marked complete
 - [x] Authenticated route guard validates the current user and fails closed on session errors.
 - [x] Tenant membership is loaded from `association_members`; database RLS remains the security boundary.
 - [x] Security/integrity migrations exist for tenant policies, invitations, audit minimization, and resident integrity (see `SECURITY_AUDIT.md`).
-- [ ] Merge and verify PR #11: remove the stale tracked local `.env`, add `.env.example`, and document safe configuration.
+- [x] Base-aware callback URL helper covers signup confirmation, OAuth and password recovery for root and sub-path deployments; unit tests are included in PR #14.
+- [ ] Merge and verify PR #14 (includes the environment-config changes from PR #11).
 - [ ] Enable leaked-password protection and complete the Supabase Auth configuration review.
 - [ ] Complete end-to-end tests with two real authenticated users in separate associations.
 
@@ -26,10 +27,10 @@ This file tracks delivery against `instrucoes.md`. A checkbox is marked complete
 
 ## Next acceptance work
 
-1. Finish the environment-config PR and verify its CI.
+1. Verify the full CI result for PR #14, including production build.
 2. Keep Auth security settings as a release blocker until changed in Supabase Dashboard and verified.
-3. Add automated tests for callback URL construction and run them in CI.
-4. Continue with tenant isolation, invitations, roles, and existing modules before adding new high-risk finance features.
+3. Complete tenant isolation, invitation, and role tests using two real authenticated users in separate associations.
+4. Continue existing modules before adding high-risk finance features.
 5. Add each new module with migrations, backend authorization, audit behavior, tests, and documented acceptance evidence.
 
 ## Evidence rules
