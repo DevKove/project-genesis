@@ -2,7 +2,7 @@ import { createFileRoute, Link, Outlet, useNavigate } from "@tanstack/react-rout
 import { AlertTriangle, Building2, FileText, History, Home, LayoutDashboard, LogOut, Megaphone, Settings, UserCog, Users } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { AssocProvider, useAssoc } from "@/lib/assoc-context";
-import { ROLE_LABELS } from "@/lib/roles";
+import { isManager, ROLE_LABELS } from "@/lib/roles";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CreateAssociation } from "@/components/app/CreateAssociation";
 
@@ -63,6 +63,7 @@ function Shell({ email }: { email: string }) {
     { to: "/app/membros", label: "Membros", icon: UserCog, exact: false },
     { to: "/app/auditoria", label: "Auditoria", icon: History, exact: false },
     { to: "/app/configuracoes", label: "Configurações", icon: Settings, exact: false },
+    { to: "/app/prestadores", label: "Prestadores", icon: Building2, exact: false },
   ] as const;
   const visibleNav = nav.filter((item) => (item.to !== "/app/auditoria" && item.to !== "/app/configuracoes") || current.role === "admin" || current.role === "presidente");
 
