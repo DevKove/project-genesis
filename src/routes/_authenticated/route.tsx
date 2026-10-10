@@ -4,11 +4,20 @@ import { supabase } from "@/integrations/supabase/client";
 export const Route = createFileRoute("/_authenticated")({
   ssr: false,
   beforeLoad: async ({ location }) => {
-    const { data } = await supabase.auth.getUser();
-    if (!data.user) {
-      throw redirect({ to: "/auth", search: { redirect: location.href } });
+    // Fail closed: protected routes are never rendered unless Supabase confirms
+    // the current user. Treat both returned errors and thrown network failures
+    // as an unauthenticated session without exposing backend details in the URL.
+    try {
+      const { data, error } = await supabase.auth.getUser();
+      if (!error && data.user) return { user: data.user };
+    } catch {
+      // Network/client failures are handled like an invalid session here.
     }
-    return { user: data.user };
+
+    throw redirect({
+      to: "/auth",
+      search: { redirect: location.href },
+    });
   },
   component: () => <Outlet />,
 });
