@@ -82,6 +82,21 @@ function MembersPage() {
     },
   });
 
+  const associationCode = useQuery({
+    queryKey: ["association-code", associationId],
+    enabled: Boolean(associationId && role === "admin"),
+    queryFn: async () => {
+      if (!associationId) return null;
+      const { data, error } = await supabase
+        .from("associations")
+        .select("association_code")
+        .eq("id", associationId)
+        .single();
+      if (error) throw error;
+      return data.association_code;
+    },
+  });
+
   const invitations = useQuery({
     queryKey: ["invitations", associationId],
     enabled: Boolean(associationId && canInvite),
@@ -273,6 +288,22 @@ function MembersPage() {
         description="Consulte os membros da associação e gerencie acessos conforme seu papel."
         action={canInvite ? <Button onClick={() => { setInviteFormOpen(true); setCreatedInvite(null); }}><MailPlus className="mr-2 h-4 w-4" /> Convidar membro</Button> : undefined}
       />
+
+      {canManageMembers && associationCode.data && (
+        <section className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-card p-4">
+          <div>
+            <h2 className="font-semibold">Código da associação</h2>
+            <p className="mt-1 text-sm text-muted-foreground">Compartilhe este código de 6 dígitos com quem precisa solicitar acesso.</p>
+            <p className="mt-2 font-mono text-2xl font-bold tracking-[0.25em]">{associationCode.data}</p>
+          </div>
+          <Button type="button" variant="outline" onClick={() => {
+            void navigator.clipboard.writeText(associationCode.data ?? "").then(
+              () => toast.success("Código copiado."),
+              () => toast.error("Não foi possível copiar automaticamente. Anote o código exibido."),
+            );
+          }}><Copy className="mr-2 h-4 w-4" /> Copiar código</Button>
+        </section>
+      )}
 
       {associationId && <JoinRequestsPanel associationId={associationId} userId={userId} canManage={role === "admin"} />}
 
