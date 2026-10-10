@@ -188,6 +188,7 @@ export type Database = {
       associations: {
         Row: {
           address: string | null
+          association_code: string
           city: string | null
           cnpj: string | null
           created_at: string
@@ -205,6 +206,7 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          association_code?: string
           city?: string | null
           cnpj?: string | null
           created_at?: string
@@ -753,6 +755,10 @@ export type Database = {
       }
       list_associations_for_signup: {
         Args: Record<PropertyKey, never>
+        Returns: { city: string | null; id: string; name: string; state: string | null }[]
+      }
+      lookup_association_by_code: {
+        Args: { _code: string }
         Returns: { city: string | null; id: string; name: string; state: string | null }[]
       }
       request_association_membership: {
