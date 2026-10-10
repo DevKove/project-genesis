@@ -19,7 +19,7 @@ Supabase project: `ivajgtokxrzwnspihllr`
 - The project is reachable through the connected Supabase account and reports `ACTIVE_HEALTHY`.
 - RLS is enabled on the application tables `profiles`, `user_roles`, `associations`, `association_members`, `units`, `residents`, `invitations`, `announcements`, and `audit_logs`.
 - RLS is also enabled on the inspected Storage tables. No Storage policies were present in the inspected schema; uploads are therefore not configured for ordinary client access and must not be considered implemented.
-- The initial security migration was applied to the connected project as version `20261010175741`; the private-schema migration was applied as version `20261010180237`; the audit-data minimization/index migration was applied as version `20261010180557`; historical audit cleanup was applied as version `20261010180851`.
+- The initial security migration was applied to the connected project as version `20261010175741`; the private-schema migration was applied as version `20261010180237`; the audit-data minimization/index migration was applied as version `20261010180557`; historical audit cleanup was applied as version `20261010180851`; RLS InitPlan optimization was applied as version `20261010181026`.
 - Trigger-only `SECURITY DEFINER` functions `audit_trigger()` and `handle_new_user()` no longer grant `EXECUTE` to `PUBLIC`, `anon`, or `authenticated`. Existing database triggers remain present.
 - Membership/role helper functions now live in the non-exposed `private` schema. They return a positive result only when the requested user ID matches `auth.uid()`. The schema is not exposed through PostgREST; authenticated retains schema usage and function execution for RLS policy evaluation, while `anon` does not.
 - Invitation creation/update policies now prevent presidents and secretaries from assigning the administrator role or other leadership roles. Invitation acceptance locks the invitation row and checks that the inviter still has the required role.
@@ -56,6 +56,8 @@ No Storage policies were found in the inspected schema. Keep client access denie
 The authenticated route tree remains incomplete compared with the product specification. Resident/unit CRUD, announcement management, member/invitation administration, audit history, association settings, finance, governance, and subscription/billing flows need implementation and end-to-end verification. The current security PR's quality workflow must complete successfully before merge. Lint, dependency scanning, secret scanning, and deployed smoke tests remain separate checks.
 
 ## Release acceptance checklist
+
+- [x] Optimize RLS policy `auth.uid()` expressions to avoid repeated per-row evaluation.
 
 - [ ] Align `.env` and deployment configuration with the selected Supabase project without committing privileged secrets.
 - [ ] Enable leaked-password protection in Supabase Auth.
