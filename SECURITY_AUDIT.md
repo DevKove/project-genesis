@@ -23,6 +23,10 @@ Supabase project: `ivajgtokxrzwnspihllr`
 - Membership/role helper functions live in the non-exposed `private` schema. They return a positive result only when the requested user ID matches `auth.uid()`. The `authenticated` role retains the schema/function grants required for RLS evaluation; `anon` does not.
 - Invitation policies prevent presidents and secretaries from assigning administrator or other leadership roles. Invitation acceptance locks the invitation row, requires a non-null account email matching the invite, revalidates inviter authority and role hierarchy, rejects legacy leadership invitations from non-admins, and does not overwrite an existing membership role.
 - The two authenticated RPCs `create_association` and `accept_invitation` now use an empty `search_path` and schema-qualified object references. Association creation validates name length, CNPJ shape, city length, and UF format. Transaction tests confirmed invalid inputs are rejected and valid association creation assigns the creator the admin role.
+- A database trigger prevents changing the identity/association of an existing membership and prevents demoting or deleting the last administrator. Transaction tests confirmed a demotion is allowed when another administrator remains, but the last administrator cannot be demoted or deleted.
+- The last-admin trigger locks the association row before counting other administrators, preventing concurrent demotion/deletion transactions from both passing based on stale counts.
+- Direct profile reads are now limited to the profile owner and platform administrators. Association members use a security-barrier, security-invoker directory view exposing only association_id, user_id, and full_name. A private, caller-bound helper returns only the display name for members sharing the association; the Security Advisor no longer flags the view, and a transaction test confirmed the view does not expose another association's members or phone/avatar/email columns.
+- A partial unique index prevents multiple pending invitations for the same normalized email within one association. The connected project had no duplicate pending invitation groups before the index was added.
 - The Supabase Security Advisor no longer reports the trigger functions or private helpers. It still reports the two intentional authenticated `SECURITY DEFINER` RPCs and leaked-password protection being disabled. Keep the RPC warnings documented and re-review their authorization whenever the implementation changes.
 - RLS transaction simulations used two distinct JWT subject IDs and two synthetic associations. They verified isolation for associations, association members, units, residents, announcements, invitations, and audit logs; cross-tenant unit INSERT/UPDATE and membership UPDATE attempts were denied or affected zero rows. All test data was rolled back. These tests do not replace end-to-end testing with two real Supabase Auth accounts.
 - New audit snapshots omit configured sensitive values (CPF, email, phone, birth date, notes, invitation token, address, CNPJ, full name, announcement body, and related fields) while retaining changed-field names. A transactional test confirmed sensitive test values were not copied into audit details.
@@ -55,7 +59,7 @@ No Storage policies were found. Keep uploads disabled until private buckets, ten
 
 ### 6. Product completeness
 
-The current main branch includes initial units and residents management pages with association-scoped queries, pagination, create/edit forms, guarded unit deletion, resident deactivation, and masked CPF display. The current feature branch adds member-facing announcements with manager-only create/edit/pin/delete controls, association-scoped pagination/search, and database length bounds. CI and browser verification are still required for this announcements branch. Member/invitation administration screens, audit history UI, association settings, finance, governance, subscription/billing, support, and central SaaS administration remain incomplete compared with the product specification.
+The current main branch includes units/residents management and member-facing announcements. This feature branch adds a member directory, admin-only role changes/removals, invitation creation/cancellation/link copying, and an authenticated invitation-acceptance page. A database trigger prevents membership identity changes and loss of the last administrator. CI and browser verification are still required for this branch. Audit history UI, association settings, finance, governance, subscription/billing, support, and central SaaS administration remain incomplete compared with the product specification.
 
 ### 7. Delivery and operational checks
 
@@ -69,6 +73,10 @@ The current repository quality workflow tests and builds, but lint triage, depen
 - [x] Optimize direct `auth.uid()` policy expressions to remove `auth_rls_initplan` findings.
 - [x] Enforce CPF validation/normalized uniqueness and same-association resident-to-unit integrity.
 - [x] Enforce server-side announcement title/body bounds.
+- [x] Prevent association lockout by enforcing last-administrator and immutable-membership rules.
+- [x] Prevent duplicate pending invitations for the same email in an association.
+- [x] Limit direct profile reads and expose only minimal member-directory fields to co-members.
+- [x] Serialize last-administrator checks to avoid concurrent association lockout.
 - [ ] Update local `.env` to match the selected Supabase project without adding privileged secrets.
 - [ ] Enable leaked-password protection and review Auth configuration.
 - [ ] Repeat tenant-isolation and invitation tests with two real authenticated users.

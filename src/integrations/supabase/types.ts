@@ -381,7 +381,22 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      association_member_directory: {
+        Row: {
+          association_id: string | null
+          full_name: string | null
+          user_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "association_members_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       accept_invitation: { Args: { _token: string }; Returns: string }
