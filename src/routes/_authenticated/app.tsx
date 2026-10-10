@@ -6,6 +6,7 @@ import { AssocProvider, useAssoc } from "@/lib/assoc-context";
 import { isManager, ROLE_LABELS } from "@/lib/roles";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { NoAssociationAccess } from "@/components/app/NoAssociationAccess";
+import { NotificationCenter } from "@/components/app/NotificationCenter";
 
 export const Route = createFileRoute("/_authenticated/app")({
   head: () => ({ meta: [{ title: "Painel — Morada360" }, { name: "description", content: "Painel de gestão da associação." }] }),
@@ -111,7 +112,7 @@ function Shell({ email, userId }: { email: string; userId: string }) {
             {visibleNav.map((n) => <option key={n.to} value={n.to}>{n.label}{n.to === "/app/membros" && current.role === "admin" && (pendingJoinRequests.data ?? 0) > 0 ? ` (${pendingJoinRequests.data})` : ""}</option>)}
           </select>
         </div>
-        <main className="mx-auto max-w-6xl p-4 sm:p-6 md:p-10"><Outlet key={current.association_id} /></main>
+        <main className="mx-auto max-w-6xl p-4 sm:p-6 md:p-10"><div className="mb-4 flex justify-end"><NotificationCenter userId={userId} /></div><Outlet key={current.association_id} /></main>
       </div>
     </div>
   );
