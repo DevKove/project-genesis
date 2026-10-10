@@ -184,10 +184,13 @@ function ResidentsPage() {
           documentAttached = true;
         } catch {
           if (uploadedPath) await supabase.storage.from("identity-documents").remove([uploadedPath]);
-          toast.warning("Cadastro salvo, mas o documento não foi anexado. Edite o cadastro e tente novamente.");
         }
       }
-      toast.success(identityFile && documentAttached ? "Cadastro salvo com documento anexado." : editing ? "Cadastro do morador atualizado." : "Morador cadastrado.");
+      if (identityFile && !documentAttached) {
+        toast.warning("Cadastro salvo, mas o documento não foi anexado. Edite o cadastro e tente novamente.");
+      } else {
+        toast.success(identityFile ? "Cadastro salvo com documento anexado." : editing ? "Cadastro do morador atualizado." : "Morador cadastrado.");
+      }
       setFormOpen(false);
       setEditing(null);
       await queryClient.invalidateQueries({ queryKey: ["residents", associationId] });
