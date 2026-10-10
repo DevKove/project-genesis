@@ -41,14 +41,19 @@ function ResidentsPage() {
     enabled: Boolean(associationId && manager),
     queryFn: async () => {
       if (!associationId) return [] as UnitOption[];
-      const { data, error } = await supabase
-        .from("units")
-        .select("id,identifier")
-        .eq("association_id", associationId)
-        .order("identifier", { ascending: true })
-        .limit(1000);
-      if (error) throw error;
-      return (data ?? []) as UnitOption[];
+      const options: UnitOption[] = [];
+      for (let offset = 0; ; offset += 500) {
+        const { data, error } = await supabase
+          .from("units")
+          .select("id,identifier")
+          .eq("association_id", associationId)
+          .order("identifier", { ascending: true })
+          .range(offset, offset + 499);
+        if (error) throw error;
+        options.push(...((data ?? []) as UnitOption[]));
+        if ((data ?? []).length < 500) break;
+      }
+      return options;
     },
   });
 
@@ -280,9 +285,9 @@ function ResidentsPage() {
             <label className="flex items-center gap-2 text-sm"><input type="checkbox" name="lgpd_consent" defaultChecked={editing?.lgpd_consent ?? false} className="h-4 w-4 rounded border-input" /> Consentimento registrado, quando aplicável</label>
           </div>
           <p className="text-xs text-muted-foreground">O campo de consentimento não substitui a definição da base legal aplicável ao tratamento de dados pessoais.</p>
-          {unitOptions.isError && <p role="alert" className="text-sm text-destructive">Não foi possível carregar as unidades. Você pode salvar sem vínculo ou tentar novamente.</p>}
+          {unitOptions.isError && <div role="alert" className="text-sm text-destructive">Não foi possível carregar as unidades. Tente novamente antes de salvar para evitar remover um vínculo existente. <Button type="button" variant="link" className="px-0" onClick={() => void unitOptions.refetch()}>Tentar novamente</Button></div>}
           <div className="flex flex-wrap gap-2">
-            <Button type="submit" disabled={saving}>{saving ? "Salvando…" : editing ? "Salvar alterações" : "Cadastrar morador"}</Button>
+            <Button type="submit" disabled={saving || unitOptions.isLoading || unitOptions.isError}>{saving ? "Salvando…" : editing ? "Salvar alterações" : "Cadastrar morador"}</Button>
             <Button type="button" variant="outline" onClick={() => { setFormOpen(false); setEditing(null); }}>Cancelar</Button>
           </div>
         </form>
