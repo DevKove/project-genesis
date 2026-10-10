@@ -22,21 +22,40 @@ export const Route = createFileRoute("/reset-password")({
 
 function Reset() {
   const [pw, setPw] = useState("");
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
-  async function submit(e: React.FormEvent) {
+
+  async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    if (pw.length < 8) { toast.error("Mínimo de 8 caracteres"); return; }
-    const { error } = await supabase.auth.updateUser({ password: pw });
-    if (error) { toast.error(error.message); return; }
-    toast.success("Senha atualizada");
-    navigate({ to: "/app" });
+    if (pw.length < 8) {
+      toast.error("Mínimo de 8 caracteres");
+      return;
+    }
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.updateUser({ password: pw });
+      if (error) {
+        toast.error("Não foi possível atualizar a senha. Confirme se o link ainda é válido.");
+        return;
+      }
+      toast.success("Senha atualizada");
+      await navigate({ to: "/app" });
+    } catch {
+      toast.error("Não foi possível atualizar a senha agora. Tente novamente.");
+    } finally {
+      setLoading(false);
+    }
   }
+
   return (
     <div className="flex min-h-screen items-center justify-center p-6">
       <form onSubmit={submit} className="w-full max-w-sm space-y-4 rounded-xl border bg-card p-6 shadow-soft">
         <h1 className="text-2xl font-bold">Nova senha</h1>
-        <div><Label htmlFor="pw">Senha</Label><Input id="pw" type="password" value={pw} onChange={(e) => setPw(e.target.value)} /></div>
-        <Button type="submit" className="w-full">Salvar</Button>
+        <div>
+          <Label htmlFor="pw">Senha</Label>
+          <Input id="pw" type="password" autoComplete="new-password" value={pw} onChange={(e) => setPw(e.target.value)} minLength={8} required />
+        </div>
+        <Button type="submit" className="w-full" disabled={loading}>{loading ? "Salvando…" : "Salvar"}</Button>
       </form>
     </div>
   );
