@@ -7,8 +7,8 @@ export function safeInternalPath(path?: string): string {
     !path ||
     !path.startsWith("/") ||
     path.startsWith("//") ||
-    path.startsWith("/\\\\") ||
-    path.includes("\\\\") ||
+    path.startsWith("/\\") ||
+    path.includes("\\") ||
     /[\u0000-\u001f\u007f]/.test(path)
   ) {
     return "/app";
