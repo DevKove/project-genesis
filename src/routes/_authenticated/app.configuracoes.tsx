@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Building2, ImagePlus, Save, Trash2, UploadCloud } from "lucide-react";
+import { Building2, Copy, ImagePlus, Save, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAssoc } from "@/lib/assoc-context";
 import { isValidCNPJ } from "@/lib/roles";
@@ -14,7 +14,7 @@ import type { Database } from "@/integrations/supabase/types";
 
 type AssociationSettings = Pick<
   Database["public"]["Tables"]["associations"]["Row"],
-  "id" | "name" | "trade_name" | "cnpj" | "email" | "phone" | "address" | "zip_code" | "city" | "state" | "logo_url" | "status"
+  "id" | "name" | "association_code" | "trade_name" | "cnpj" | "email" | "phone" | "address" | "zip_code" | "city" | "state" | "logo_url" | "status"
 >;
 
 const LOGO_BUCKET = "association-logos";
@@ -53,7 +53,7 @@ function AssociationSettingsPage() {
       if (!associationId) return null;
       const { data, error } = await supabase
         .from("associations")
-        .select("id,name,trade_name,cnpj,email,phone,address,zip_code,city,state,logo_url,status")
+        .select("id,name,association_code,trade_name,cnpj,email,phone,address,zip_code,city,state,logo_url,status")
         .eq("id", associationId)
         .maybeSingle();
       if (error) throw error;
@@ -214,6 +214,33 @@ function AssociationSettingsPage() {
                 <p className="text-xs leading-5 text-muted-foreground">Formatos aceitos: PNG, JPG ou WEBP. Tamanho máximo: 2 MB. Uma imagem quadrada ou com fundo transparente costuma funcionar melhor.</p>
                 {settings.data.logo_url && !removeLogo && <Button type="button" variant="outline" size="sm" onClick={() => { setSelectedLogo(null); setRemoveLogo(true); }}><Trash2 className="mr-2 h-4 w-4" /> Remover logo atual</Button>}
               </div>
+            </div>
+          </section>
+
+          <section className="rounded-xl border bg-card p-4 shadow-soft sm:p-6">
+            <div className="border-b pb-4">
+              <h2 className="font-semibold">Código da associação</h2>
+              <p className="mt-1 text-sm text-muted-foreground">Compartilhe este código de 6 dígitos com quem solicitar acesso à AMBRAS. A entrada continua sujeita à aprovação administrativa.</p>
+            </div>
+            <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div aria-label={`Código da associação: ${settings.data.association_code}`} className="inline-flex min-h-14 items-center rounded-lg bg-muted px-4 font-mono text-2xl font-bold tracking-[0.25em]">
+                {settings.data.association_code}
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full sm:w-auto"
+                onClick={async () => {
+                  try {
+                    await navigator.clipboard.writeText(settings.data!.association_code);
+                    toast.success("Código copiado.");
+                  } catch {
+                    toast.error("Não foi possível copiar automaticamente. Selecione e copie o código.");
+                  }
+                }}
+              >
+                <Copy className="mr-2 h-4 w-4" /> Copiar código
+              </Button>
             </div>
           </section>
 
