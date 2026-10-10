@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -10,10 +10,10 @@ import { Building2 } from "lucide-react";
 import { safeInternalPath } from "@/lib/safe-redirect";
 import { buildAppUrl } from "@/lib/app-url";
 
-type Search = { redirect?: string | undefined };
+type Search = { redirect?: string | undefined; association_id?: string | undefined };
 
 export const Route = createFileRoute("/auth")({
-  validateSearch: (s: Record<string, unknown>): Search => ({ redirect: typeof s["redirect"] === "string" ? s["redirect"] : undefined }),
+  validateSearch: (s: Record<string, unknown>): Search => ({ redirect: typeof s["redirect"] === "string" ? s["redirect"] : undefined, association_id: typeof s["association_id"] === "string" ? s["association_id"] : undefined }),
   head: () => ({
     meta: [
       { title: "Entrar — Morada360" },
@@ -28,29 +28,40 @@ export const Route = createFileRoute("/auth")({
 });
 
 function AuthPage() {
-  const { redirect } = Route.useSearch();
+  const { redirect, association_id } = Route.useSearch();
   const target = safeInternalPath(redirect);
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [termsAccepted, setTermsAccepted] = useState(false);
+  const [selectedAssociationId, setSelectedAssociationId] = useState("");
+  const handledSession = useRef<string | null>(null);
   const [associations, setAssociations] = useState<Array<{ id: string; name: string; city: string | null; state: string | null }>>([]);
   const [loadingAssociations, setLoadingAssociations] = useState(true);
 
   useEffect(() => {
     let active = true;
+    const finishSignIn = async (userId: string) => {
+      if (handledSession.current === userId) return;
+      handledSession.current = userId;
+      if (association_id && association_id !== "__new__") {
+        const { error } = await supabase.rpc("request_association_membership", { _association_id: association_id });
+        if (error) toast.error("Não foi possível registrar a solicitação de acesso à associação.");
+      }
+      if (active) void navigate({ to: target });
+    };
     supabase.auth.getSession().then(({ data, error }) => {
-      if (active && !error && data.session) void navigate({ to: target });
+      if (active && !error && data.session) void finishSignIn(data.session.user.id);
     }).catch(() => {
       if (active) toast.error("Não foi possível verificar sua sessão. Tente novamente.");
     });
     const { data } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === "SIGNED_IN" && session) void navigate({ to: target });
+      if (event === "SIGNED_IN" && session) void finishSignIn(session.user.id);
     });
     return () => {
       active = false;
       data.subscription.unsubscribe();
     };
-  }, [navigate, target]);
+  }, [association_id, navigate, target]);
 
   useEffect(() => {
     let active = true;
@@ -89,7 +100,7 @@ function AuthPage() {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
     const password = String(f.get("password"));
-    const requestedAssociationId = String(f.get("association_id") ?? "");
+    const requestedAssociationId = selectedAssociationId;
     if (!requestedAssociationId) {
       toast.error("Selecione sua associação ou indique que deseja cadastrar uma nova.");
       return;
@@ -125,11 +136,16 @@ function AuthPage() {
   }
 
   async function google() {
+    if (!selectedAssociationId) {
+      toast.error("Selecione a associação antes de continuar com Google.");
+      return;
+    }
     setLoading(true);
     try {
       // BASE_URL is "/" on a root deployment and "/project-genesis/" on GitHub Pages.
       const callback = new URL(buildAppUrl("/auth", window.location.origin, import.meta.env.BASE_URL));
       callback.searchParams.set("redirect", target);
+      callback.searchParams.set("association_id", selectedAssociationId);
 
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
@@ -185,6 +201,7 @@ function AuthPage() {
       <div className="flex items-center justify-center p-6">
         <div className="w-full max-w-sm">
           <h2 className="mb-6 text-3xl font-bold">Bem-vindo</h2>
+          <div className="mb-4 space-y-1.5"><Label htmlFor="auth-association">Associação</Label><select id="auth-association" value={selectedAssociationId} onChange={(event) => setSelectedAssociationId(event.target.value)} disabled={loading || loadingAssociations} className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"><option value="">Selecione sua associação</option>{associations.map((association) => <option key={association.id} value={association.id}>{association.name}{association.city ? ` — ${association.city}` : ""}{association.state ? `/${association.state}` : ""}</option>)}<option value="__new__">Minha associação ainda não está cadastrada</option></select><p className="text-xs text-muted-foreground">Para novos cadastros e acesso com Google, escolha a associação. O acesso a uma associação existente depende de aprovação administrativa.</p></div>
           <Button variant="outline" className="mb-4 w-full" onClick={google} disabled={loading}>Continuar com Google</Button>
           <div className="mb-4 text-center text-xs text-muted-foreground">ou</div>
           <Tabs defaultValue="login">
@@ -204,7 +221,7 @@ function AuthPage() {
               <form onSubmit={signUp} className="mt-4 space-y-4">
                 <div><Label htmlFor="su-name">Nome completo</Label><Input id="su-name" name="name" autoComplete="name" minLength={2} required /></div>
                 <div><Label htmlFor="su-email">E-mail</Label><Input id="su-email" name="email" type="email" autoComplete="email" required /></div>
-                <div><Label htmlFor="su-association">Associação</Label><select id="su-association" name="association_id" required defaultValue="" disabled={loading || loadingAssociations} className="mt-1 h-10 w-full rounded-md border border-input bg-background px-3 text-sm"><option value="" disabled>Selecione sua associação</option>{associations.map((association) => <option key={association.id} value={association.id}>{association.name}{association.city ? ` — ${association.city}` : ""}{association.state ? `/${association.state}` : ""}</option>)}<option value="__new__">Minha associação ainda não está cadastrada</option></select><p className="mt-1 text-xs text-muted-foreground">Se escolher uma associação existente, seu acesso ficará pendente até a aprovação do administrador.</p></div>
+                <p className="text-xs text-muted-foreground">Associação selecionada acima: {associations.find((association) => association.id === selectedAssociationId)?.name ?? (selectedAssociationId === "__new__" ? "nova associação" : "nenhuma")}.</p>
                 <div><Label htmlFor="su-pw">Senha</Label><Input id="su-pw" name="password" type="password" autoComplete="new-password" minLength={8} required /></div>
                 <div className="flex items-start gap-2 text-sm leading-5 text-muted-foreground"><input id="su-terms" type="checkbox" checked={termsAccepted} onChange={(e) => setTermsAccepted(e.target.checked)} required className="mt-1 h-4 w-4 shrink-0 accent-primary" /><div><label htmlFor="su-terms">Li e aceito os Termos de Uso e declaro estar ciente do Aviso de Privacidade.</label><div className="mt-1"><Link to="/termos-de-uso" className="text-foreground underline underline-offset-4">Ler Termos de Uso</Link><span> · </span><Link to="/privacidade" className="text-foreground underline underline-offset-4">Ler Aviso de Privacidade</Link></div></div></div>
                 <Button type="submit" className="w-full" disabled={loading}>{loading ? "Aguarde…" : "Criar conta"}</Button>
