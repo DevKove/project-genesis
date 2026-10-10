@@ -41,9 +41,16 @@ O Morada360 usa TanStack Start com renderização no servidor (SSR). Por isso, o
 
 ### Supabase
 
-A configuração pública do cliente está em `.env.production` com a URL do projeto e a chave *publishable*. Essa chave é destinada ao cliente e não substitui as regras de segurança do banco. Nunca coloque chaves `sb_secret_`, `service_role` ou senhas no código.
+O projeto Supabase selecionado para o MORADA360 é `ivajgtokxrzwnspihllr`.
 
-Antes de usar dados reais, confirme no Supabase que as tabelas necessárias existem e que RLS e políticas de acesso isolam corretamente os dados por usuário/condomínio. O acesso administrativo à configuração remota do projeto não estava disponível durante a preparação, portanto essas políticas ainda não foram auditadas.
+- Para desenvolvimento local, copie `.env.example` para `.env` e preencha os valores do projeto selecionado.
+- `.env` e arquivos locais equivalentes são ignorados pelo Git. Não versione credenciais locais.
+- `.env.production` é usado pelo fluxo de build estático existente e contém somente a URL pública e a chave *publishable*. Não coloque chaves `sb_secret_`, `service_role` ou senhas em arquivos `VITE_*`.
+- A chave *publishable* não substitui RLS nem autorização no servidor. Toda operação de dados deve continuar sujeita às políticas do banco e aos controles de autorização.
+- `SUPABASE_SERVICE_ROLE_KEY`, se estritamente necessária a uma operação confiável do servidor, deve ser configurada somente no ambiente seguro do servidor/CI e nunca exposta ao navegador ou comprometida no repositório.
+- O banco remoto é administrado separadamente das alterações do repositório. Não aplique migrações nem altere configurações de Auth/Storage sem revisar o SQL, confirmar o projeto e verificar o resultado.
+
+Antes de usar dados reais, execute os testes de isolamento com duas contas autenticadas em associações diferentes, revise RLS e políticas de Storage e valide os fluxos de autenticação. O status e as pendências atuais estão registrados em `SECURITY_AUDIT.md`; o sistema não deve ser considerado pronto para produção até que os itens pendentes sejam comprovados.
 
 ### Verificação
 
