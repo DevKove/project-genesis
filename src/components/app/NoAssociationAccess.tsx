@@ -15,6 +15,7 @@ type JoinRequestStatus = {
 export function NoAssociationAccess({ userId }: { userId: string }) {
   const request = useQuery({
     queryKey: ["my-association-join-requests", userId],
+    refetchInterval: 15000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("association_join_requests")
@@ -30,7 +31,7 @@ export function NoAssociationAccess({ userId }: { userId: string }) {
 
   async function signOut() {
     const { error } = await supabase.auth.signOut();
-    if (error) window.location.assign("/auth");
+    if (error) console.error("Falha ao encerrar sessão", error);
   }
 
   if (request.isLoading) {
