@@ -31,7 +31,7 @@ function validateIdentityDocument(file: File | null): string | null {
 async function uploadIdentityDocument(associationId: string, entity: "residents" | "vendors", recordId: string, file: File) {
   const extension = file.name.split(".").pop()?.toLowerCase() ?? "";
   const mimeType = IDENTITY_DOCUMENT_TYPES[extension];
-  const path = \`\${associationId}/\${entity}/\${recordId}/\${crypto.randomUUID()}.\${extension}\`;
+  const path = associationId + "/" + entity + "/" + recordId + "/" + crypto.randomUUID() + "." + extension;
   const { error } = await supabase.storage.from("identity-documents").upload(path, file, { contentType: mimeType, upsert: false });
   if (error) throw error;
   return { path, name: file.name, mimeType, size: file.size };
