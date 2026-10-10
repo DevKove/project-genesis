@@ -25,7 +25,8 @@ The current feature branch adds a private Storage bucket named `association-docu
 - File overwrite is not permitted by the upload flow, and Storage UPDATE policy is intentionally absent.
 - Document removal deletes the object and soft-archives metadata, preserving audit history.
 - Audit snapshots redact document title, description, file path, and uploader ID.
-- Transaction tests verified metadata RLS, cross-association isolation, visibility rules, non-manager write denial, and audit redaction.
+- Transaction tests verified metadata RLS, cross-association isolation, visibility rules, non-manager write denial, and audit redaction. A synthetic-JWT simulation also verified Storage object SELECT isolation by association and visibility.
+- Direct SQL deletion from `storage.objects` is intentionally blocked by Supabase's own `storage.protect_delete()` trigger; the real Storage API upload/download/delete flow has not yet been exercised end to end.
 
 **Not yet verified:** a real browser upload/download/delete flow against Storage using two real authenticated accounts. Do not treat the document module as production-homologated until that test is completed.
 
