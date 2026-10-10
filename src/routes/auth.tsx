@@ -40,27 +40,44 @@ function AuthPage() {
 
   useEffect(() => {
     let active = true;
-    const finishSignIn = async (userId: string) => {
-      if (handledSession.current === userId) return;
-      handledSession.current = userId;
+    const finishSignIn = async (user: { id: string; user_metadata?: Record<string, unknown> }) => {
+      if (handledSession.current === user.id) return;
+      handledSession.current = user.id;
+      const metadataAssociationId = typeof user.user_metadata?.association_id === "string" ? user.user_metadata.association_id : "";
+      const requestedAssociationId = association_id && association_id !== "__new__" ? association_id : metadataAssociationId;
       try {
-        if (association_id && association_id !== "__new__") {
-          const { error } = await supabase.rpc("request_association_membership", { _association_id: association_id });
+        if (requestedAssociationId) {
+          const { error } = await supabase.rpc("request_association_membership", { _association_id: requestedAssociationId });
           if (error) toast.error("Não foi possível registrar a solicitação de acesso à associação.");
+          else {
+            const { data: joinRequest, error: lookupError } = await supabase
+              .from("association_join_requests")
+              .select("id")
+              .eq("user_id", user.id)
+              .eq("association_id", requestedAssociationId)
+              .eq("status", "pendente")
+              .maybeSingle();
+            if (!lookupError && joinRequest) {
+              const { error: emailError } = await supabase.functions.invoke("notify-association-join-request", {
+                body: { request_id: joinRequest.id, event: "requested" },
+              });
+              if (emailError) toast.info("Sua solicitação foi registrada. O aviso por e-mail pode depender da configuração do serviço; você pode acompanhar o status no sistema.");
+            }
+          }
         }
       } catch {
-        toast.error("Não foi possível registrar a solicitação de acesso à associação.");
+        toast.error("Não foi possível concluir o registro da solicitação de acesso.");
       } finally {
         if (active) void navigate({ to: target });
       }
     };
     supabase.auth.getSession().then(({ data, error }) => {
-      if (active && !error && data.session) void finishSignIn(data.session.user.id);
+      if (active && !error && data.session) void finishSignIn(data.session.user);
     }).catch(() => {
       if (active) toast.error("Não foi possível verificar sua sessão. Tente novamente.");
     });
     const { data } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === "SIGNED_IN" && session) void finishSignIn(session.user.id);
+      if (event === "SIGNED_IN" && session) void finishSignIn(session.user);
     });
     return () => {
       active = false;
