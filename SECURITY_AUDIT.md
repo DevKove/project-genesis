@@ -61,6 +61,14 @@ No Storage policies were found. Keep uploads disabled until private buckets, ten
 
 The current main branch includes units/residents management and member-facing announcements. This feature branch adds a member directory, admin-only role changes/removals, invitation creation/cancellation/link copying, and an authenticated invitation-acceptance page. A database trigger prevents membership identity changes and loss of the last administrator. CI and browser verification are still required for this branch. Audit history UI, association settings, finance, governance, subscription/billing, support, and central SaaS administration remain incomplete compared with the product specification.
 
+### Service requests module (proposed in PR #17)
+
+- A new migration adds association-scoped service requests with server-side length/category/priority/status constraints, tenant-feed indexes, and RLS.
+- Members may create and read their own requests; association managers may read all requests in the association and update workflow status.
+- A trigger prevents changing request identity, association, and creator after creation.
+- Audit metadata omits request title, description, and resolution notes to avoid duplicating free text in audit logs.
+- The migration is repository-only; it has not been applied to the remote Supabase project. CI and real-account isolation tests are still required.
+
 ### 7. Delivery and operational checks
 
 The current repository quality workflow tests and builds, but lint triage, dependency/secret scanning, backup-restore rehearsal, monitoring/alerting, production smoke tests, and real multi-user end-to-end tests remain open. The Cloudflare deployment workflow is currently skipped unless its documented enable flag and credentials are configured.
