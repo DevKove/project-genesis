@@ -9,6 +9,7 @@ This file tracks delivery against `instrucoes.md`. A checkbox is marked complete
 - [x] Tenant membership is loaded from `association_members`; database RLS remains the security boundary.
 - [x] Security/integrity migrations exist for tenant policies, invitations, audit minimization, and resident integrity (see `SECURITY_AUDIT.md`).
 - [x] Base-aware callback URL helper covers signup confirmation, OAuth and password recovery for root and sub-path deployments; unit tests are included in PR #14.
+- [x] Incident module implementation is proposed in PR #15 with tenant RLS, server-side bounds, role-controlled status updates, and redacted audit metadata.
 - [ ] Merge and verify PR #14 (includes the environment-config changes from PR #11).
 - [ ] Enable leaked-password protection and complete the Supabase Auth configuration review.
 - [ ] Complete end-to-end tests with two real authenticated users in separate associations.
@@ -19,7 +20,7 @@ This file tracks delivery against `instrucoes.md`. A checkbox is marked complete
 | --- | --- | --- |
 | 1. Foundation | Auth, MFA, multi-tenancy, authorization, audit, design system, baseline tests | In progress; Auth dashboard settings and real-account tests remain blockers |
 | 2. Association and users | Association profile, units, residents, invitations, roles, resident portal | Partial; current app includes association setup, units, residents, memberships and invitations |
-| 3. Administrative operations | Documents, announcements, incidents, requests, vendors, contracts, assets, maintenance | Partial; announcements exist, other modules remain pending |
+| 3. Administrative operations | Documents, announcements, incidents, requests, vendors, contracts, assets, maintenance | Partial; announcements and incidents are implemented in proposed PR #15; documents, requests, vendors, contracts, assets and maintenance remain pending |
 | 4. Finance | Accounts, income, expenses, charges, approvals, reconciliation and reporting | Pending |
 | 5. Governance | Assemblies, minutes, elections, terms, reservations, staff and optional gatekeeping | Pending |
 | 6. Monetization | SaaS plans, subscriptions, billing, limits and support | Pending |
@@ -30,7 +31,7 @@ This file tracks delivery against `instrucoes.md`. A checkbox is marked complete
 1. Verify the full CI result for PR #14, including production build.
 2. Keep Auth security settings as a release blocker until changed in Supabase Dashboard and verified.
 3. Complete tenant isolation, invitation, and role tests using two real authenticated users in separate associations.
-4. Continue existing modules before adding high-risk finance features.
+4. Finish browser/E2E validation for incidents and continue documents, requests, vendors, contracts, assets and maintenance before high-risk finance features.
 5. Add each new module with migrations, backend authorization, audit behavior, tests, and documented acceptance evidence.
 
 ## Evidence rules
