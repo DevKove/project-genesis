@@ -12,7 +12,8 @@ import { Building2 } from "lucide-react";
 type Search = { redirect?: string | undefined };
 
 function safePath(p?: string) {
-  if (!p || !p.startsWith("/") || p.startsWith("//")) return "/app";
+  // Only allow same-origin application paths; reject protocol-relative and backslash variants.
+  if (!p || !p.startsWith("/") || p.startsWith("//") || p.startsWith("/\\") || p.includes("\\")) return "/app";
   return p;
 }
 
@@ -38,52 +39,98 @@ function AuthPage() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      if (data.session) navigate({ to: target });
+    let active = true;
+    supabase.auth.getSession().then(({ data, error }) => {
+      if (active && !error && data.session) void navigate({ to: target });
+    }).catch(() => {
+      if (active) toast.error("Não foi possível verificar sua sessão. Tente novamente.");
     });
-    const { data } = supabase.auth.onAuthStateChange((e, s) => {
-      if (e === "SIGNED_IN" && s) navigate({ to: target });
+    const { data } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "SIGNED_IN" && session) void navigate({ to: target });
     });
-    return () => data.subscription.unsubscribe();
+    return () => {
+      active = false;
+      data.subscription.unsubscribe();
+    };
   }, [navigate, target]);
 
   async function signIn(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
     setLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({ email: String(f.get("email")), password: String(f.get("password")) });
-    setLoading(false);
-    if (error) toast.error("E-mail ou senha inválidos");
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email: String(f.get("email")).trim(),
+        password: String(f.get("password")),
+      });
+      if (error) toast.error("E-mail ou senha inválidos");
+    } catch {
+      toast.error("Não foi possível entrar agora. Verifique sua conexão e tente novamente.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function signUp(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
     const password = String(f.get("password"));
-    if (password.length < 8) { toast.error("A senha precisa ter ao menos 8 caracteres"); return; }
+    if (password.length < 8) {
+      toast.error("A senha precisa ter ao menos 8 caracteres");
+      return;
+    }
     setLoading(true);
-    const { error } = await supabase.auth.signUp({
-      email: String(f.get("email")),
-      password,
-      options: { emailRedirectTo: window.location.origin + target, data: { full_name: String(f.get("name")) } },
-    });
-    setLoading(false);
-    if (error) { toast.error(error.message); return; }
-    toast.success("Conta criada! Confirme seu e-mail para entrar.");
+    try {
+      const { error } = await supabase.auth.signUp({
+        email: String(f.get("email")).trim(),
+        password,
+        options: { emailRedirectTo: window.location.origin + target, data: { full_name: String(f.get("name")).trim() } },
+      });
+      if (error) {
+        toast.error("Não foi possível criar a conta. Confira os dados e tente novamente.");
+        return;
+      }
+      toast.success("Conta criada! Confirme seu e-mail para entrar.");
+    } catch {
+      toast.error("Não foi possível criar a conta agora. Verifique sua conexão e tente novamente.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function google() {
-    sessionStorage.setItem("post_auth_redirect", target);
-    const r = await lovable.auth.signInWithOAuth("google", { redirect_uri: window.location.origin + "/auth?redirect=" + encodeURIComponent(target) });
-    if (r.error) toast.error("Não foi possível entrar com Google");
+    setLoading(true);
+    try {
+      sessionStorage.setItem("post_auth_redirect", target);
+      const r = await lovable.auth.signInWithOAuth("google", {
+        redirect_uri: window.location.origin + "/auth?redirect=" + encodeURIComponent(target),
+      });
+      if (r.error) toast.error("Não foi possível entrar com Google. Tente novamente.");
+    } catch {
+      toast.error("Não foi possível iniciar o acesso com Google. Tente novamente.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function forgot() {
-    const email = (document.getElementById("li-email") as HTMLInputElement)?.value;
-    if (!email) { toast.error("Informe seu e-mail acima"); return; }
-    const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin + "/reset-password" });
-    if (error) toast.error(error.message);
-    else toast.success("Enviamos um link de redefinição para seu e-mail.");
+    const email = (document.getElementById("li-email") as HTMLInputElement)?.value.trim();
+    if (!email) {
+      toast.error("Informe seu e-mail acima");
+      return;
+    }
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: window.location.origin + "/reset-password",
+      });
+      if (error) toast.error("Não foi possível solicitar a redefinição. Confira o e-mail e tente novamente.");
+      else toast.success("Se o e-mail estiver cadastrado, enviaremos um link de redefinição.");
+    } catch {
+      toast.error("Não foi possível solicitar a redefinição agora. Tente novamente.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -99,7 +146,7 @@ function AuthPage() {
       <div className="flex items-center justify-center p-6">
         <div className="w-full max-w-sm">
           <h2 className="mb-6 text-3xl font-bold">Bem-vindo</h2>
-          <Button variant="outline" className="mb-4 w-full" onClick={google}>Continuar com Google</Button>
+          <Button variant="outline" className="mb-4 w-full" onClick={google} disabled={loading}>Continuar com Google</Button>
           <div className="mb-4 text-center text-xs text-muted-foreground">ou</div>
           <Tabs defaultValue="login">
             <TabsList className="grid w-full grid-cols-2">
@@ -108,18 +155,18 @@ function AuthPage() {
             </TabsList>
             <TabsContent value="login">
               <form onSubmit={signIn} className="mt-4 space-y-4">
-                <div><Label htmlFor="li-email">E-mail</Label><Input id="li-email" name="email" type="email" required /></div>
-                <div><Label htmlFor="li-pw">Senha</Label><Input id="li-pw" name="password" type="password" required /></div>
-                <Button type="submit" className="w-full" disabled={loading}>Entrar</Button>
-                <button type="button" onClick={forgot} className="w-full text-center text-sm text-muted-foreground hover:text-foreground">Esqueci minha senha</button>
+                <div><Label htmlFor="li-email">E-mail</Label><Input id="li-email" name="email" type="email" autoComplete="email" required /></div>
+                <div><Label htmlFor="li-pw">Senha</Label><Input id="li-pw" name="password" type="password" autoComplete="current-password" required /></div>
+                <Button type="submit" className="w-full" disabled={loading}>{loading ? "Aguarde…" : "Entrar"}</Button>
+                <button type="button" onClick={forgot} disabled={loading} className="w-full text-center text-sm text-muted-foreground hover:text-foreground disabled:opacity-50">Esqueci minha senha</button>
               </form>
             </TabsContent>
             <TabsContent value="signup">
               <form onSubmit={signUp} className="mt-4 space-y-4">
-                <div><Label htmlFor="su-name">Nome completo</Label><Input id="su-name" name="name" required /></div>
-                <div><Label htmlFor="su-email">E-mail</Label><Input id="su-email" name="email" type="email" required /></div>
-                <div><Label htmlFor="su-pw">Senha</Label><Input id="su-pw" name="password" type="password" minLength={8} required /></div>
-                <Button type="submit" className="w-full" disabled={loading}>Criar conta</Button>
+                <div><Label htmlFor="su-name">Nome completo</Label><Input id="su-name" name="name" autoComplete="name" minLength={2} required /></div>
+                <div><Label htmlFor="su-email">E-mail</Label><Input id="su-email" name="email" type="email" autoComplete="email" required /></div>
+                <div><Label htmlFor="su-pw">Senha</Label><Input id="su-pw" name="password" type="password" autoComplete="new-password" minLength={8} required /></div>
+                <Button type="submit" className="w-full" disabled={loading}>{loading ? "Aguarde…" : "Criar conta"}</Button>
               </form>
             </TabsContent>
           </Tabs>
