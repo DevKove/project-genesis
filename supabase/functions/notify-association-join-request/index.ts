@@ -94,7 +94,7 @@ Deno.serve(async (req) => {
   const recipients: Array<{ email: string; subject: string; heading: string; message: string }> = [];
   const safeName = htmlEscape(joinRequest.full_name);
   const safeAssociation = htmlEscape(joinRequest.association_name);
-  const dashboardUrl = new URL("/app/membros", appUrl).toString();
+  const dashboardUrl = new URL(payload.event === "requested" ? "/app/membros" : "/app", appUrl).toString();
 
   if (payload.event === "requested") {
     const { data: admins, error: adminsError } = await adminClient.from("association_members")
