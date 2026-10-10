@@ -1,10 +1,12 @@
 import { createFileRoute, Link, Outlet, useNavigate } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
 import { AlertTriangle, Building2, ClipboardList, FileText, History, Home, LayoutDashboard, LogOut, Megaphone, Settings, UserCog, Users } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { AssocProvider, useAssoc } from "@/lib/assoc-context";
 import { isManager, ROLE_LABELS } from "@/lib/roles";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CreateAssociation } from "@/components/app/CreateAssociation";
+import { NoAssociationAccess } from "@/components/app/NoAssociationAccess";
+import { NotificationCenter } from "@/components/app/NotificationCenter";
 
 export const Route = createFileRoute("/_authenticated/app")({
   head: () => ({ meta: [{ title: "Painel — Morada360" }, { name: "description", content: "Painel de gestão da associação." }] }),
@@ -15,14 +17,29 @@ function AppLayout() {
   const { user } = Route.useRouteContext();
   return (
     <AssocProvider userId={user.id}>
-      <Shell email={user.email ?? ""} />
+      <Shell email={user.email ?? ""} userId={user.id} />
     </AssocProvider>
   );
 }
 
-function Shell({ email }: { email: string }) {
+function Shell({ email, userId }: { email: string; userId: string }) {
   const { memberships, current, setCurrentId, loading, error, refetch } = useAssoc();
   const navigate = useNavigate();
+  const pendingJoinRequests = useQuery({
+    queryKey: ["association-join-requests-count", current?.association_id],
+    enabled: Boolean(current?.association_id && current.role === "admin"),
+    queryFn: async () => {
+      if (!current) return 0;
+      const { count, error } = await supabase
+        .from("association_join_requests")
+        .select("id", { count: "exact", head: true })
+        .eq("association_id", current.association_id)
+        .eq("status", "pendente");
+      if (error) throw error;
+      return count ?? 0;
+    },
+    refetchInterval: 30000,
+  });
 
   if (loading) return <div className="flex min-h-screen items-center justify-center text-muted-foreground">Carregando associações…</div>;
 
@@ -39,17 +56,7 @@ function Shell({ email }: { email: string }) {
     );
   }
 
-  if (!current)
-    return (
-      <div className="flex min-h-screen items-center justify-center p-6">
-        <div className="w-full max-w-lg">
-          <h1 className="text-3xl font-bold">Crie sua associação</h1>
-          <p className="mb-6 mt-2 text-muted-foreground">Você ainda não participa de nenhuma associação. Crie uma agora ou peça um convite ao administrador.</p>
-          <CreateAssociation />
-          <button className="mt-6 text-sm text-muted-foreground hover:text-foreground" onClick={() => void supabase.auth.signOut()}>Sair</button>
-        </div>
-      </div>
-    );
+  if (!current) return <NoAssociationAccess userId={userId} />;
 
   const nav = [
     { to: "/app", label: "Painel", icon: LayoutDashboard, exact: true },
@@ -84,7 +91,7 @@ function Shell({ email }: { email: string }) {
         <nav className="flex-1 space-y-1 overflow-y-auto">
           {visibleNav.map((n) => (
             <Link key={n.to} to={n.to} activeOptions={{ exact: n.exact }} className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground" activeProps={{ className: "bg-sidebar-accent text-sidebar-accent-foreground font-semibold" }}>
-              <n.icon className="h-4 w-4 shrink-0" /> {n.label}
+              <n.icon className="h-4 w-4 shrink-0" /> {n.label}{n.to === "/app/membros" && current.role === "admin" && (pendingJoinRequests.data ?? 0) > 0 ? <span className="ml-auto rounded-full bg-destructive px-2 py-0.5 text-[10px] font-bold text-destructive-foreground">{pendingJoinRequests.data}</span> : null}
             </Link>
           ))}
         </nav>
@@ -102,10 +109,10 @@ function Shell({ email }: { email: string }) {
           </div>
           <select aria-label="Navegação" className="max-w-[45%] rounded border bg-background px-2 py-2 text-sm" value="" onChange={(e) => e.target.value && navigate({ to: e.target.value })}>
             <option value="">Menu</option>
-            {visibleNav.map((n) => <option key={n.to} value={n.to}>{n.label}</option>)}
+            {visibleNav.map((n) => <option key={n.to} value={n.to}>{n.label}{n.to === "/app/membros" && current.role === "admin" && (pendingJoinRequests.data ?? 0) > 0 ? ` (${pendingJoinRequests.data})` : ""}</option>)}
           </select>
         </div>
-        <main className="mx-auto max-w-6xl p-4 sm:p-6 md:p-10"><Outlet key={current.association_id} /></main>
+        <main className="mx-auto max-w-6xl p-4 sm:p-6 md:p-10"><div className="mb-4 flex justify-end"><NotificationCenter userId={userId} /></div><Outlet key={current.association_id} /></main>
       </div>
     </div>
   );

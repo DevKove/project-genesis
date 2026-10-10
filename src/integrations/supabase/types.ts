@@ -84,6 +84,107 @@ export type Database = {
           },
         ]
       }
+      association_join_requests: {
+        Row: {
+          association_id: string
+          association_name: string
+          email: string
+          full_name: string
+          id: string
+          requested_at: string
+          review_note: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          association_id: string
+          association_name: string
+          email: string
+          full_name: string
+          id?: string
+          requested_at?: string
+          review_note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          association_id?: string
+          association_name?: string
+          email?: string
+          full_name?: string
+          id?: string
+          requested_at?: string
+          review_note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "association_join_requests_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_notifications: {
+        Row: {
+          association_id: string | null
+          created_at: string
+          id: string
+          message: string
+          notification_type: string
+          read_at: string | null
+          recipient_id: string
+          request_id: string | null
+          title: string
+        }
+        Insert: {
+          association_id?: string | null
+          created_at?: string
+          id?: string
+          message: string
+          notification_type: string
+          read_at?: string | null
+          recipient_id: string
+          request_id?: string | null
+          title: string
+        }
+        Update: {
+          association_id?: string | null
+          created_at?: string
+          id?: string
+          message?: string
+          notification_type?: string
+          read_at?: string | null
+          recipient_id?: string
+          request_id?: string | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_notifications_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_notifications_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "association_join_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       associations: {
         Row: {
           address: string | null
@@ -648,6 +749,18 @@ export type Database = {
       accept_invitation: { Args: { _token: string }; Returns: string }
       create_association: {
         Args: { _city?: string; _cnpj?: string; _name: string; _state?: string }
+        Returns: string
+      }
+      list_associations_for_signup: {
+        Args: Record<PropertyKey, never>
+        Returns: { city: string | null; id: string; name: string; state: string | null }[]
+      }
+      request_association_membership: {
+        Args: { _association_id: string }
+        Returns: string
+      }
+      review_association_join_request: {
+        Args: { _decision: string; _note?: string | null; _request_id: string }
         Returns: string
       }
     }
