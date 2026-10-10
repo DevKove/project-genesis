@@ -1,5 +1,5 @@
 import { createFileRoute, Link, Outlet, useNavigate } from "@tanstack/react-router";
-import { Building2, History, Home, LayoutDashboard, LogOut, Megaphone, UserCog, Users } from "lucide-react";
+import { Building2, History, Home, LayoutDashboard, LogOut, Megaphone, Settings, UserCog, Users } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { AssocProvider, useAssoc } from "@/lib/assoc-context";
 import { ROLE_LABELS } from "@/lib/roles";
@@ -60,8 +60,9 @@ function Shell({ email }: { email: string }) {
     { to: "/app/comunicados", label: "Comunicados", icon: Megaphone, exact: false },
     { to: "/app/membros", label: "Membros", icon: UserCog, exact: false },
     { to: "/app/auditoria", label: "Auditoria", icon: History, exact: false },
+    { to: "/app/configuracoes", label: "Configurações", icon: Settings, exact: false },
   ] as const;
-  const visibleNav = nav.filter((item) => item.to !== "/app/auditoria" || current.role === "admin" || current.role === "presidente");
+  const visibleNav = nav.filter((item) => (item.to !== "/app/auditoria" && item.to !== "/app/configuracoes") || current.role === "admin" || current.role === "presidente");
 
   return (
     <div className="flex min-h-screen">

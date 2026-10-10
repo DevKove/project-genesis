@@ -52,6 +52,29 @@ export function isValidCPF(raw: string): boolean {
   return calc(9) === Number(cpf[9]) && calc(10) === Number(cpf[10]);
 }
 
+/** Validates numeric and alphanumeric CNPJ, including the two check digits. */
+export function isValidCNPJ(raw: string): boolean {
+  const input = raw.trim().toUpperCase();
+  if (!input || !/^[A-Z0-9./ -]+$/.test(input)) return false;
+  const cnpj = input.replace(/[^A-Z0-9]/g, "");
+  if (cnpj.length !== 14 || !/^[A-Z0-9]{12}[0-9]{2}$/.test(cnpj) || cnpj === cnpj[0].repeat(14)) return false;
+
+  const weightsFirst = [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
+  const weightsSecond = [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
+  const value = (character: string) => character.charCodeAt(0) - 48;
+  let sum = 0;
+  for (let i = 0; i < 12; i++) sum += value(cnpj[i]) * weightsFirst[i];
+  let remainder = sum % 11;
+  const firstDigit = remainder < 2 ? 0 : 11 - remainder;
+  if (firstDigit !== Number(cnpj[12])) return false;
+
+  sum = firstDigit * weightsSecond[12];
+  for (let i = 0; i < 12; i++) sum += value(cnpj[i]) * weightsSecond[i];
+  remainder = sum % 11;
+  const secondDigit = remainder < 2 ? 0 : 11 - remainder;
+  return secondDigit === Number(cnpj[13]);
+}
+
 export function maskCPF(raw: string | null | undefined): string {
   const d = (raw ?? "").replace(/\D/g, "");
   if (d.length !== 11) return raw ?? "";
