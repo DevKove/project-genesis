@@ -24,6 +24,8 @@ Supabase project: `ivajgtokxrzwnspihllr`
 - Invitation policies prevent presidents and secretaries from assigning administrator or other leadership roles. Invitation acceptance locks the invitation row, requires a non-null account email matching the invite, revalidates inviter authority and role hierarchy, rejects legacy leadership invitations from non-admins, and does not overwrite an existing membership role.
 - The two authenticated RPCs `create_association` and `accept_invitation` now use an empty `search_path` and schema-qualified object references. Association creation validates name length, CNPJ shape, city length, and UF format. Transaction tests confirmed invalid inputs are rejected and valid association creation assigns the creator the admin role.
 - A database trigger prevents changing the identity/association of an existing membership and prevents demoting or deleting the last administrator. Transaction tests confirmed a demotion is allowed when another administrator remains, but the last administrator cannot be demoted or deleted.
+- The last-admin trigger locks the association row before counting other administrators, preventing concurrent demotion/deletion transactions from both passing based on stale counts.
+- Direct profile reads are now limited to the profile owner and platform administrators. Association members use a security-barrier directory view exposing only association_id, user_id, and full_name; a transaction test confirmed the view does not expose another association's members or phone/avatar/email columns.
 - A partial unique index prevents multiple pending invitations for the same normalized email within one association. The connected project had no duplicate pending invitation groups before the index was added.
 - The Supabase Security Advisor no longer reports the trigger functions or private helpers. It still reports the two intentional authenticated `SECURITY DEFINER` RPCs and leaked-password protection being disabled. Keep the RPC warnings documented and re-review their authorization whenever the implementation changes.
 - RLS transaction simulations used two distinct JWT subject IDs and two synthetic associations. They verified isolation for associations, association members, units, residents, announcements, invitations, and audit logs; cross-tenant unit INSERT/UPDATE and membership UPDATE attempts were denied or affected zero rows. All test data was rolled back. These tests do not replace end-to-end testing with two real Supabase Auth accounts.
@@ -73,6 +75,8 @@ The current repository quality workflow tests and builds, but lint triage, depen
 - [x] Enforce server-side announcement title/body bounds.
 - [x] Prevent association lockout by enforcing last-administrator and immutable-membership rules.
 - [x] Prevent duplicate pending invitations for the same email in an association.
+- [x] Limit direct profile reads and expose only minimal member-directory fields to co-members.
+- [x] Serialize last-administrator checks to avoid concurrent association lockout.
 - [ ] Update local `.env` to match the selected Supabase project without adding privileged secrets.
 - [ ] Enable leaked-password protection and review Auth configuration.
 - [ ] Repeat tenant-isolation and invitation tests with two real authenticated users.
