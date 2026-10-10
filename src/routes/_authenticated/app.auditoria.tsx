@@ -18,6 +18,7 @@ const ENTITY_LABELS: Record<string, string> = {
   units: "Unidades",
   residents: "Moradores",
   invitations: "Convites",
+  service_requests: "Solicitações",
   announcements: "Comunicados",
 };
 
