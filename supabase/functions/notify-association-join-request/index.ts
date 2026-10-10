@@ -18,9 +18,10 @@ type RequestRow = {
 };
 
 function htmlEscape(value: string) {
-  return value.replace(/[&<>"']/g, (char) => ({
+  const replacements: Record<string, string> = {
     "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
-  })[char] ?? char);
+  };
+  return value.replace(/[&<>"']/g, (char) => replacements[char] ?? char);
 }
 
 Deno.serve(async (req) => {
