@@ -32,6 +32,7 @@ function AuthPage() {
   const target = safeInternalPath(redirect);
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+  const [authTab, setAuthTab] = useState<"login" | "signup">("login");
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [associationCode, setAssociationCode] = useState("");
   const [createNewAssociation, setCreateNewAssociation] = useState(false);
@@ -42,8 +43,9 @@ function AuthPage() {
     const finishSignIn = async (user: { id: string; user_metadata?: Record<string, unknown> }) => {
       if (handledSession.current === user.id) return;
       handledSession.current = user.id;
-      const metadataAssociationId = typeof user.user_metadata?.association_id === "string" ? user.user_metadata.association_id : "";
-      const requestedAssociationId = association_id && association_id !== "__new__" ? association_id : metadataAssociationId;
+      // Only process an association explicitly selected during the Google signup flow.
+      // Existing Google logins must not be forced into a new membership request based on editable metadata.
+      const requestedAssociationId = association_id && association_id !== "__new__" ? association_id : "";
       try {
         if (requestedAssociationId) {
           const { error } = await supabase.rpc("request_association_membership", { _association_id: requestedAssociationId });
@@ -150,8 +152,13 @@ function AuthPage() {
   }
 
   async function google() {
-    let requestedAssociationId = "__new__";
-    if (!createNewAssociation) {
+    // Existing users sign in without an association code. Codes are required only
+    // when the user is creating an account and requesting membership.
+    let requestedAssociationId = "";
+    if (authTab === "signup") {
+      requestedAssociationId = "__new__";
+    }
+    if (authTab === "signup" && !createNewAssociation) {
       const code = associationCode.trim();
       if (!/^\d{6}$/.test(code)) {
         toast.error("Informe o código da associação com exatamente 6 dígitos.");
@@ -169,7 +176,7 @@ function AuthPage() {
       // BASE_URL is "/" on a root deployment and "/project-genesis/" on GitHub Pages.
       const callback = new URL(buildAppUrl("/auth", window.location.origin, import.meta.env.BASE_URL));
       callback.searchParams.set("redirect", target);
-      callback.searchParams.set("association_id", requestedAssociationId);
+      if (requestedAssociationId) callback.searchParams.set("association_id", requestedAssociationId);
 
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
@@ -228,7 +235,7 @@ function AuthPage() {
           <div className="mb-4 space-y-2"><Label htmlFor="auth-association-code">Código da associação</Label><Input id="auth-association-code" value={associationCode} onChange={(event) => setAssociationCode(event.target.value.replace(/\D/g, "").slice(0, 6))} inputMode="numeric" autoComplete="off" maxLength={6} placeholder="Digite os 6 dígitos" disabled={loading || createNewAssociation} /><p className="text-xs text-muted-foreground">Peça o código de 6 dígitos à administração da associação. O acesso a uma associação existente depende de aprovação administrativa.</p><label className="flex items-start gap-2 text-sm text-muted-foreground"><input type="checkbox" checked={createNewAssociation} onChange={(event) => setCreateNewAssociation(event.target.checked)} disabled={loading} className="mt-1 h-4 w-4 shrink-0 accent-primary" /><span>Minha associação ainda não está cadastrada</span></label></div>
           <Button variant="outline" className="mb-4 w-full" onClick={google} disabled={loading}>Continuar com Google</Button>
           <div className="mb-4 text-center text-xs text-muted-foreground">ou</div>
-          <Tabs defaultValue="login">
+          <Tabs defaultValue="login" onValueChange={(value) => setAuthTab(value as "login" | "signup")}>
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="login">Entrar</TabsTrigger>
               <TabsTrigger value="signup">Criar conta</TabsTrigger>
