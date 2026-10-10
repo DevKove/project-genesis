@@ -63,7 +63,7 @@ export function CookieConsent() {
             <Cookie className="mt-1 h-6 w-6 shrink-0 text-primary" />
             <div className="min-w-0 flex-1">
               <h2 id="cookie-consent-title" className="text-lg font-semibold">Sua privacidade importa</h2>
-              <p className="mt-1 text-sm leading-6 text-muted-foreground">Usamos armazenamento essencial para manter recursos solicitados e lembrar sua escolha. Categorias analíticas e de marketing ficam desativadas por padrão e não devem ser ativadas sem sua escolha. Consulte a <Link to="/cookies" className="underline underline-offset-4">Política de Cookies</Link> e o <Link to="/privacidade" className="underline underline-offset-4">Aviso de Privacidade</Link>.</p>
+              <p className="mt-1 text-sm leading-6 text-muted-foreground">Usamos armazenamento essencial para manter recursos solicitados e lembrar sua escolha. Categorias analíticas e de marketing ficam desativadas por padrão e não devem ser ativadas sem sua escolha. Consulte os <Link to="/termos-de-uso" className="underline underline-offset-4">Termos de Uso</Link>, o <Link to="/privacidade" className="underline underline-offset-4">Aviso de Privacidade</Link> e a <Link to="/cookies" className="underline underline-offset-4">Política de Cookies</Link>.</p>
               {open && (
                 <div className="mt-4 space-y-3 rounded-lg border p-3 text-sm">
                   <div className="flex items-start justify-between gap-4"><div><p className="font-medium">Necessários</p><p className="text-muted-foreground">Essenciais para sessão, segurança e preferências.</p></div><span className="font-medium text-primary">Sempre ativos</span></div>
