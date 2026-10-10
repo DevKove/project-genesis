@@ -32,22 +32,22 @@ CREATE POLICY "members read own incidents and managers read all"
   ON public.incidents FOR SELECT TO authenticated
   USING (
     created_by = (SELECT auth.uid())
-    OR public.is_assoc_manager(association_id, (SELECT auth.uid()))
+    OR private.is_assoc_manager(association_id, (SELECT auth.uid()))
   );
 
 CREATE POLICY "members create incidents for themselves"
   ON public.incidents FOR INSERT TO authenticated
   WITH CHECK (
     created_by = (SELECT auth.uid())
-    AND public.is_member(association_id, (SELECT auth.uid()))
+    AND private.is_member(association_id, (SELECT auth.uid()))
     AND assigned_to IS NULL
     AND status = 'aberta'
   );
 
 CREATE POLICY "managers update incidents"
   ON public.incidents FOR UPDATE TO authenticated
-  USING (public.is_assoc_manager(association_id, (SELECT auth.uid())))
-  WITH CHECK (public.is_assoc_manager(association_id, (SELECT auth.uid())));
+  USING (private.is_assoc_manager(association_id, (SELECT auth.uid())))
+  WITH CHECK (private.is_assoc_manager(association_id, (SELECT auth.uid())));
 
 CREATE TRIGGER incidents_touch_updated_at
   BEFORE UPDATE ON public.incidents
