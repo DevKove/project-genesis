@@ -2,7 +2,7 @@ import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Building2, Pencil, Plus, Search, X } from "lucide-react";
+import { Building2, ChevronLeft, ChevronRight, Pencil, Plus, Search, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAssoc } from "@/lib/assoc-context";
 import { isManager } from "@/lib/roles";
