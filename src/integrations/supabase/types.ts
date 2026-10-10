@@ -171,6 +171,62 @@ export type Database = {
         }
         Relationships: []
       }
+      documents: {
+        Row: {
+          association_id: string
+          category: string
+          created_at: string
+          deleted_at: string | null
+          description: string | null
+          file_path: string
+          id: string
+          mime_type: string
+          size_bytes: number
+          title: string
+          updated_at: string
+          uploaded_by: string
+          visibility: string
+        }
+        Insert: {
+          association_id: string
+          category?: string
+          created_at?: string
+          deleted_at?: string | null
+          description?: string | null
+          file_path: string
+          id?: string
+          mime_type: string
+          size_bytes: number
+          title: string
+          updated_at?: string
+          uploaded_by: string
+          visibility?: string
+        }
+        Update: {
+          association_id?: string
+          category?: string
+          created_at?: string
+          deleted_at?: string | null
+          description?: string | null
+          file_path?: string
+          id?: string
+          mime_type?: string
+          size_bytes?: number
+          title?: string
+          updated_at?: string
+          uploaded_by?: string
+          visibility?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "documents_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invitations: {
         Row: {
           association_id: string
@@ -386,6 +442,16 @@ export type Database = {
           association_id: string | null
           full_name: string | null
           user_id: string | null
+        }
+        Insert: {
+          association_id?: string | null
+          full_name?: never
+          user_id?: string | null
+        }
+        Update: {
+          association_id?: string | null
+          full_name?: never
+          user_id?: string | null
         }
         Relationships: [
           {
