@@ -389,26 +389,6 @@ export type Database = {
         Args: { _city?: string; _cnpj?: string; _name: string; _state?: string }
         Returns: string
       }
-      has_assoc_role: {
-        Args: {
-          _assoc: string
-          _roles: Database["public"]["Enums"]["assoc_role"][]
-          _user: string
-        }
-        Returns: boolean
-      }
-      has_role: {
-        Args: {
-          _role: Database["public"]["Enums"]["app_role"]
-          _user_id: string
-        }
-        Returns: boolean
-      }
-      is_assoc_manager: {
-        Args: { _assoc: string; _user: string }
-        Returns: boolean
-      }
-      is_member: { Args: { _assoc: string; _user: string }; Returns: boolean }
     }
     Enums: {
       app_role: "platform_admin" | "platform_staff"

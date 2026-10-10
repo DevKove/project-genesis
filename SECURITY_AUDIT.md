@@ -19,11 +19,11 @@ Supabase project: `ivajgtokxrzwnspihllr`
 - The project is reachable through the connected Supabase account and reports `ACTIVE_HEALTHY`.
 - RLS is enabled on the application tables `profiles`, `user_roles`, `associations`, `association_members`, `units`, `residents`, `invitations`, `announcements`, and `audit_logs`.
 - RLS is also enabled on the inspected Storage tables. No Storage policies were present in the inspected schema; uploads are therefore not configured for ordinary client access and must not be considered implemented.
-- The initial security migration was applied to the connected project as version `20261010175741`.
+- The initial security migration was applied to the connected project as version `20261010175741`; the follow-up private-schema migration was applied as version `20261010180237`.
 - Trigger-only `SECURITY DEFINER` functions `audit_trigger()` and `handle_new_user()` no longer grant `EXECUTE` to `PUBLIC`, `anon`, or `authenticated`. Existing database triggers remain present.
-- Membership/role helper functions now return a positive result only when the requested user ID matches `auth.uid()`. Anonymous execution is revoked; authenticated execution remains because the helpers are used by RLS policies.
+- Membership/role helper functions now live in the non-exposed `private` schema. They return a positive result only when the requested user ID matches `auth.uid()`. The schema is not exposed through PostgREST; authenticated retains schema usage and function execution for RLS policy evaluation, while `anon` does not.
 - Invitation creation/update policies now prevent presidents and secretaries from assigning the administrator role or other leadership roles. Invitation acceptance locks the invitation row and checks that the inviter still has the required role.
-- Post-migration verification confirmed the authenticated caller's own membership helper result remained true, a lookup using an unrelated user ID returned false, and the trigger/helper execution grants matched the intended restrictions.
+- Post-migration verification confirmed there are zero copies of the four helpers in `public`, all four are in `private`, the authenticated caller's own membership helper result remained true, a lookup using an unrelated user ID returned false, anonymous helper execution is denied, and 24 RLS policies now reference the private helpers.
 - The Supabase Security Advisor no longer reports the two trigger functions, but it still reports authenticated-executable `SECURITY DEFINER` functions. Current findings include `accept_invitation`, `create_association`, and the four helper functions. The helper functions now validate caller identity, but moving them to a non-exposed schema and updating policy references remains a stronger follow-up.
 - Supabase Auth's leaked-password protection is disabled and still requires configuration.
 
@@ -31,7 +31,7 @@ Supabase project: `ivajgtokxrzwnspihllr`
 
 ### 1. Environment configuration mismatch
 
-The tracked `.env` file still references the older project `zuyeoozbdprcqwjzilgf`, while `supabase/config.toml` references `ivajgtokxrzwnspihllr`. The tracked production environment file also needs to be verified against the selected project. Do not deploy until the URL and publishable key are a matching pair for the intended project. The publishable key is designed for browser use; never commit a service-role/secret key or database password, and never put privileged credentials in `VITE_*` variables.
+The tracked local `.env` file still references the older project `zuyeoozbdprcqwjzilgf` and an old Lovable proxy URL/key. The tracked `.env.production` URL and publishable key were checked against the selected project and match `ivajgtokxrzwnspihllr`. Local development will continue to use the wrong backend until `.env` is updated. The publishable key is designed for browser use; never commit a service-role/secret key or database password, and never put privileged credentials in `VITE_*` variables.
 
 ### 2. Tenant isolation and role authorization — PARTIALLY VERIFIED
 
