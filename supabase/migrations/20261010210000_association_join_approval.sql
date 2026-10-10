@@ -39,7 +39,8 @@ CREATE INDEX user_notifications_unread_idx
   WHERE read_at IS NULL;
 
 ALTER TABLE public.user_notifications ENABLE ROW LEVEL SECURITY;
-GRANT SELECT, UPDATE ON public.user_notifications TO authenticated;
+GRANT SELECT ON public.user_notifications TO authenticated;
+GRANT UPDATE (read_at) ON public.user_notifications TO authenticated;
 GRANT ALL ON public.user_notifications TO service_role;
 
 CREATE POLICY "Users read own notifications"
