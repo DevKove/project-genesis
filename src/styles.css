@@ -80,7 +80,7 @@
   --chart-4: oklch(0.78 0.14 80);
   --chart-5: oklch(0.5 0.08 250);
   --sidebar: oklch(0.27 0.045 170);
-  --sidebar-foreground: oklch(0.92 0.02 85);
+  --sidebar-foreground: oklch(0.92 0.02 170);
   --sidebar-primary: oklch(0.68 0.13 45);
   --sidebar-primary-foreground: oklch(0.99 0.01 85);
   --sidebar-accent: oklch(0.33 0.05 170);
@@ -95,14 +95,40 @@
   * {
     border-color: var(--color-border);
   }
+  html {
+    min-width: 320px;
+    overflow-x: clip;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
   body {
+    min-width: 320px;
+    max-width: 100%;
+    overflow-x: clip;
     background-color: var(--color-background);
     color: var(--color-foreground);
     font-family: var(--font-sans);
   }
+  img, video, canvas, svg {
+    max-width: 100%;
+  }
+  input, textarea, select, button {
+    font: inherit;
+  }
+  input, textarea, select {
+    min-width: 0;
+    max-width: 100%;
+  }
   h1, h2, h3 {
     font-family: var(--font-display);
     letter-spacing: -0.01em;
+    overflow-wrap: anywhere;
+  }
+  p, li, td, th {
+    overflow-wrap: anywhere;
+  }
+  table {
+    max-width: 100%;
   }
 }
 
@@ -111,4 +137,34 @@
 }
 @utility shadow-soft {
   box-shadow: var(--shadow-soft);
+}
+
+/* Ajustes gerais para telas pequenas sem alterar a experiência desktop. */
+@media (max-width: 640px) {
+  body {
+    font-size: 0.9375rem;
+  }
+
+  input, textarea, select {
+    font-size: 16px;
+  }
+
+  [role="dialog"] {
+    max-height: calc(100dvh - 1rem);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  /* Tabelas de dados podem rolar horizontalmente em vez de alargar a página. */
+  [data-slot="table-container"],
+  .table-container,
+  .overflow-x-auto {
+    max-width: 100%;
+    overscroll-behavior-x: contain;
+  }
+
+  /* Botões e ações de formulários ficam confortáveis ao toque. */
+  button, [role="button"] {
+    touch-action: manipulation;
+  }
 }
