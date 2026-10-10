@@ -175,7 +175,7 @@ function DocumentsPage() {
 
   async function downloadDocument(item: DocumentRow) {
     try {
-      const { data, error } = await supabase.storage.from(BUCKET).createSignedUrl(item.file_path, 60);
+      const { data, error } = await supabase.storage.from(BUCKET).createSignedUrl(item.file_path, 60, { download: true });
       if (error || !data?.signedUrl) {
         toast.error("Não foi possível gerar um link temporário para este documento.");
         return;
