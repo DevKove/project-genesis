@@ -61,6 +61,7 @@ function Shell({ email }: { email: string }) {
     { to: "/app/membros", label: "Membros", icon: UserCog, exact: false },
     { to: "/app/auditoria", label: "Auditoria", icon: History, exact: false },
     { to: "/app/configuracoes", label: "Configurações", icon: Settings, exact: false },
+    { to: "/app/prestadores", label: "Prestadores", icon: Building2, exact: false },
   ] as const;
   const visibleNav = nav.filter((item) => (item.to !== "/app/auditoria" && item.to !== "/app/configuracoes") || current.role === "admin" || current.role === "presidente");
 
