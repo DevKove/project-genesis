@@ -1,5 +1,5 @@
 import { createFileRoute, Link, Outlet, useNavigate } from "@tanstack/react-router";
-import { AlertTriangle, Building2, FileText, History, Home, LayoutDashboard, LogOut, Megaphone, Settings, UserCog, Users } from "lucide-react";
+import { AlertTriangle, Building2, ClipboardList, FileText, History, Home, LayoutDashboard, LogOut, Megaphone, Settings, UserCog, Users } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { AssocProvider, useAssoc } from "@/lib/assoc-context";
 import { isManager, ROLE_LABELS } from "@/lib/roles";
@@ -60,6 +60,7 @@ function Shell({ email }: { email: string }) {
     { to: "/app/comunicados", label: "Comunicados", icon: Megaphone, exact: false },
     { to: "/app/documentos", label: "Documentos", icon: FileText, exact: false },
     { to: "/app/ocorrencias", label: "Ocorrências", icon: AlertTriangle, exact: false },
+    { to: "/app/solicitacoes", label: "Solicitações", icon: ClipboardList, exact: false },
     { to: "/app/membros", label: "Membros", icon: UserCog, exact: false },
     { to: "/app/auditoria", label: "Auditoria", icon: History, exact: false },
     { to: "/app/configuracoes", label: "Configurações", icon: Settings, exact: false },
