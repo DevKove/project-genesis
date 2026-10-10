@@ -32,6 +32,7 @@ function AuthPage() {
   const target = safeInternalPath(redirect);
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -70,6 +71,10 @@ function AuthPage() {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
     const password = String(f.get("password"));
+    if (!termsAccepted) {
+      toast.error("É necessário aceitar os Termos de Uso e o Aviso de Privacidade para criar a conta.");
+      return;
+    }
     if (password.length < 8) {
       toast.error("A senha precisa ter ao menos 8 caracteres");
       return;
@@ -81,7 +86,7 @@ function AuthPage() {
         password,
         options: {
           emailRedirectTo: buildAppUrl(target, window.location.origin, import.meta.env.BASE_URL),
-          data: { full_name: String(f.get("name")).trim() },
+          data: { full_name: String(f.get("name")).trim(), accepted_terms_version: "2026-10-10-v1", accepted_terms_at: new Date().toISOString(), privacy_notice_version: "2026-10-10-v1" },
         },
       });
       if (error) {
@@ -177,6 +182,7 @@ function AuthPage() {
                 <div><Label htmlFor="su-name">Nome completo</Label><Input id="su-name" name="name" autoComplete="name" minLength={2} required /></div>
                 <div><Label htmlFor="su-email">E-mail</Label><Input id="su-email" name="email" type="email" autoComplete="email" required /></div>
                 <div><Label htmlFor="su-pw">Senha</Label><Input id="su-pw" name="password" type="password" autoComplete="new-password" minLength={8} required /></div>
+                <label className="flex items-start gap-2 text-sm leading-5 text-muted-foreground"><input type="checkbox" checked={termsAccepted} onChange={(e) => setTermsAccepted(e.target.checked)} required className="mt-1 h-4 w-4 shrink-0 accent-primary" /><span>Li e aceito os <Link to="/termos-de-uso" className="text-foreground underline underline-offset-4">Termos de Uso</Link> e declaro estar ciente do <Link to="/privacidade" className="text-foreground underline underline-offset-4">Aviso de Privacidade</Link>.</span></label>
                 <Button type="submit" className="w-full" disabled={loading}>{loading ? "Aguarde…" : "Criar conta"}</Button>
               </form>
             </TabsContent>
