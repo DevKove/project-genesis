@@ -58,6 +58,7 @@ function Shell({ email }: { email: string }) {
     { to: "/app/unidades", label: "Unidades", icon: Home, exact: false },
     { to: "/app/moradores", label: "Moradores", icon: Users, exact: false },
     { to: "/app/comunicados", label: "Comunicados", icon: Megaphone, exact: false },
+    { to: "/app/ocorrencias", label: "Ocorrências", icon: AlertTriangle, exact: false },
     { to: "/app/membros", label: "Membros", icon: UserCog, exact: false },
   ] as const;
 
