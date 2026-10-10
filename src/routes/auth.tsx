@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Building2 } from "lucide-react";
 import { safeInternalPath } from "@/lib/safe-redirect";
+import { buildAppUrl } from "@/lib/app-url";
 
 type Search = { redirect?: string | undefined };
 
@@ -78,7 +79,10 @@ function AuthPage() {
       const { error } = await supabase.auth.signUp({
         email: String(f.get("email")).trim(),
         password,
-        options: { emailRedirectTo: window.location.origin + target, data: { full_name: String(f.get("name")).trim() } },
+        options: {
+          emailRedirectTo: buildAppUrl(target, window.location.origin, import.meta.env.BASE_URL),
+          data: { full_name: String(f.get("name")).trim() },
+        },
       });
       if (error) {
         toast.error("Não foi possível criar a conta. Confira os dados e tente novamente.");
@@ -95,10 +99,8 @@ function AuthPage() {
   async function google() {
     setLoading(true);
     try {
-      // BASE_URL é "/" no domínio raiz e "/project-genesis/" no GitHub Pages.
-      // Isso garante que o retorno OAuth caia na rota /auth publicada, não na raiz do domínio.
-      const appBase = new URL(import.meta.env.BASE_URL, window.location.origin);
-      const callback = new URL("auth", appBase);
+      // BASE_URL is "/" on a root deployment and "/project-genesis/" on GitHub Pages.
+      const callback = new URL(buildAppUrl("/auth", window.location.origin, import.meta.env.BASE_URL));
       callback.searchParams.set("redirect", target);
 
       const { error } = await supabase.auth.signInWithOAuth({
@@ -131,7 +133,7 @@ function AuthPage() {
     setLoading(true);
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: window.location.origin + "/reset-password",
+        redirectTo: buildAppUrl("/reset-password", window.location.origin, import.meta.env.BASE_URL),
       });
       if (error) toast.error("Não foi possível solicitar a redefinição. Confira o e-mail e tente novamente.");
       else toast.success("Se o e-mail estiver cadastrado, enviaremos um link de redefinição.");
