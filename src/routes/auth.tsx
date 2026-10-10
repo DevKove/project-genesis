@@ -8,14 +8,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Building2 } from "lucide-react";
+import { safeInternalPath } from "@/lib/safe-redirect";
 
 type Search = { redirect?: string | undefined };
-
-function safePath(p?: string) {
-  // Only allow same-origin application paths; reject protocol-relative and backslash variants.
-  if (!p || !p.startsWith("/") || p.startsWith("//") || p.startsWith("/\\") || p.includes("\\")) return "/app";
-  return p;
-}
 
 export const Route = createFileRoute("/auth")({
   validateSearch: (s: Record<string, unknown>): Search => ({ redirect: typeof s["redirect"] === "string" ? s["redirect"] : undefined }),
@@ -34,7 +29,7 @@ export const Route = createFileRoute("/auth")({
 
 function AuthPage() {
   const { redirect } = Route.useSearch();
-  const target = safePath(redirect);
+  const target = safeInternalPath(redirect);
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
 
