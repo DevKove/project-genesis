@@ -2,7 +2,6 @@ import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { lovable } from "@/integrations/lovable/index";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -96,11 +95,26 @@ function AuthPage() {
   async function google() {
     setLoading(true);
     try {
-      sessionStorage.setItem("post_auth_redirect", target);
-      const r = await lovable.auth.signInWithOAuth("google", {
-        redirect_uri: window.location.origin + "/auth?redirect=" + encodeURIComponent(target),
+      // BASE_URL é "/" no domínio raiz e "/project-genesis/" no GitHub Pages.
+      // Isso garante que o retorno OAuth caia na rota /auth publicada, não na raiz do domínio.
+      const appBase = new URL(import.meta.env.BASE_URL, window.location.origin);
+      const callback = new URL("auth", appBase);
+      callback.searchParams.set("redirect", target);
+
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: callback.toString(),
+          queryParams: {
+            access_type: "offline",
+            prompt: "select_account",
+          },
+        },
       });
-      if (r.error) toast.error("Não foi possível entrar com Google. Tente novamente.");
+
+      if (error) {
+        toast.error("Não foi possível entrar com Google. Verifique se o provedor Google está habilitado no Supabase.");
+      }
     } catch {
       toast.error("Não foi possível iniciar o acesso com Google. Tente novamente.");
     } finally {
