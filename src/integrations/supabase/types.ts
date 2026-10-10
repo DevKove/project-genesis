@@ -171,6 +171,59 @@ export type Database = {
         }
         Relationships: []
       }
+      incidents: {
+        Row: {
+          assigned_to: string | null
+          association_id: string
+          category: string
+          created_at: string
+          created_by: string
+          description: string
+          id: string
+          priority: string
+          resolution_notes: string | null
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_to?: string | null
+          association_id: string
+          category?: string
+          created_at?: string
+          created_by: string
+          description: string
+          id?: string
+          priority?: string
+          resolution_notes?: string | null
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_to?: string | null
+          association_id?: string
+          category?: string
+          created_at?: string
+          created_by?: string
+          description?: string
+          id?: string
+          priority?: string
+          resolution_notes?: string | null
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "incidents_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invitations: {
         Row: {
           association_id: string
