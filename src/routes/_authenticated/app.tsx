@@ -80,7 +80,7 @@ function Shell({ email, userId }: { email: string; userId: string }) {
     if (platformAdmin.data) {
       // The association shell must not swallow nested platform-admin routes.
       // Render the child route directly when the platform administrator has no association.
-      if (pathname.startsWith("/app/admin-aprovacoes") || pathname.startsWith("/app/admin-perfis")) {
+      if (pathname.includes("/app/admin-aprovacoes") || pathname.includes("/app/admin-perfis")) {
         return (
           <div className="min-h-screen bg-background">
             <header className="flex min-h-16 items-center justify-between border-b px-4 sm:px-8">
