@@ -62,3 +62,15 @@ As funções `SECURITY DEFINER` em `public` consultadas fixam `search_path` vazi
 
 ### Limites para conclusão definitiva
 O ambiente conectado não disponibiliza configuração do Supabase Auth para ativar proteção contra senhas comprometidas e não há sessão/token de teste para contas reais de administrador, membro comum e membro de outra associação. Assim, não é possível declarar concluídos os testes negativos de autorização, E2E, upload/download cruzado ou a configuração de Auth. Esses pontos são bloqueios explícitos para uma certificação completa, não foram presumidos como aprovados.
+
+
+## Testes negativos de autorização executados no banco (11/10/2026)
+
+Foram executados em transações com `ROLLBACK`, usando `SET LOCAL ROLE` e a claim `request.jwt.claim.sub` de uma conta de papel não administrativo, sem persistir alterações:
+
+- `private.has_assoc_role` retornou `false` quando a conta tentou consultar o papel administrativo de outro usuário.
+- Tentativas de chamar `admin_update_association_member_role` e `review_account_access` com uma identidade que não é administradora da plataforma foram bloqueadas; nenhuma alteração foi persistida.
+- A tentativa de atualizar diretamente `profiles.account_status` sob o papel `authenticated` foi bloqueada por privilégios de coluna/tabela.
+- Sob `anon`, a leitura direta de `public.associations` foi bloqueada; a chamada pública com código malformado `abc` retornou zero resultados.
+
+Esses são testes de autorização no banco com papéis/claims simulados e transações revertidas. Eles são mais fortes que a revisão estática, mas não substituem E2E HTTP com JWT real, teste de UI com sessão administrativa nem teste de isolamento de arquivos no Storage.
