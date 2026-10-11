@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Search, ShieldCheck, UserRound, Save, Users } from "lucide-react";
+import { Search, ShieldCheck, UserRound, Save, Users, ImagePlus, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -51,7 +51,19 @@ function AdminProfilesPage() {
   const [editing, setEditing] = useState<ProfileRow | null>(null);
   const [draft, setDraft] = useState({ full_name: "", phone: "", avatar_url: "", association_id: "", role: "" });
   const [saving, setSaving] = useState(false);
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const db = supabase as any;
+
+  useEffect(() => {
+    if (!avatarFile) {
+      setAvatarPreview(null);
+      return;
+    }
+    const previewUrl = URL.createObjectURL(avatarFile);
+    setAvatarPreview(previewUrl);
+    return () => URL.revokeObjectURL(previewUrl);
+  }, [avatarFile]);
 
   useEffect(() => {
     let alive = true;
@@ -83,6 +95,7 @@ function AdminProfilesPage() {
   function startEdit(profile: ProfileRow) {
     const firstMembership = profile.memberships[0];
     setEditing(profile);
+    setAvatarFile(null);
     setDraft({
       full_name: profile.full_name ?? "",
       phone: profile.phone ?? "",
@@ -97,10 +110,31 @@ function AdminProfilesPage() {
     if (!editing || !isAdmin) return;
     setSaving(true);
     try {
+      let avatarUrlToSave = draft.avatar_url.trim() || null;
+      if (avatarFile) {
+        const allowedTypes: Record<string, string> = {
+          "image/jpeg": "jpg",
+          "image/png": "png",
+          "image/webp": "webp",
+          "image/gif": "gif",
+        };
+        const extension = allowedTypes[avatarFile.type];
+        if (!extension) throw new Error("Formato inválido. Selecione uma imagem JPG, JPEG, PNG, WEBP ou GIF.");
+        if (avatarFile.size > 2 * 1024 * 1024) throw new Error("A imagem deve ter no máximo 2 MB.");
+        const objectPath = `${editing.user_id}/${Date.now()}-${crypto.randomUUID()}.${extension}`;
+        const { error: uploadError } = await supabase.storage.from("profile-avatars").upload(objectPath, avatarFile, {
+          contentType: avatarFile.type,
+          cacheControl: "3600",
+          upsert: false,
+        });
+        if (uploadError) throw new Error(`Não foi possível enviar a foto: ${uploadError.message}`);
+        avatarUrlToSave = supabase.storage.from("profile-avatars").getPublicUrl(objectPath).data.publicUrl;
+      }
+
       const { error: profileError } = await db.from("profiles").update({
         full_name: draft.full_name.trim() || null,
         phone: draft.phone.trim() || null,
-        avatar_url: draft.avatar_url.trim() || null,
+        avatar_url: avatarUrlToSave,
         updated_at: new Date().toISOString(),
       }).eq("id", editing.user_id);
       if (profileError) throw profileError;
@@ -116,6 +150,7 @@ function AdminProfilesPage() {
       }
       toast.success("Perfil atualizado com sucesso.");
       setEditing(null);
+      setAvatarFile(null);
       await queryClient.invalidateQueries({ queryKey: ["platform-admin-profiles"] });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Não foi possível atualizar o perfil.");
@@ -144,7 +179,35 @@ function AdminProfilesPage() {
     {editing ? <Dialog open={Boolean(editing)} onOpenChange={(open) => { if (!open) setEditing(null); }}><DialogContent><form onSubmit={saveProfile} className="space-y-4"><div className="flex items-center justify-between gap-3"><div><DialogTitle>Editar perfil</DialogTitle><DialogDescription className="break-all">{editing.email} · {editing.user_id}</DialogDescription></div></div>
       <div className="space-y-1"><Label htmlFor="profile-name">Nome completo</Label><Input id="profile-name" maxLength={160} value={draft.full_name} onChange={(e) => setDraft((v) => ({ ...v, full_name: e.target.value }))} /></div>
       <div className="space-y-1"><Label htmlFor="profile-phone">Telefone</Label><Input id="profile-phone" maxLength={40} value={draft.phone} onChange={(e) => setDraft((v) => ({ ...v, phone: e.target.value }))} /></div>
-      <div className="space-y-1"><Label htmlFor="profile-avatar">URL da foto de perfil (opcional)</Label><Input id="profile-avatar" maxLength={2048} type="url" placeholder="https://…" value={draft.avatar_url} onChange={(e) => setDraft((v) => ({ ...v, avatar_url: e.target.value }))} /></div>
+      <div className="space-y-3">
+        <Label htmlFor="profile-avatar-file">Foto de perfil (opcional)</Label>
+        <div className="flex items-center gap-3">
+          <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full border bg-muted">
+            {avatarPreview || draft.avatar_url ? <img src={avatarPreview || draft.avatar_url} alt="Pré-visualização da foto de perfil" className="h-full w-full object-cover" /> : <UserRound className="h-7 w-7 text-muted-foreground" />}
+          </div>
+          <div className="min-w-0 flex-1 space-y-1">
+            <Input id="profile-avatar-file" type="file" accept="image/jpeg,image/png,image/webp,image/gif,.jpg,.jpeg,.png,.webp,.gif" className="cursor-pointer file:mr-3 file:rounded-md file:border-0 file:bg-muted file:px-3 file:py-1 file:text-sm" onChange={(e) => {
+              const file = e.target.files?.[0] ?? null;
+              if (!file) return;
+              const allowed = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+              if (!allowed.includes(file.type)) {
+                toast.error("Formato inválido. Selecione JPG, JPEG, PNG, WEBP ou GIF.");
+                e.currentTarget.value = "";
+                return;
+              }
+              if (file.size > 2 * 1024 * 1024) {
+                toast.error("A imagem deve ter no máximo 2 MB.");
+                e.currentTarget.value = "";
+                return;
+              }
+              setAvatarFile(file);
+            }} />
+            <p className="text-xs text-muted-foreground">JPG, JPEG, PNG, WEBP ou GIF · máximo de 2 MB.</p>
+            {avatarFile ? <div className="flex items-center gap-2 text-xs text-muted-foreground"><ImagePlus className="h-3.5 w-3.5" /><span className="truncate">{avatarFile.name}</span><Button type="button" variant="ghost" size="sm" className="h-6 px-2" onClick={() => setAvatarFile(null)} aria-label="Remover nova foto selecionada"><X className="h-3.5 w-3.5" /> Remover</Button></div> : null}
+          </div>
+        </div>
+        <div className="space-y-1"><Label htmlFor="profile-avatar">Ou informe uma URL de imagem</Label><Input id="profile-avatar" maxLength={2048} type="url" placeholder="https://…" value={draft.avatar_url} onChange={(e) => { setDraft((v) => ({ ...v, avatar_url: e.target.value })); if (avatarFile) setAvatarFile(null); }} /></div>
+      </div>
       {editing.memberships.length > 0 ? <div className="space-y-3 rounded-lg border p-4"><div className="flex items-center gap-2 font-medium"><Users className="h-4 w-4" /> Tipo de perfil na associação</div><div className="space-y-1"><Label htmlFor="profile-association">Associação</Label><select id="profile-association" className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={draft.association_id} onChange={(e) => { const membership = editing.memberships.find((m) => m.association_id === e.target.value); setDraft((v) => ({ ...v, association_id: e.target.value, role: membership?.role ?? "" })); }}><option value="">Selecione a associação</option>{editing.memberships.map((m) => <option key={m.association_id} value={m.association_id}>{m.association_name}</option>)}</select></div><div className="space-y-1"><Label htmlFor="profile-role">Tipo de perfil</Label><select id="profile-role" className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={draft.role} onChange={(e) => setDraft((v) => ({ ...v, role: e.target.value }))} disabled={!draft.association_id}><option value="">Selecione o tipo de perfil</option>{ASSOCIATION_ROLES.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}</select><p className="text-xs text-muted-foreground">A associação precisa manter um administrador. A promoção para administrador será recusada se já houver outro.</p></div></div> : <div className="rounded-lg border border-dashed p-3 text-sm text-muted-foreground">Este usuário ainda não pertence a nenhuma associação. Para definir seu tipo de perfil, primeiro é necessário vinculá-lo a uma associação.</div>}
       <div className="flex justify-end gap-2"><Button type="button" variant="outline" onClick={() => setEditing(null)}>Cancelar</Button><Button type="submit" disabled={saving}>{saving ? "Salvando…" : <><Save className="mr-2 h-4 w-4" /> Salvar alterações</>}</Button></div>
     </form></DialogContent></Dialog> : null}
