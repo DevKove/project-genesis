@@ -6,14 +6,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowRight, Building2, ShieldCheck, Sparkles, Users } from "lucide-react";
+import { ArrowRight, Building2, ShieldCheck, Sparkles, Users, CircleHelp, KeyRound } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { safeInternalPath } from "@/lib/safe-redirect";
 import { buildAppUrl } from "@/lib/app-url";
 
-type Search = { redirect?: string | undefined; association_id?: string | undefined };
+type Search = { redirect?: string | undefined; association_id?: string | undefined; association_required?: string | undefined };
 
 export const Route = createFileRoute("/auth")({
-  validateSearch: (s: Record<string, unknown>): Search => ({ redirect: typeof s["redirect"] === "string" ? s["redirect"] : undefined, association_id: typeof s["association_id"] === "string" ? s["association_id"] : undefined }),
+  validateSearch: (s: Record<string, unknown>): Search => ({ redirect: typeof s["redirect"] === "string" ? s["redirect"] : undefined, association_id: typeof s["association_id"] === "string" ? s["association_id"] : undefined, association_required: typeof s["association_required"] === "string" ? s["association_required"] : undefined }),
   head: () => ({
     meta: [
       { title: "Entrar — Morada360" },
@@ -36,6 +37,9 @@ function AuthPage() {
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [associationCode, setAssociationCode] = useState("");
   const [createNewAssociation, setCreateNewAssociation] = useState(false);
+  const [adminAccess, setAdminAccess] = useState(false);
+  const pendingAssociationId = useRef<string>("");
+  const adminAccessRef = useRef(false);
   const handledSession = useRef<string | null>(null);
 
   useEffect(() => {
@@ -45,8 +49,29 @@ function AuthPage() {
       handledSession.current = user.id;
       // Only process an association explicitly selected during the Google signup flow.
       // Existing Google logins must not be forced into a new membership request based on editable metadata.
-      const requestedAssociationId = association_id && association_id !== "__new__" ? association_id : "";
+      const requestedAssociationId = (association_id && association_id !== "__new__" ? association_id : "") || pendingAssociationId.current;
       let accountApproved = false;
+      let isPlatformAdmin = false;
+      try {
+        const { data: role, error: roleError } = await supabase.from("user_roles").select("role").eq("user_id", user.id).eq("role", "platform_admin").maybeSingle();
+        if (roleError) throw roleError;
+        isPlatformAdmin = Boolean(role);
+      } catch {
+        toast.error("Não foi possível verificar as permissões administrativas.");
+        return;
+      }
+      if (!isPlatformAdmin && !requestedAssociationId) {
+        toast.error("Informe o código de 6 dígitos fornecido pela administração da sua associação.");
+        await supabase.auth.signOut();
+        if (active) void navigate({ to: "/auth", search: { redirect: target, association_required: "1" } });
+        return;
+      }
+      if (adminAccessRef.current && !isPlatformAdmin) {
+        toast.error("Este acesso é exclusivo do administrador principal. Informe o código da sua associação.");
+        await supabase.auth.signOut();
+        if (active) void navigate({ to: "/auth", search: { redirect: target, association_required: "1" } });
+        return;
+      }
       try {
         const { data: profile, error: profileError } = await supabase
           .from("profiles")
@@ -59,10 +84,13 @@ function AuthPage() {
         // until the administrator has approved the account itself.
         if (!accountApproved) return;
 
-        if (requestedAssociationId) {
-          const { error } = await supabase.rpc("request_association_membership", { _association_id: requestedAssociationId });
-          if (error) toast.error("Não foi possível registrar a solicitação de acesso à associação.");
-          else {
+        if (requestedAssociationId && !isPlatformAdmin) {
+          const { data: existingMembership, error: membershipError } = await supabase.from("association_members").select("association_id").eq("user_id", user.id).eq("association_id", requestedAssociationId).maybeSingle();
+          if (membershipError) throw membershipError;
+          if (!existingMembership) {
+            const { error } = await supabase.rpc("request_association_membership", { _association_id: requestedAssociationId });
+            if (error) toast.error("Não foi possível registrar a solicitação de acesso à associação.");
+            else {
             const { data: joinRequest, error: lookupError } = await supabase
               .from("association_join_requests")
               .select("id")
@@ -76,6 +104,7 @@ function AuthPage() {
               });
               if (emailError) toast.info("Sua solicitação foi registrada. O aviso por e-mail pode depender da configuração do serviço; você pode acompanhar o status no sistema.");
             }
+          }
           }
         }
       } catch {
@@ -101,6 +130,16 @@ function AuthPage() {
   async function signIn(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
+    if (!adminAccess) {
+      const code = associationCode.trim();
+      if (!/^\d{6}$/.test(code)) { toast.error("Informe o código de 6 dígitos da sua associação."); return; }
+      const { data: matches, error: lookupError } = await supabase.rpc("lookup_association_by_code", { _code: code });
+      if (lookupError || !matches?.length) { toast.error("Código não encontrado. Confira os 6 dígitos com a administração."); return; }
+      pendingAssociationId.current = matches[0].id;
+    } else {
+      pendingAssociationId.current = "";
+      adminAccessRef.current = true;
+    }
     setLoading(true);
     try {
       const { error } = await supabase.auth.signInWithPassword({
@@ -164,13 +203,13 @@ function AuthPage() {
   }
 
   async function google() {
-    // Existing users sign in without an association code. Codes are required only
-    // when the user is creating an account and requesting membership.
     let requestedAssociationId = "";
-    if (authTab === "signup") {
+    if (adminAccess) {
+      adminAccessRef.current = true;
+    } else if (authTab === "signup") {
       requestedAssociationId = "__new__";
     }
-    if (authTab === "signup" && !createNewAssociation) {
+    if (!adminAccess && (authTab === "login" || (authTab === "signup" && !createNewAssociation))) {
       const code = associationCode.trim();
       if (!/^\d{6}$/.test(code)) {
         toast.error("Informe o código da associação com exatamente 6 dígitos.");
@@ -188,7 +227,7 @@ function AuthPage() {
       // BASE_URL is "/" on a root deployment and "/project-genesis/" on GitHub Pages.
       const callback = new URL(buildAppUrl("/auth", window.location.origin, import.meta.env.BASE_URL));
       callback.searchParams.set("redirect", target);
-      if (requestedAssociationId) callback.searchParams.set("association_id", requestedAssociationId);
+      if (requestedAssociationId && requestedAssociationId !== "__new__") callback.searchParams.set("association_id", requestedAssociationId);
 
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
@@ -268,10 +307,11 @@ function AuthPage() {
               </div>
               <div className="px-6 py-6 sm:px-9 sm:py-8">
                 <div className="mb-5 rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
-                  <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-slate-800"><Building2 className="h-4 w-4 text-emerald-600" /> Vincule sua associação</div>
+                  <div className="mb-2 flex items-center justify-between gap-2"><div className="flex items-center gap-2 text-sm font-semibold text-slate-800"><Building2 className="h-4 w-4 text-emerald-600" /> Vincule sua associação</div><Dialog><DialogTrigger asChild><Button type="button" variant="ghost" size="sm" className="h-8 gap-1 rounded-lg px-2 text-emerald-700"><CircleHelp className="h-4 w-4" /> Ajuda</Button></DialogTrigger><DialogContent className="max-w-lg rounded-2xl"><DialogHeader><DialogTitle className="flex items-center gap-2"><CircleHelp className="h-5 w-5 text-emerald-600" /> Como acessar o Morada360</DialogTitle><DialogDescription>O código direciona sua conta para o grupo correto e mantém os dados de cada associação separados.</DialogDescription></DialogHeader><div className="space-y-4 text-sm leading-6 text-slate-600"><div className="flex gap-3"><span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-emerald-50 font-bold text-emerald-700">1</span><p><strong className="text-slate-900">Peça o código.</strong> Solicite ao administrador da sua associação o código exclusivo de 6 dígitos.</p></div><div className="flex gap-3"><span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-emerald-50 font-bold text-emerald-700">2</span><p><strong className="text-slate-900">Informe o código antes de entrar.</strong> Ele vale para login com Google e para e-mail e senha.</p></div><div className="flex gap-3"><span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-emerald-50 font-bold text-emerald-700">3</span><p><strong className="text-slate-900">Aguarde a aprovação.</strong> Se ainda não for membro, sua solicitação será enviada à administração da associação.</p></div><div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-amber-900"><strong>Acesso administrativo:</strong> somente o administrador principal da plataforma pode entrar sem código. Essa permissão é verificada após a autenticação.</div></div></DialogContent></Dialog></div>
                   <Label htmlFor="auth-association-code" className="text-xs font-medium text-slate-600">Código da associação</Label>
-                  <Input id="auth-association-code" value={associationCode} onChange={(event) => setAssociationCode(event.target.value.replace(/\D/g, "").slice(0, 6))} inputMode="numeric" autoComplete="off" maxLength={6} placeholder="Ex.: 123456" disabled={loading || createNewAssociation} className="mt-1.5 h-11 rounded-xl border-slate-200 bg-white tracking-[0.18em] focus-visible:ring-emerald-500" />
-                  <p className="mt-2 text-xs leading-5 text-slate-500">Solicite os 6 dígitos à administração. O acesso a uma associação existente depende de aprovação.</p>
+                  <Input id="auth-association-code" value={associationCode} onChange={(event) => setAssociationCode(event.target.value.replace(/\D/g, "").slice(0, 6))} inputMode="numeric" autoComplete="off" maxLength={6} placeholder="Ex.: 123456" disabled={loading || createNewAssociation || adminAccess} className="mt-1.5 h-11 rounded-xl border-slate-200 bg-white tracking-[0.18em] focus-visible:ring-emerald-500" />
+                  <p className="mt-2 text-xs leading-5 text-slate-500">Obrigatório para entrar ou criar conta em uma associação existente. O acesso depende de aprovação.</p>
+                  <label className="mt-3 flex cursor-pointer items-start gap-2.5 text-sm text-slate-600"><input type="checkbox" checked={adminAccess} onChange={(event) => { setAdminAccess(event.target.checked); adminAccessRef.current = event.target.checked; if (event.target.checked) setCreateNewAssociation(false); }} disabled={loading} className="mt-0.5 h-4 w-4 shrink-0 accent-emerald-600" /><span className="flex items-start gap-1.5"><KeyRound className="mt-0.5 h-4 w-4 shrink-0 text-emerald-700" /> Acesso do administrador principal (sem código)</span></label>
                   <label className="mt-3 flex cursor-pointer items-start gap-2.5 text-sm text-slate-600"><input type="checkbox" checked={createNewAssociation} onChange={(event) => setCreateNewAssociation(event.target.checked)} disabled={loading} className="mt-0.5 h-4 w-4 shrink-0 accent-emerald-600" /><span>Minha associação ainda não está cadastrada</span></label>
                 </div>
                 <Button variant="outline" className="mb-4 h-11 w-full rounded-xl border-slate-200 bg-white font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50" onClick={google} disabled={loading}>
