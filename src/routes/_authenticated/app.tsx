@@ -80,7 +80,7 @@ function Shell({ email, userId }: { email: string; userId: string }) {
     if (platformAdmin.data) {
       // The association shell must not swallow nested platform-admin routes.
       // Render the child route directly when the platform administrator has no association.
-      if (pathname.includes("/app/admin-aprovacoes") || pathname.includes("/app/admin-perfis")) {
+      if (pathname.includes("/app/admin-aprovacoes") || pathname.includes("/app/admin-perfis") || pathname.includes("/app/nova")) {
         return (
           <div className="min-h-screen bg-background">
             <header className="flex min-h-16 items-center justify-between border-b px-4 sm:px-8">
@@ -97,8 +97,21 @@ function Shell({ email, userId }: { email: string; userId: string }) {
             <ShieldCheck className="mb-4 h-9 w-9 text-primary" />
             <h1 className="text-2xl font-semibold">Administração principal</h1>
             <p className="mt-2 text-sm leading-6 text-muted-foreground">Sua conta tem permissão de administrador da plataforma, mas ainda não está vinculada a uma associação. Você pode analisar e aprovar novos cadastros por aqui.</p>
-            <Link to="/app/admin-aprovacoes" className="mt-5 inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"><ShieldCheck className="h-4 w-4" /> Aprovar cadastros</Link>
-            <Button onClick={() => void supabase.auth.signOut()} className="ml-3 rounded-lg border px-4 py-2 text-sm">Sair</Button>
+            <div className="mt-6 grid gap-3 sm:grid-cols-2">
+              <Link to="/app/admin-aprovacoes" className="flex items-center gap-3 rounded-xl border bg-background p-4 transition-colors hover:border-primary/50 hover:bg-muted/40">
+                <span className="rounded-lg bg-primary/10 p-3 text-primary"><ShieldCheck className="h-5 w-5" /></span>
+                <span><span className="block font-semibold">Aprovar cadastros</span><span className="mt-1 block text-xs text-muted-foreground">Analisar e liberar novas contas</span></span>
+              </Link>
+              <Link to="/app/admin-perfis" className="flex items-center gap-3 rounded-xl border bg-background p-4 transition-colors hover:border-primary/50 hover:bg-muted/40">
+                <span className="rounded-lg bg-primary/10 p-3 text-primary"><UserCog className="h-5 w-5" /></span>
+                <span><span className="block font-semibold">Gerenciar perfis</span><span className="mt-1 block text-xs text-muted-foreground">Consultar e administrar usuários</span></span>
+              </Link>
+              <Link to="/app/nova" className="flex items-center gap-3 rounded-xl border bg-background p-4 transition-colors hover:border-primary/50 hover:bg-muted/40">
+                <span className="rounded-lg bg-primary/10 p-3 text-primary"><Building2 className="h-5 w-5" /></span>
+                <span><span className="block font-semibold">Cadastrar associação</span><span className="mt-1 block text-xs text-muted-foreground">Iniciar o cadastro de uma associação</span></span>
+              </Link>
+            </div>
+            <Button onClick={() => void supabase.auth.signOut()} className="mt-5 rounded-lg border px-4 py-2 text-sm">Sair da conta</Button>
           </section>
         </div>
       );
