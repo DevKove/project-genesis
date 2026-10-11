@@ -146,7 +146,7 @@ function Shell({ email, userId }: { email: string; userId: string }) {
       <div className="mb-6 rounded-2xl border border-white/10 bg-white/[0.05] p-3 shadow-inner">
         <div className="mb-3 flex min-w-0 items-center gap-2">
           {associationLogo ? <img src={associationLogo} alt="" className="h-8 w-8 shrink-0 rounded-md bg-paper object-contain p-1" /> : <Building2 className="h-5 w-5 shrink-0 text-sidebar-primary" />}
-          <div className="min-w-0"><p className="truncate text-sm font-semibold">{current?.associations?.name ?? "Associação"}</p><p className="mt-0.5 text-xs text-sidebar-foreground/80">{ROLE_LABELS[current?.role ?? "morador"] ?? current?.role}</p></div>
+          <div className="min-w-0"><p className="truncate text-sm font-semibold">{current?.associations?.name ?? "Associação"}</p><p className="mt-0.5 text-xs text-sidebar-foreground/80">{platformAdmin.data ? "Administrador da plataforma" : ROLE_LABELS[current?.role ?? "morador"] ?? current?.role}</p></div>
         </div>
         <Select value={current?.association_id} onValueChange={(v) => { setMobileOpen(false); return v === "__new" ? navigate({ to: "/app/nova" }) : setCurrentId(v); }}>
           <SelectTrigger aria-label="Selecionar associação" className="border-white/10 bg-slate-950/50 text-sidebar-foreground focus:ring-emerald-400"><SelectValue /></SelectTrigger>
@@ -162,7 +162,7 @@ function Shell({ email, userId }: { email: string; userId: string }) {
         </div>)}
       </nav>
       <div className="mt-5 border-t border-white/10 pt-4">
-        <div className="flex min-w-0 items-center gap-3 px-2"><span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-sidebar-accent text-sm font-semibold">{email.slice(0, 1).toUpperCase()}</span><div className="min-w-0"><p className="truncate text-xs">{email}</p><p className="mt-1 text-xs text-sidebar-primary">{ROLE_LABELS[current?.role ?? "morador"] ?? current?.role}</p></div></div>
+        <div className="flex min-w-0 items-center gap-3 px-2"><span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-sidebar-accent text-sm font-semibold">{email.slice(0, 1).toUpperCase()}</span><div className="min-w-0"><p className="truncate text-xs">{email}</p><p className="mt-1 text-xs text-sidebar-primary">{platformAdmin.data ? "Administrador da plataforma" : ROLE_LABELS[current?.role ?? "morador"] ?? current?.role}</p></div></div>
         <Button variant="ghost" onClick={() => void supabase.auth.signOut()} className="mt-3 w-full justify-start text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"><LogOut /> Sair</Button>
       </div>
     </>;
@@ -180,7 +180,7 @@ function Shell({ email, userId }: { email: string; userId: string }) {
                 <SheetTitle className="sr-only">Menu Morada360</SheetTitle><SheetDescription className="sr-only">Navegação e seleção da associação</SheetDescription>{navigationContent(true)}
               </SheetContent>
             </Sheet>
-            <div className="min-w-0"><div className="flex items-center gap-2 text-xs text-muted-foreground"><span className="hidden sm:inline">Associação</span><ChevronRight className="hidden h-3 w-3 sm:block" /><span className="truncate">{current.associations?.name ?? "Morada360"}</span></div><p className="mt-1 truncate text-sm font-semibold">{activePage}</p></div>
+            <div className="min-w-0"><div className="flex items-center gap-2 text-xs text-muted-foreground">{platformAdmin.data && <span className="rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 font-medium text-primary">Administração global</span>}<span className="hidden sm:inline">Associação</span><ChevronRight className="hidden h-3 w-3 sm:block" /><span className="truncate">{current.associations?.name ?? "Morada360"}</span></div><p className="mt-1 truncate text-sm font-semibold">{activePage}</p></div>
           </div>
           <NotificationCenter userId={userId} />
         </header>
