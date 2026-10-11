@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Carregando Morada360…</title>
+  <script>
+    (function () {
+      // GitHub Pages serves this document for deep links such as /project-genesis/auth.
+      // Send the original path and query to the application root, which restores the URL.
+      var path = window.location.pathname;
+      var parts = path.split("/").filter(Boolean);
+      var base = parts.length ? "/" + parts[0] + "/" : "/";
+      var destination = path + window.location.search + window.location.hash;
+      window.location.replace(
+        window.location.origin + base + "?__ghpages_redirect=" + encodeURIComponent(destination)
+      );
+    })();
+  </script>
+</head>
+<body>
+  <p>Redirecionando para o Morada360…</p>
+</body>
+</html>
