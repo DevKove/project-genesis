@@ -91,8 +91,8 @@ Esta revisão complementar segue os critérios de `auditoria.md`. Foi feita insp
 
 ### Estado da validação automatizada
 
-- [Quality checks do commit](https://github.com/DevKove/project-genesis/actions/runs/38149854782): em execução no momento do registro.
-- [Deploy GitHub Pages do commit](https://github.com/DevKove/project-genesis/actions/runs/38149854732): em execução no momento do registro.
+- [Quality checks do commit CORS](https://github.com/DevKove/project-genesis/actions/runs/38149854782): concluído com sucesso.
+- [Deploy GitHub Pages do commit CORS](https://github.com/DevKove/project-genesis/actions/runs/38149854732): concluído com sucesso.
 - O workflow Cloudflare foi marcado como ignorado para esse push; portanto, não há evidência de que a função Supabase/Edge tenha sido implantada por esse workflow.
 - O último commit anterior tinha quality checks e deploy GitHub Pages concluídos com sucesso, mas isso não valida a correção CORS recém-introduzida.
 
@@ -109,7 +109,7 @@ Esta revisão complementar segue os critérios de `auditoria.md`. Foi feita insp
 | CORS da função de notificação | Corrigido no código; reteste após implantação pendente |
 | Cabeçalhos HTTP/CSP/HSTS | Não verificado integralmente em respostas da produção |
 | Dependências e cadeia de suprimentos | Arquivo de dependências inspecionado; scanner de vulnerabilidades não executado nesta revisão |
-| Lint, testes e build do commit atual | Aguardando conclusão dos workflows vinculados ao commit |
+| Lint, testes e build do commit CORS | Concluídos com sucesso no workflow vinculado; novo commit de autorização em validação |
 | Testes de carga/estresse e regressão em produção | Não executados; exigem ambiente isolado e contas/dados de teste |
 
 ### Próximas ações prioritárias
@@ -122,3 +122,60 @@ Esta revisão complementar segue os critérios de `auditoria.md`. Foi feita insp
 6. Só classificar como **corrigido e validado** após evidência de reteste; itens sem execução continuam **pendentes** ou **não verificados**.
 
 **Conclusão complementar:** foi corrigida uma configuração CORS permissiva na função de notificações e registrado o estado de validação. A aplicação continua sem certificação de segurança completa; os itens pendentes acima precisam ser testados antes de declarar prontidão para produção.
+
+
+---
+
+## Complemento 2 — revisão adicional de autorização e estado real do ambiente (11/10/2026)
+
+### Achado SEC-FUNC-002 — função de e-mail não verificava aprovação da conta chamadora
+
+- **Severidade:** média.
+- **Evidência:** em `supabase/functions/notify-association-join-request/index.ts`, a função validava a sessão com `auth.getUser(token)` e verificava vínculo/administrador da associação, mas não consultava o estado de aprovação da conta na tabela `profiles` antes de usar o cliente administrativo (service role).
+- **Risco:** uma conta autenticada pendente/rejeitada que ainda conservasse um vínculo de administrador poderia tentar invocar diretamente a função, fora das rotas protegidas da interface.
+- **Correção aplicada:** agora a função consulta `profiles.account_status` para a identidade validada e retorna HTTP 403 quando o perfil não existe, a consulta falha ou o estado não é `approved`. A verificação ocorre no servidor antes de processar o evento.
+- **Commit:** [a25e0fd73f71e2bdc5867b3279e7b601cb836f0c](https://github.com/DevKove/project-genesis/commit/a25e0fd73f71e2bdc5867b3279e7b601cb836f0c).
+- **Validação:** correção estática confirmada no arquivo versionado; build/testes do commit e teste HTTP da função implantada ainda precisam ser confirmados. A listagem de Edge Functions consultada no projeto Supabase não retornou funções implantadas; por isso, não considero o teste de runtime concluído.
+
+### Verificações adicionais concluídas
+
+- **Projeto Supabase:** confirmado que o projeto conectado é `Project-Genesis`, referência `ivajgtokxrzwnspihllr`, estado `ACTIVE_HEALTHY`.
+- **RLS:** consulta direta ao catálogo do PostgreSQL encontrou RLS habilitado em todas as 16 tabelas do schema `public`. A tabela `private.association_admin_handoffs` não tem RLS, mas está no schema privado; suas permissões efetivas devem continuar sendo revistas.
+- **View:** `public.association_member_directory` está configurada com `security_invoker=true` e `security_barrier=true`; SELECT não é concedido ao papel `anon`, e é concedido a `authenticated`.
+- **Buckets de Storage:** `association-documents` (privado, 20 MB), `identity-documents` (privado, 10 MB), `association-logos` (público, 2 MB) e `profile-avatars` (público, 2 MB) estão configurados com listas de MIME types. A autorização de downloads e a correspondência entre MIME e conteúdo real ainda requerem testes de navegador; MIME/extensão não substituem validação de conteúdo.
+- **Configuração versionada:** `.env.production` contém somente `VITE_SUPABASE_URL` e `VITE_SUPABASE_PUBLISHABLE_KEY`. A chave publishable é destinada ao cliente, mas deve continuar protegida por RLS e grants corretos. Não foi identificado `service_role`, `sb_secret_` ou `RESEND_API_KEY` pela busca textual no código indexado; isso não equivale a uma varredura completa de segredos no histórico.
+- **CI:** o workflow Quality checks do commit de documentação `fa83c1f` concluiu com sucesso ([execução](https://github.com/DevKove/project-genesis/actions/runs/38149903090)); o deploy GitHub Pages também concluiu com sucesso ([execução](https://github.com/DevKove/project-genesis/actions/runs/38149903100)). Para o commit `a25e0fd`, os workflows foram iniciados e precisam de resultado final.
+
+### Avisos atuais do Supabase Security Advisor
+
+1. **Proteção contra senhas comprometidas desabilitada — pendente de configuração.** O advisor reportou que o bloqueio de senhas encontradas em vazamentos está desativado. Essa opção deve ser habilitada em Authentication/Password Security no painel do projeto; não alterei a configuração de autenticação remotamente sem uma operação administrativa específica.
+2. **`lookup_association_by_code(text)` como SECURITY DEFINER executável por `anon` — revisar, não remover automaticamente.** A função retorna somente ID, nome, cidade e UF de uma associação ativa mediante código de seis dígitos; a migration mostra validação estrita do formato e `search_path` vazio. O acesso anônimo parece ser parte do fluxo de ingresso por código, portanto revogá-lo sem substituir o fluxo quebraria a funcionalidade. Permanece risco residual de enumeração automatizada de códigos; uma mitigação robusta exige rate limiting no servidor e teste do fluxo alternativo.
+3. **Oito RPCs SECURITY DEFINER executáveis por `authenticated` — revisão por função necessária.** O advisor sinaliza a classe de risco, não prova isoladamente uma falha. A inspeção de algumas funções mostrou verificações de identidade, aprovação e papel; cada RPC ainda precisa de teste negativo com usuário comum, conta não aprovada e conta de outra associação.
+
+### Matriz atualizada de estado
+
+| Critério | Estado |
+|---|---|
+| CORS por allowlist de origem no código | Corrigido; workflow do commit CORS passou; teste de preflight em runtime pendente |
+| Aprovação de conta na função de notificação | Corrigido no código no commit `a25e0fd`; testes automatizados e runtime pendentes |
+| RLS nas tabelas públicas | Corrigido e verificado por consulta de catálogo; testes reais de isolamento multi-tenant ainda pendentes |
+| View de diretório de membros | Configuração `security_invoker` verificada; testes de linha por associação pendentes |
+| Buckets e limites MIME/tamanho | Configuração verificada; uploads/downloads reais e conteúdo malicioso não testados |
+| Senhas comprometidas | Pendente — configuração do painel Supabase |
+| RPCs SECURITY DEFINER | Revisão parcial; não marcar como aprovadas até testar cada fluxo |
+| Segredos e histórico Git | Busca textual limitada sem correspondências óbvias; scanner de histórico integral não executado |
+| Dependências vulneráveis | Pendente — auditoria de dependências não executada |
+| CSP/HSTS/cabeçalhos HTTP em produção | Pendente — inspeção de resposta implantada não realizada |
+| Rate limiting de login, RPC de código e APIs | Não verificado / requer validação e configuração no servidor |
+| E2E, regressão com duas associações e estresse | Pendente |
+
+### Próximas ações de maior prioridade
+
+1. Confirmar os workflows do commit `a25e0fd`; depois verificar se a função está implantada no projeto correto e testar chamadas como conta aprovada, pendente, rejeitada, usuário comum e administrador de outra associação.
+2. Habilitar a proteção contra senhas comprometidas no Supabase Auth.
+3. Criar testes negativos automatizados para as oito RPCs SECURITY DEFINER expostas a usuários autenticados.
+4. Executar scanner dedicado de dependências e de segredos/histórico, sem registrar valores secretos no relatório.
+5. Testar upload/download de cada bucket com usuários de associações distintas e confirmar que arquivos privados não podem ser obtidos por URL pública.
+6. Verificar cabeçalhos HTTP reais e executar testes de autenticação, recuperação, logout, OAuth, rate limiting e carga em ambiente controlado.
+
+**Conclusão:** a auditoria continua parcial. Foram acrescentadas verificações diretas do banco e uma correção adicional de autorização no código da função de notificação. Nenhuma conclusão de auditoria completa deve ser emitida até fechar os testes pendentes e registrar evidências reproduzíveis.
