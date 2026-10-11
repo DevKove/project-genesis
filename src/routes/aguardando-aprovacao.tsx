@@ -21,8 +21,7 @@ function PendingApprovalPage() {
         setStatus("unavailable");
         return;
       }
-      const db = supabase as any;
-      const { data, error } = await db.from("profiles").select("account_status").eq("id", userData.user.id).maybeSingle();
+      const { data, error } = await supabase.from("profiles").select("account_status").eq("id", userData.user.id).maybeSingle();
       if (error || !data) {
         setStatus("unavailable");
         return;
