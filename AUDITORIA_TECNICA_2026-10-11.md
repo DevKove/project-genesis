@@ -22,6 +22,12 @@ Foram revisados os módulos principais do front-end, as migrações, as polític
 8. **Painel inicial:** corrigida a chamada condicional de `useQuery`, que violava as regras de Hooks do React. Os contadores agora usam consultas tipadas e ficam desabilitados enquanto não há associação selecionada.
 9. **Qualidade contínua:** o workflow passou a executar ESLint antes dos testes e do build. As regras de formatação Prettier ficam separadas do lint de correção; o script de formatação permanece disponível para execução explícita.
 
+## Postura de segurança do banco
+
+- **RLS ativo em 16/16 tabelas** do schema público; a consulta não encontrou tabela pública sem RLS.
+- A verificação de funções `SECURITY DEFINER` nos schemas `public` e `private` não encontrou função sem `search_path` fixo.
+- As políticas de leitura/atualização duplicadas apontadas pelo advisor foram consolidadas; os avisos de chaves estrangeiras sem índice foram eliminados.
+
 ## Testes executados
 
 ### Testes de banco em transações revertidas
