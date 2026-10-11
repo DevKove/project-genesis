@@ -143,7 +143,7 @@ function AuthPage() {
         toast.error("Não foi possível criar a conta. Confira os dados e tente novamente.");
         return;
       }
-      toast.success(createNewAssociation ? "Conta criada! Confirme seu e-mail para continuar e cadastrar a associação." : "Conta criada! Confirme seu e-mail. Depois, o administrador da associação precisará aprovar seu acesso.");
+      toast.success(createNewAssociation ? "Conta criada! Confirme seu e-mail e aguarde a aprovação do administrador antes de cadastrar uma associação." : "Conta criada! Confirme seu e-mail e aguarde a aprovação do administrador antes de acessar o sistema.");
     } catch {
       toast.error("Não foi possível criar a conta agora. Verifique sua conexão e tente novamente.");
     } finally {
