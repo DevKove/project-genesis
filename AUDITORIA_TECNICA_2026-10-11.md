@@ -74,3 +74,8 @@ Foram executados em transações com `ROLLBACK`, usando `SET LOCAL ROLE` e a cla
 - Sob `anon`, a leitura direta de `public.associations` foi bloqueada; a chamada pública com código malformado `abc` retornou zero resultados.
 
 Esses são testes de autorização no banco com papéis/claims simulados e transações revertidas. Eles são mais fortes que a revisão estática, mas não substituem E2E HTTP com JWT real, teste de UI com sessão administrativa nem teste de isolamento de arquivos no Storage.
+
+
+### Isolamento de perfil e estado do Storage
+
+Em nova transação revertida, sob `authenticated`, a consulta RLS ao perfil de outro usuário retornou zero linhas; o próprio perfil permaneceu acessível. A consulta de objetos no Storage encontrou somente um objeto no bucket público `association-logos`; não havia objetos nos buckets privados para realizar um teste negativo real de download. Portanto, a política de documentos privados foi revisada estaticamente, mas a autorização de download entre usuários/associações permanece sem teste de objeto real.
