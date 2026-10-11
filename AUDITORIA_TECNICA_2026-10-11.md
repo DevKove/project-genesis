@@ -179,3 +179,17 @@ Esta revisão complementar segue os critérios de `auditoria.md`. Foi feita insp
 6. Verificar cabeçalhos HTTP reais e executar testes de autenticação, recuperação, logout, OAuth, rate limiting e carga em ambiente controlado.
 
 **Conclusão:** a auditoria continua parcial. Foram acrescentadas verificações diretas do banco e uma correção adicional de autorização no código da função de notificação. Nenhuma conclusão de auditoria completa deve ser emitida até fechar os testes pendentes e registrar evidências reproduzíveis.
+
+
+### Atualização de CI após a revisão complementar
+
+Em 11/10/2026, os workflows do commit `a25e0fd73f71e2bdc5867b3279e7b601cb836f0c` terminaram com sucesso:
+- [Quality checks — lint, testes e build](https://github.com/DevKove/project-genesis/actions/runs/38150395033): **success**.
+- [Deploy GitHub Pages](https://github.com/DevKove/project-genesis/actions/runs/38150395088): **success**.
+- Deploy Cloudflare: **skipped**, conforme a condição do workflow.
+
+O commit que atualizou este relatório também passou:
+- [Quality checks](https://github.com/DevKove/project-genesis/actions/runs/38150466024): **success**.
+- [Deploy GitHub Pages](https://github.com/DevKove/project-genesis/actions/runs/38150466039): **success**.
+
+Esses resultados validam lint/testes/build do repositório e a publicação estática. **Não validam o runtime da Edge Function**, porque a listagem do projeto Supabase não apresentou funções implantadas; também não substituem teste HTTP de CORS, teste real de autenticação, varredura completa de dependências/segredos ou teste de carga.
