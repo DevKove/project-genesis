@@ -9,7 +9,7 @@ A consulta posterior de ACLs confirmou:
 - zero sequências do schema `public` com concessões diretas a `anon`;
 - a RPC `lookup_association_by_code(text)` continua com execução anônima intencional para o fluxo de ingresso por código.
 
-Migração: [ver arquivo no GitHub](https://github.com/DevKove/project-genesis/blob/main/supabase/migrations/20261011153000_revoke_anon_public_table_privileges.sql).
+Migração: [ver arquivo no GitHub](https://github.com/DevKove/project-genesis/blob/main/supabase/migrations/20261011152511_revoke_anon_public_table_privileges.sql).
 
 ## Security Advisor
 
@@ -23,3 +23,11 @@ Não removi a RPC pública porque isso pode interromper o fluxo de cadastro ante
 ## Estado
 
 Esta etapa reforçou o menor privilégio e verificou as ACLs após a alteração. A auditoria geral ainda não pode ser declarada concluída: falta habilitar a proteção de senhas comprometidas no painel Supabase, verificar a varredura de segredos no histórico Git, testar headers de produção, validar uploads/downloads com identidades de associações distintas e executar testes E2E/carga em ambiente controlado.
+
+
+## Conferências adicionais
+
+- Consulta ao catálogo confirmou zero tabelas do schema `public` sem RLS habilitado.
+- Todas as tabelas públicas avaliadas tinham ao menos uma política destinada a `authenticated`.
+- Pesquisas no código atual por `SUPABASE_SERVICE_ROLE_KEY`, `BEGIN PRIVATE KEY` e `RESEND_API_KEY` não retornaram correspondências. Isso **não substitui** uma varredura completa do histórico Git nem os alertas do scanner de segredos.
+- A migração aplicada no Supabase está registrada com a versão `20261011152511`; o arquivo do repositório foi renomeado para corresponder exatamente a essa versão e evitar divergência de migrações.
