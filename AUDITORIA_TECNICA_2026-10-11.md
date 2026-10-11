@@ -47,3 +47,18 @@ O deploy do GitHub Pages desse commit também concluiu com sucesso: https://gith
 A pasta `src/test` contém `app-routing.test.tsx` e `setup.ts`. A suíte atual não demonstra testes dedicados de autorização entre associações, alteração de papéis, aprovação de contas, convites, documentos ou funções RPC privilegiadas. Ainda faltam testes E2E com sessões reais.
 
 O Security Advisor ainda aponta `lookup_association_by_code(text)` executável por `anon`, oito funções SECURITY DEFINER executáveis por `authenticated` e proteção contra senhas comprometidas desativada. A função de descoberta parece necessária ao fluxo, mas requer proteção contra tentativas automatizadas. Não considero essas pendências aprovadas.
+
+
+## Continuação da auditoria — verificação de RLS e funções (11/10/2026)
+
+### RLS e privilégios
+Consulta direta ao catálogo do PostgreSQL confirmou RLS habilitado nas 16 tabelas do esquema `public` (0 tabelas sem RLS). As políticas consultadas usam o usuário autenticado e funções auxiliares privadas para delimitar associação/papel; não foi encontrada política com condição literal universal `true` na varredura anterior. Isso não substitui testes com identidades reais.
+
+### Ajuste adicional aplicado
+A função `private.is_assoc_manager(uuid, uuid)` ainda estava configurada com `search_path=public`, diferente das demais funções privilegiadas. Como o corpo usa nomes de objetos qualificados por esquema, apliquei `ALTER FUNCTION ... SET search_path TO ''` no banco e registrei a migração `supabase/migrations/20261011160000_harden_private_manager_helper_search_path.sql`. Consulta posterior confirmou `search_path` vazio tanto nessa função quanto em `private.member_directory_name`.
+
+### Revisão de funções privilegiadas
+As funções `SECURITY DEFINER` em `public` consultadas fixam `search_path` vazio e verificam autenticação/autorizações conforme a operação; as auxiliares de associação e papel estão no esquema `private`, sem execução anônima. O único RPC `SECURITY DEFINER` publicamente executável por `anon` continua sendo `lookup_association_by_code(text)`, que retorna dados básicos de associações ativas para códigos numéricos de seis dígitos. A permissão foi mantida por compatibilidade do fluxo; proteção contra enumeração/rate limiting segue como risco aberto.
+
+### Limites para conclusão definitiva
+O ambiente conectado não disponibiliza configuração do Supabase Auth para ativar proteção contra senhas comprometidas e não há sessão/token de teste para contas reais de administrador, membro comum e membro de outra associação. Assim, não é possível declarar concluídos os testes negativos de autorização, E2E, upload/download cruzado ou a configuração de Auth. Esses pontos são bloqueios explícitos para uma certificação completa, não foram presumidos como aprovados.
