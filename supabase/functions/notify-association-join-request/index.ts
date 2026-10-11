@@ -70,6 +70,20 @@ Deno.serve(async (req) => {
   });
 
   const adminClient = createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession: false, autoRefreshToken: false } });
+
+  // A valid session is not enough: block pending/rejected platform accounts from using this service-role relay.
+  const { data: callerProfile, error: callerProfileError } = await adminClient
+    .from("profiles")
+    .select("account_status")
+    .eq("id", authData.user.id)
+    .maybeSingle();
+  if (callerProfileError || callerProfile?.account_status !== "approved") {
+    return new Response(JSON.stringify({ error: "Approved account required." }), {
+      status: 403,
+      headers: { ...corsHeaders(req), "Content-Type": "application/json" },
+    });
+  }
+
   let payload: { request_id?: string; event?: string };
   try { payload = await req.json(); } catch {
     return new Response(JSON.stringify({ error: "Invalid JSON." }), { status: 400, headers: { ...corsHeaders(req), "Content-Type": "application/json" } });
