@@ -28,7 +28,7 @@ GRANT ALL ON public.account_access_requests TO service_role;
 DROP POLICY IF EXISTS "platform admin reads account requests" ON public.account_access_requests;
 CREATE POLICY "platform admin reads account requests"
   ON public.account_access_requests FOR SELECT TO authenticated
-  USING (public.has_role((SELECT auth.uid()), 'platform_admin'::public.app_role));
+  USING (private.has_role((SELECT auth.uid()), 'platform_admin'::public.app_role));
 
 -- Registration always starts pending. User metadata is used only for display/request
 -- context; it never grants roles or permissions.
@@ -97,7 +97,7 @@ BEGIN
      OR NEW.approved_at IS DISTINCT FROM OLD.approved_at
      OR NEW.approved_by IS DISTINCT FROM OLD.approved_by
      OR NEW.rejection_reason IS DISTINCT FROM OLD.rejection_reason THEN
-    IF NOT public.has_role((SELECT auth.uid()), 'platform_admin'::public.app_role)
+    IF NOT private.has_role((SELECT auth.uid()), 'platform_admin'::public.app_role)
        AND COALESCE(auth.role(), '') <> 'service_role' THEN
       RAISE EXCEPTION 'Somente a administração pode alterar o estado de aprovação da conta'
         USING ERRCODE = '42501';
@@ -139,7 +139,7 @@ DECLARE
   request_row public.account_access_requests;
   normalized_note text;
 BEGIN
-  IF auth.uid() IS NULL OR NOT public.has_role((SELECT auth.uid()), 'platform_admin'::public.app_role) THEN
+  IF auth.uid() IS NULL OR NOT private.has_role((SELECT auth.uid()), 'platform_admin'::public.app_role) THEN
     RAISE EXCEPTION 'Somente o administrador principal pode revisar cadastros'
       USING ERRCODE = '42501';
   END IF;
