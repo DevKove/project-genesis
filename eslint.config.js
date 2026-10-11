@@ -37,4 +37,10 @@ export default tseslint.config(
     },
   },
   eslintPluginPrettier,
+  {
+    rules: {
+      // Formatting is handled by the explicit "format" script; lint should focus on correctness.
+      "prettier/prettier": "off",
+    },
+  },
 );
