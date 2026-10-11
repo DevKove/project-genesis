@@ -1,10 +1,13 @@
-import { createFileRoute, Link, Outlet, useNavigate } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
+import { createFileRoute, Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { AlertTriangle, Building2, ClipboardList, FileText, History, Home, LayoutDashboard, LogOut, Megaphone, Settings, UserCog, Users, ShieldCheck } from "lucide-react";
+import { AlertTriangle, Building2, ClipboardList, FileText, History, Home, LayoutDashboard, LogOut, Megaphone, Settings, UserCog, Users, ShieldCheck, Menu, ChevronRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { AssocProvider, useAssoc } from "@/lib/assoc-context";
 import { isManager, ROLE_LABELS } from "@/lib/roles";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
+import { Sheet, SheetContent, SheetTitle, SheetDescription, SheetTrigger } from "@/components/ui/sheet";
 import { NoAssociationAccess } from "@/components/app/NoAssociationAccess";
 import { NotificationCenter } from "@/components/app/NotificationCenter";
 
@@ -25,6 +28,14 @@ function AppLayout() {
 function Shell({ email, userId }: { email: string; userId: string }) {
   const { memberships, current, setCurrentId, loading, error, refetch } = useAssoc();
   const navigate = useNavigate();
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
+  useEffect(() => {
+    const media = window.matchMedia("(min-width: 768px)");
+    const closeOnDesktop = () => { if (media.matches) setMobileOpen(false); };
+    media.addEventListener("change", closeOnDesktop);
+    return () => media.removeEventListener("change", closeOnDesktop);
+  }, []);
   const platformAdmin = useQuery({
     queryKey: ["platform-admin-role", userId],
     queryFn: async () => {
@@ -58,8 +69,8 @@ function Shell({ email, userId }: { email: string; userId: string }) {
         <div className="w-full max-w-lg rounded-xl border bg-card p-6 shadow-soft">
           <h1 className="text-xl font-semibold">Não foi possível carregar suas associações</h1>
           <p className="mt-2 text-sm text-muted-foreground">Verifique sua conexão e as permissões da conta. Nenhum cadastro será iniciado enquanto esses dados não forem carregados.</p>
-          <button className="mt-5 rounded-lg bg-primary px-4 py-2 text-sm text-primary-foreground disabled:opacity-50" onClick={() => void refetch()}>Tentar novamente</button>
-          <button className="ml-3 mt-5 text-sm text-muted-foreground hover:text-foreground" onClick={() => void supabase.auth.signOut()}>Sair</button>
+          <Button className="mt-5 rounded-lg bg-primary px-4 py-2 text-sm text-primary-foreground disabled:opacity-50" onClick={() => void refetch()}>Tentar novamente</Button>
+          <Button className="ml-3 mt-5 text-sm text-muted-foreground hover:text-foreground" onClick={() => void supabase.auth.signOut()}>Sair</Button>
         </div>
       </div>
     );
@@ -74,7 +85,7 @@ function Shell({ email, userId }: { email: string; userId: string }) {
             <h1 className="text-2xl font-semibold">Administração principal</h1>
             <p className="mt-2 text-sm leading-6 text-muted-foreground">Sua conta tem permissão de administrador da plataforma, mas ainda não está vinculada a uma associação. Você pode analisar e aprovar novos cadastros por aqui.</p>
             <Link to="/app/admin-aprovacoes" className="mt-5 inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"><ShieldCheck className="h-4 w-4" /> Aprovar cadastros</Link>
-            <button onClick={() => void supabase.auth.signOut()} className="ml-3 rounded-lg border px-4 py-2 text-sm">Sair</button>
+            <Button onClick={() => void supabase.auth.signOut()} className="ml-3 rounded-lg border px-4 py-2 text-sm">Sair</Button>
           </section>
         </div>
       );
@@ -99,45 +110,55 @@ function Shell({ email, userId }: { email: string; userId: string }) {
   const visibleNav = nav.filter((item) => (item.to !== "/app/auditoria" && item.to !== "/app/configuracoes") || current.role === "admin" || current.role === "presidente");
   const associationLogo = current.associations?.logo_url;
 
-  return (
-    <div className="flex min-h-screen">
-      <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col bg-sidebar p-4 text-sidebar-foreground md:flex">
-        <div className="mb-6 flex min-w-0 items-center gap-2 px-2 text-lg font-semibold">
-          {associationLogo ? <img src={associationLogo} alt="" className="h-8 w-8 shrink-0 rounded-md bg-white object-contain p-0.5" /> : <Building2 className="h-5 w-5 shrink-0 text-sidebar-primary" />}
-          <span className="truncate">{current.associations?.name ?? "Morada360"}</span>
+  const activePage = visibleNav.find((item) => item.exact ? pathname.replace(/\/$/, "") === item.to : pathname.startsWith(item.to))?.label ?? "Associação";
+  function navigationContent(mobile = false) {
+    return <>
+      <Link to="/app" onClick={() => setMobileOpen(false)} className="mb-7 flex items-center gap-3 px-2 text-xl font-bold">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-sidebar-accent text-sidebar-primary"><Building2 className="h-5 w-5" /></span>
+        Morada360
+      </Link>
+      <div className="mb-6 rounded-lg border border-sidebar-border bg-sidebar-accent/40 p-3">
+        <div className="mb-3 flex min-w-0 items-center gap-2">
+          {associationLogo ? <img src={associationLogo} alt="" className="h-8 w-8 shrink-0 rounded-md bg-paper object-contain p-1" /> : <Building2 className="h-5 w-5 shrink-0 text-sidebar-primary" />}
+          <div className="min-w-0"><p className="truncate text-sm font-semibold">{current?.associations?.name ?? "Associação"}</p><p className="mt-0.5 text-xs text-sidebar-foreground/80">{ROLE_LABELS[current?.role ?? "morador"] ?? current?.role}</p></div>
         </div>
-        <Select value={current.association_id} onValueChange={(v) => (v === "__new" ? navigate({ to: "/app/nova" }) : setCurrentId(v))}>
-          <SelectTrigger className="mb-6 border-sidebar-border bg-sidebar-accent text-sidebar-accent-foreground"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            {memberships.map((m) => <SelectItem key={m.association_id} value={m.association_id}>{m.associations?.name ?? "Associação sem nome"}</SelectItem>)}
-            <SelectItem value="__new">+ Nova associação</SelectItem>
-          </SelectContent>
+        <Select value={current?.association_id} onValueChange={(v) => { setMobileOpen(false); return v === "__new" ? navigate({ to: "/app/nova" }) : setCurrentId(v); }}>
+          <SelectTrigger aria-label="Selecionar associação" className="border-sidebar-border bg-sidebar text-sidebar-foreground"><SelectValue /></SelectTrigger>
+          <SelectContent>{memberships.map((m) => <SelectItem key={m.association_id} value={m.association_id}>{m.associations?.name ?? "Associação sem nome"}</SelectItem>)}<SelectItem value="__new">+ Nova associação</SelectItem></SelectContent>
         </Select>
-        <nav className="flex-1 space-y-1 overflow-y-auto">
-          {visibleNav.map((n) => (
-            <Link key={n.to} to={n.to} activeOptions={{ exact: n.exact }} className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground" activeProps={{ className: "bg-sidebar-accent text-sidebar-accent-foreground font-semibold" }}>
-              <n.icon className="h-4 w-4 shrink-0" /> {n.label}{n.to === "/app/membros" && current.role === "admin" && (pendingJoinRequests.data ?? 0) > 0 ? <span className="ml-auto rounded-full bg-destructive px-2 py-0.5 text-[10px] font-bold text-destructive-foreground">{pendingJoinRequests.data}</span> : null}
-            </Link>
-          ))}
-        </nav>
-        <div className="border-t border-sidebar-border pt-4 text-xs">
-          <div className="truncate px-2">{email}</div>
-          <div className="px-2 text-sidebar-primary">{ROLE_LABELS[current.role] ?? current.role}</div>
-          <button onClick={() => void supabase.auth.signOut()} className="mt-3 flex w-full items-center gap-2 rounded-lg px-2 py-2 hover:bg-sidebar-accent"><LogOut className="h-4 w-4" /> Sair</button>
-        </div>
-      </aside>
+      </div>
+      <nav aria-label={mobile ? "Navegação móvel" : "Navegação principal"} className="min-h-0 flex-1 space-y-1 overflow-y-auto">
+        {visibleNav.map((n, index) => <div key={n.to}>
+          {(index === 0 || n.to === "/app/membros" || n.to === "/app/admin-aprovacoes") && <p className="px-3 pb-2 pt-4 text-[11px] font-semibold uppercase text-sidebar-foreground/75">{index === 0 ? "Associação" : n.to === "/app/membros" ? "Administração" : "Plataforma"}</p>}
+          <Link to={n.to} activeOptions={{ exact: n.exact }} onClick={() => setMobileOpen(false)} className="transition-ui flex min-h-11 items-center gap-3 rounded-md border-l-2 border-transparent px-3 py-2 text-sm text-sidebar-foreground/90 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground" activeProps={{ className: "border-sidebar-primary bg-sidebar-accent text-sidebar-accent-foreground font-semibold" }}>
+            <n.icon className="h-4 w-4 shrink-0" /><span>{n.label}</span>{n.to === "/app/membros" && current?.role === "admin" && (pendingJoinRequests.data ?? 0) > 0 ? <span className="ml-auto rounded-sm bg-destructive px-2 py-0.5 text-xs font-bold text-destructive-foreground">{pendingJoinRequests.data}</span> : null}
+          </Link>
+        </div>)}
+      </nav>
+      <div className="mt-5 border-t border-sidebar-border pt-4">
+        <div className="flex min-w-0 items-center gap-3 px-2"><span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-sidebar-accent text-sm font-semibold">{email.slice(0, 1).toUpperCase()}</span><div className="min-w-0"><p className="truncate text-xs">{email}</p><p className="mt-1 text-xs text-sidebar-primary">{ROLE_LABELS[current?.role ?? "morador"] ?? current?.role}</p></div></div>
+        <Button variant="ghost" onClick={() => void supabase.auth.signOut()} className="mt-3 w-full justify-start text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"><LogOut /> Sair</Button>
+      </div>
+    </>;
+  }
+  return (
+    <div className="flex min-h-screen bg-background">
+      <a href="#app-main" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-md focus:bg-card focus:p-3">Ir para o conteúdo</a>
+      <aside className="sticky top-0 hidden h-dvh w-[var(--sidebar-width)] shrink-0 flex-col border-r border-sidebar-border bg-sidebar p-4 text-sidebar-foreground md:flex">{navigationContent()}</aside>
       <div className="min-w-0 flex-1">
-        <div className="flex items-center justify-between gap-3 border-b bg-card px-4 py-3 md:hidden">
-          <div className="flex min-w-0 items-center gap-2">
-            {associationLogo ? <img src={associationLogo} alt="" className="h-8 w-8 shrink-0 rounded-md object-contain" /> : null}
-            <span className="truncate font-semibold">{current.associations?.name ?? "Morada360"}</span>
+        <header className="grid min-h-20 grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b border-border bg-card px-4 sm:px-6 lg:px-10">
+          <div className="flex min-w-0 items-center gap-3">
+            <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
+              <SheetTrigger asChild><Button variant="outline" size="icon" className="shrink-0 md:hidden" aria-label="Abrir navegação"><Menu /></Button></SheetTrigger>
+              <SheetContent side="left" className="flex w-[min(20rem,calc(100vw-1rem))] flex-col border-sidebar-border bg-sidebar p-4 text-sidebar-foreground">
+                <SheetTitle className="sr-only">Menu Morada360</SheetTitle><SheetDescription className="sr-only">Navegação e seleção da associação</SheetDescription>{navigationContent(true)}
+              </SheetContent>
+            </Sheet>
+            <div className="min-w-0"><div className="flex items-center gap-2 text-xs text-muted-foreground"><span className="hidden sm:inline">Associação</span><ChevronRight className="hidden h-3 w-3 sm:block" /><span className="truncate">{current.associations?.name ?? "Morada360"}</span></div><p className="mt-1 truncate text-sm font-semibold">{activePage}</p></div>
           </div>
-          <select aria-label="Navegação" className="max-w-[45%] rounded border bg-background px-2 py-2 text-sm" value="" onChange={(e) => e.target.value && navigate({ to: e.target.value as any })}>
-            <option value="">Menu</option>
-            {visibleNav.map((n) => <option key={n.to} value={n.to}>{n.label}{n.to === "/app/membros" && current.role === "admin" && (pendingJoinRequests.data ?? 0) > 0 ? ` (${pendingJoinRequests.data})` : ""}</option>)}
-          </select>
-        </div>
-        <main className="mx-auto max-w-6xl p-4 sm:p-6 md:p-10"><div className="mb-4 flex justify-end"><NotificationCenter userId={userId} /></div><Outlet key={current.association_id} /></main>
+          <NotificationCenter userId={userId} />
+        </header>
+        <main id="app-main" tabIndex={-1} className="app-content mx-auto max-w-[1440px] px-4 py-6 sm:px-6 sm:py-8 lg:px-10 lg:py-10"><Outlet key={current.association_id} /></main>
       </div>
     </div>
   );

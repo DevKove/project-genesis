@@ -180,7 +180,7 @@ function AssociationSettingsPage() {
   if (!current) return null;
   if (!canEdit) {
     return (
-      <div className="rounded-xl border bg-card p-6 sm:p-8">
+      <div className="rounded-lg border bg-card p-6 sm:p-8">
         <h1 className="text-xl font-semibold">Acesso restrito</h1>
         <p className="mt-2 text-sm text-muted-foreground">Somente administradores e presidentes podem alterar os dados institucionais da associação.</p>
       </div>
@@ -194,10 +194,10 @@ function AssociationSettingsPage() {
       <PageHeader title="Configurações" description="Gerencie a identidade visual, os dados cadastrais e as informações de contato da associação." />
       {settings.isError && <div role="alert" className="mb-4 rounded-lg border border-destructive/40 p-4 text-sm">Não foi possível carregar as configurações. <Button variant="link" className="px-0" onClick={() => void settings.refetch()}>Tentar novamente</Button></div>}
       {settings.isLoading ? (
-        <div className="rounded-xl border bg-card p-8 text-center text-sm text-muted-foreground">Carregando dados da associação…</div>
+        <div className="rounded-lg border bg-card p-8 text-center text-sm text-muted-foreground">Carregando dados da associação…</div>
       ) : settings.data ? (
         <form key={settings.data.id} onSubmit={saveSettings} className="w-full max-w-4xl space-y-5 sm:space-y-6">
-          <section className="rounded-xl border bg-card p-4 shadow-soft sm:p-6">
+          <section className="rounded-lg border bg-card p-4 shadow-soft sm:p-6">
             <div className="mb-5 flex items-center gap-3 border-b pb-4">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-primary/10 text-primary">
                 {currentLogo ? <img src={currentLogo} alt="Logo da associação" className="h-full w-full object-contain" /> : <Building2 className="h-5 w-5" />}
@@ -205,7 +205,7 @@ function AssociationSettingsPage() {
               <div className="min-w-0"><h2 className="font-semibold">Identidade visual</h2><p className="text-sm text-muted-foreground">Personalize a marca exibida no ambiente da associação.</p></div>
             </div>
             <div className="grid gap-5 sm:grid-cols-[180px_1fr] sm:items-center">
-              <div className="flex min-h-36 items-center justify-center rounded-xl border border-dashed bg-muted/30 p-4">
+              <div className="flex min-h-36 items-center justify-center rounded-lg border border-dashed bg-muted/30 p-4">
                 {currentLogo ? <img src={currentLogo} alt="Pré-visualização da logo" className="max-h-32 max-w-full object-contain" /> : <div className="text-center text-muted-foreground"><ImagePlus className="mx-auto mb-2 h-8 w-8" /><span className="text-sm">Nenhuma logo enviada</span></div>}
               </div>
               <div className="space-y-3">
@@ -217,7 +217,7 @@ function AssociationSettingsPage() {
             </div>
           </section>
 
-          <section className="rounded-xl border bg-card p-4 shadow-soft sm:p-6">
+          <section className="rounded-lg border bg-card p-4 shadow-soft sm:p-6">
             <div className="border-b pb-4">
               <h2 className="font-semibold">Código da associação</h2>
               <p className="mt-1 text-sm text-muted-foreground">Compartilhe este código de 6 dígitos com quem solicitar acesso à AMBRAS. A entrada continua sujeita à aprovação administrativa.</p>
@@ -232,7 +232,8 @@ function AssociationSettingsPage() {
                 className="w-full sm:w-auto"
                 onClick={async () => {
                   try {
-                    await navigator.clipboard.writeText(settings.data!.association_code);
+                    if (!settings.data) return;
+                    await navigator.clipboard.writeText(settings.data.association_code);
                     toast.success("Código copiado.");
                   } catch {
                     toast.error("Não foi possível copiar automaticamente. Selecione e copie o código.");
@@ -244,7 +245,7 @@ function AssociationSettingsPage() {
             </div>
           </section>
 
-          <section className="rounded-xl border bg-card p-4 shadow-soft sm:p-6">
+          <section className="rounded-lg border bg-card p-4 shadow-soft sm:p-6">
             <div className="mb-5 border-b pb-4"><h2 className="font-semibold">Dados da associação</h2><p className="mt-1 text-sm text-muted-foreground">Informações oficiais e nome de exibição.</p></div>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="sm:col-span-2"><Label htmlFor="association-name">Nome oficial *</Label><Input id="association-name" name="name" required minLength={3} maxLength={120} defaultValue={settings.data.name} /></div>
@@ -253,7 +254,7 @@ function AssociationSettingsPage() {
             </div>
           </section>
 
-          <section className="rounded-xl border bg-card p-4 shadow-soft sm:p-6">
+          <section className="rounded-lg border bg-card p-4 shadow-soft sm:p-6">
             <div className="mb-5 border-b pb-4"><h2 className="font-semibold">Contato</h2><p className="mt-1 text-sm text-muted-foreground">Canais para comunicação com moradores, prestadores e fornecedores.</p></div>
             <div className="grid gap-4 sm:grid-cols-2">
               <div><Label htmlFor="association-email">E-mail institucional</Label><Input id="association-email" name="email" type="email" autoComplete="email" maxLength={254} defaultValue={settings.data.email ?? ""} placeholder="contato@associacao.com.br" /></div>
@@ -261,24 +262,24 @@ function AssociationSettingsPage() {
             </div>
           </section>
 
-          <section className="rounded-xl border bg-card p-4 shadow-soft sm:p-6">
+          <section className="rounded-lg border bg-card p-4 shadow-soft sm:p-6">
             <div className="mb-5 border-b pb-4"><h2 className="font-semibold">Endereço</h2><p className="mt-1 text-sm text-muted-foreground">Endereço administrativo ou correspondência oficial.</p></div>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="sm:col-span-2"><Label htmlFor="association-address">Logradouro, número e complemento</Label><Input id="association-address" name="address" maxLength={200} autoComplete="street-address" defaultValue={settings.data.address ?? ""} placeholder="Rua, número, sala ou complemento" /></div>
               <div><Label htmlFor="association-zip">CEP</Label><Input id="association-zip" name="zip_code" inputMode="numeric" autoComplete="postal-code" maxLength={9} defaultValue={settings.data.zip_code ?? ""} placeholder="00000-000" /></div>
               <div><Label htmlFor="association-city">Cidade</Label><Input id="association-city" name="city" maxLength={120} autoComplete="address-level2" defaultValue={settings.data.city ?? ""} /></div>
               <div><Label htmlFor="association-state">Estado (UF)</Label><Input id="association-state" name="state" maxLength={2} autoCapitalize="characters" autoComplete="address-level1" defaultValue={settings.data.state ?? ""} placeholder="SP" /></div>
-              <div><Label>Status cadastral</Label><div className="flex min-h-10 items-center gap-2 text-sm"><span className="h-2.5 w-2.5 rounded-full bg-emerald-500" /><span>{settings.data.status || "Não informado"}</span><span className="text-muted-foreground">(gerenciado pelo sistema)</span></div></div>
+              <div><Label>Status cadastral</Label><div className="flex min-h-10 items-center gap-2 text-sm"><span className="h-2.5 w-2.5 rounded-full bg-success" /><span>{settings.data.status || "Não informado"}</span><span className="text-muted-foreground">(gerenciado pelo sistema)</span></div></div>
             </div>
           </section>
 
-          <div className="sticky bottom-2 z-10 flex flex-col-reverse gap-2 rounded-xl border bg-background/95 p-3 shadow-lg backdrop-blur sm:static sm:flex-row sm:justify-end sm:border-0 sm:bg-transparent sm:p-0 sm:shadow-none">
+          <div className="sticky bottom-2 z-10 flex flex-col-reverse gap-2 rounded-lg border bg-background/95 p-3 shadow-lg backdrop-blur sm:static sm:flex-row sm:justify-end sm:border-0 sm:bg-transparent sm:p-0 sm:shadow-none">
             <Button type="button" variant="outline" className="w-full sm:w-auto" disabled={saving} onClick={() => { setSelectedLogo(null); setRemoveLogo(false); void settings.refetch(); }}>Descartar alterações</Button>
             <Button type="submit" className="w-full sm:w-auto" disabled={saving || settings.isLoading}><Save className="mr-2 h-4 w-4" />{saving ? "Salvando…" : "Salvar configurações"}</Button>
           </div>
         </form>
       ) : (
-        <div className="rounded-xl border bg-card p-6 text-sm text-muted-foreground">Os dados desta associação não estão disponíveis.</div>
+        <div className="rounded-lg border bg-card p-6 text-sm text-muted-foreground">Os dados desta associação não estão disponíveis.</div>
       )}
     </>
   );

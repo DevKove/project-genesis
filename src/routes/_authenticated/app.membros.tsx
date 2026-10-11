@@ -290,7 +290,7 @@ function MembersPage() {
       />
 
       {canManageMembers && associationCode.data && (
-        <section className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-card p-4">
+        <section className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-card p-4">
           <div>
             <h2 className="font-semibold">Código da associação</h2>
             <p className="mt-1 text-sm text-muted-foreground">Compartilhe este código de 6 dígitos com quem precisa solicitar acesso.</p>
@@ -308,7 +308,7 @@ function MembersPage() {
       {associationId && <JoinRequestsPanel associationId={associationId} userId={userId} canManage={role === "admin"} />}
 
       {createdInvite && (
-        <section className="mb-6 space-y-3 rounded-xl border border-primary/30 bg-primary/5 p-5">
+        <section className="mb-6 space-y-3 rounded-lg border border-primary/30 bg-primary/5 p-5">
           <div className="flex items-start gap-3">
             <ShieldCheck className="mt-0.5 h-5 w-5 text-primary" />
             <div className="min-w-0 flex-1">
@@ -325,7 +325,7 @@ function MembersPage() {
       )}
 
       {inviteFormOpen && canInvite && (
-        <form onSubmit={createInvitation} className="mb-6 space-y-4 rounded-xl border bg-card p-5 shadow-soft">
+        <form onSubmit={createInvitation} className="mb-6 space-y-4 rounded-lg border bg-card p-5 shadow-soft">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold">Convidar para a associação</h2>
             <Button type="button" variant="ghost" size="icon" aria-label="Fechar formulário de convite" onClick={() => setInviteFormOpen(false)}><X className="h-4 w-4" /></Button>
@@ -368,7 +368,7 @@ function MembersPage() {
           <span className="text-sm text-muted-foreground">{totalMembers} membro(s)</span>
         </div>
         {members.isError && <div role="alert" className="mb-4 rounded-lg border border-destructive/40 p-4 text-sm">Não foi possível carregar os membros. <Button variant="link" className="px-0" onClick={() => void members.refetch()}>Tentar novamente</Button></div>}
-        <div className="overflow-hidden rounded-xl border bg-card">
+        <div className="overflow-hidden rounded-lg border bg-card">
           {members.isLoading ? <p className="p-8 text-center text-sm text-muted-foreground">Carregando membros…</p> : members.data?.items.length ? (
             <div className="overflow-x-auto">
               <table className="w-full min-w-[780px] text-left text-sm">
@@ -396,7 +396,7 @@ function MembersPage() {
             </div>
           ) : <EmptyState><p>Nenhum membro encontrado.</p></EmptyState>}
         </div>
-        <div className="mt-3 flex items-center justify-between gap-3 text-sm text-muted-foreground">
+        <div className="page-pagination mt-5 flex items-center justify-between gap-3 border-t border-border pt-4 text-sm text-muted-foreground">
           <span>Página {page + 1} de {totalPages}</span>
           <div className="flex items-center gap-2">
             <Button variant="outline" size="sm" disabled={page === 0 || members.isLoading} onClick={() => setPage((value) => Math.max(0, value - 1))}><ChevronLeft className="mr-1 h-4 w-4" /> Anterior</Button>
@@ -409,7 +409,7 @@ function MembersPage() {
         <section>
           <div className="mb-3 flex items-center justify-between gap-3"><h2 className="text-xl font-semibold">Convites</h2><span className="text-sm text-muted-foreground">{invitations.data?.length ?? 0} registro(s)</span></div>
           {invitations.isError && <div role="alert" className="mb-4 rounded-lg border border-destructive/40 p-4 text-sm">Não foi possível carregar os convites. <Button variant="link" className="px-0" onClick={() => void invitations.refetch()}>Tentar novamente</Button></div>}
-          <div className="overflow-hidden rounded-xl border bg-card">
+          <div className="overflow-hidden rounded-lg border bg-card">
             {invitations.isLoading ? <p className="p-8 text-center text-sm text-muted-foreground">Carregando convites…</p> : invitations.data?.length ? (
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[760px] text-left text-sm">
@@ -424,7 +424,7 @@ function MembersPage() {
                         <tr key={invite.id} className="hover:bg-muted/20">
                           <td className="px-4 py-3 font-medium">{invite.email}</td>
                           <td className="px-4 py-3">{ROLE_LABELS[invite.role] ?? invite.role}</td>
-                          <td className="px-4 py-3"><span className={expired || invite.status === "cancelado" ? "rounded-full bg-muted px-2.5 py-1 text-xs" : invite.status === "aceito" ? "rounded-full bg-emerald-500/10 px-2.5 py-1 text-xs text-emerald-700" : "rounded-full bg-amber-500/10 px-2.5 py-1 text-xs"}>{statusLabel}</span></td>
+                          <td className="px-4 py-3"><span className={expired || invite.status === "cancelado" ? "rounded-full bg-muted px-2.5 py-1 text-xs" : invite.status === "aceito" ? "rounded-full bg-success-subtle px-2.5 py-1 text-xs text-success" : "rounded-full bg-warning-subtle px-2.5 py-1 text-xs"}>{statusLabel}</span></td>
                           <td className="px-4 py-3 text-muted-foreground">{new Date(invite.expires_at).toLocaleDateString("pt-BR")}</td>
                           <td className="px-4 py-3"><div className="flex justify-end gap-1">
                             {invite.status === "pendente" && !expired && <Button variant="ghost" size="icon" aria-label={`Copiar convite para ${invite.email}`} onClick={() => { setCreatedInvite({ email: invite.email, link: link.toString(), expiresAt: invite.expires_at }); window.scrollTo({ top: 0, behavior: "smooth" }); }}><Copy className="h-4 w-4" /></Button>}
