@@ -150,7 +150,7 @@ function IncidentsPage() {
       />
 
       {formOpen && (
-        <form onSubmit={createIncident} className="mb-6 space-y-4 rounded-xl border bg-card p-5 shadow-soft">
+        <form onSubmit={createIncident} className="mb-6 space-y-4 rounded-lg border bg-card p-5 shadow-soft">
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
               <Label htmlFor="incident-title">Título *</Label>
@@ -180,7 +180,7 @@ function IncidentsPage() {
         </form>
       )}
 
-      <div className="mb-5 grid gap-3 sm:grid-cols-[1fr_220px]">
+      <div className="mb-5 grid gap-3 sm:grid-cols-[minmax(0,1fr)_220px]">
         <div className="relative">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input className="pl-9" aria-label="Buscar ocorrência" placeholder="Buscar pelo título…" value={search} onChange={(event) => { setSearch(event.target.value); setPage(0); }} />
@@ -198,7 +198,7 @@ function IncidentsPage() {
         </div>
       )}
 
-      <div className="overflow-hidden rounded-xl border bg-card">
+      <div className="overflow-hidden rounded-lg border bg-card">
         {incidents.isLoading ? (
           <p className="p-8 text-center text-sm text-muted-foreground">Carregando ocorrências…</p>
         ) : incidents.data?.items.length ? (
@@ -242,7 +242,7 @@ function IncidentsPage() {
         )}
       </div>
 
-      <div className="mt-4 flex items-center justify-between gap-3 text-sm text-muted-foreground">
+      <div className="page-pagination mt-5 flex items-center justify-between gap-3 border-t border-border pt-4 text-sm text-muted-foreground">
         <span>{total} ocorrência(s)</span>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" disabled={page === 0 || incidents.isLoading} onClick={() => setPage((value) => Math.max(0, value - 1))}><ChevronLeft className="mr-1 h-4 w-4" /> Anterior</Button>

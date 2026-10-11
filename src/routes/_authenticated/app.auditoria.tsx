@@ -72,7 +72,7 @@ function AuditPage() {
   if (!current) return null;
   if (!canReadAudit) {
     return (
-      <div className="rounded-xl border bg-card p-8">
+      <div className="rounded-lg border bg-card p-8">
         <h1 className="text-xl font-semibold">Acesso restrito</h1>
         <p className="mt-2 text-sm text-muted-foreground">O histórico de auditoria está disponível para administradores e presidentes autorizados da associação.</p>
       </div>
@@ -111,7 +111,7 @@ function AuditPage() {
         </div>
       )}
 
-      <div className="overflow-hidden rounded-xl border bg-card">
+      <div className="overflow-hidden rounded-lg border bg-card">
         {audit.isLoading ? (
           <p className="p-8 text-center text-sm text-muted-foreground">Carregando histórico…</p>
         ) : audit.data?.items.length ? (
@@ -146,7 +146,7 @@ function AuditPage() {
         )}
       </div>
 
-      <div className="mt-4 flex items-center justify-between gap-3 text-sm text-muted-foreground">
+      <div className="page-pagination mt-5 flex items-center justify-between gap-3 border-t border-border pt-4 text-sm text-muted-foreground">
         <span>{total} evento(s)</span>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" disabled={page === 0 || audit.isLoading} onClick={() => setPage((value) => Math.max(0, value - 1))}><ChevronLeft className="mr-1 h-4 w-4" /> Anterior</Button>

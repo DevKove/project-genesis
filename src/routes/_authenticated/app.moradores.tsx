@@ -229,7 +229,7 @@ function ResidentsPage() {
   if (!current) return null;
   if (!manager) {
     return (
-      <div className="rounded-xl border bg-card p-8">
+      <div className="rounded-lg border bg-card p-8">
         <h1 className="text-xl font-semibold">Acesso restrito</h1>
         <p className="mt-2 text-sm text-muted-foreground">A gestão de moradores está disponível apenas para os responsáveis autorizados da associação.</p>
       </div>
@@ -266,7 +266,7 @@ function ResidentsPage() {
       </div>
 
       {formOpen && (
-        <form key={editing?.id ?? "new"} onSubmit={saveResident} className="mb-6 space-y-4 rounded-xl border bg-card p-5 shadow-soft">
+        <form key={editing?.id ?? "new"} onSubmit={saveResident} className="mb-6 space-y-4 rounded-lg border bg-card p-5 shadow-soft">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold">{editing ? "Editar morador" : "Novo morador"}</h2>
             <Button type="button" variant="ghost" size="icon" aria-label="Fechar formulário" onClick={() => { setFormOpen(false); setEditing(null); }}><X className="h-4 w-4" /></Button>
@@ -302,7 +302,7 @@ function ResidentsPage() {
         </div>
       )}
 
-      <div className="overflow-hidden rounded-xl border bg-card">
+      <div className="overflow-hidden rounded-lg border bg-card">
         {residents.isLoading ? (
           <p className="p-8 text-center text-sm text-muted-foreground">Carregando moradores…</p>
         ) : residents.data?.items.length ? (
@@ -319,8 +319,8 @@ function ResidentsPage() {
                     <td className="px-4 py-3"><div>{resident.email ?? "—"}</div><div className="text-xs text-muted-foreground">{resident.phone ?? ""}</div></td>
                     <td className="px-4 py-3">{unitLabel(resident.unit_id)}</td>
                     <td className="px-4 py-3">{RELATION_LABELS[resident.relation] ?? resident.relation}</td>
-                    <td className="px-4 py-3"><span className={resident.is_active ? "rounded-full bg-emerald-500/10 px-2.5 py-1 text-xs text-emerald-700" : "rounded-full bg-muted px-2.5 py-1 text-xs text-muted-foreground"}>{resident.is_active ? "Ativo" : "Inativo"}</span></td>
-                    <td className="px-4 py-3"><div className="flex justify-end gap-1">{resident.identity_document_path && <Button variant="ghost" size="icon" aria-label="Abrir documento do morador" onClick={() => void openIdentityDocument(resident.identity_document_path!)}><FileText className="h-4 w-4" /></Button>}<Button variant="ghost" size="icon" aria-label={`Editar morador ${resident.full_name}`} onClick={() => startEdit(resident)}><Pencil className="h-4 w-4" /></Button><Button variant="ghost" size="icon" aria-label={resident.is_active ? "Desativar morador" : "Reativar morador"} disabled={changingStatus === resident.id} onClick={() => void toggleActive(resident)}>{resident.is_active ? <UserRoundX className="h-4 w-4 text-destructive" /> : <CheckCircle2 className="h-4 w-4 text-emerald-600" />}</Button></div></td>
+                    <td className="px-4 py-3"><span className={resident.is_active ? "rounded-full bg-success-subtle px-2.5 py-1 text-xs text-success" : "rounded-full bg-muted px-2.5 py-1 text-xs text-muted-foreground"}>{resident.is_active ? "Ativo" : "Inativo"}</span></td>
+                    <td className="px-4 py-3"><div className="flex justify-end gap-1">{resident.identity_document_path && <Button variant="ghost" size="icon" aria-label="Abrir documento do morador" onClick={() => { if (resident.identity_document_path) void openIdentityDocument(resident.identity_document_path); }}><FileText className="h-4 w-4" /></Button>}<Button variant="ghost" size="icon" aria-label={`Editar morador ${resident.full_name}`} onClick={() => startEdit(resident)}><Pencil className="h-4 w-4" /></Button><Button variant="ghost" size="icon" aria-label={resident.is_active ? "Desativar morador" : "Reativar morador"} disabled={changingStatus === resident.id} onClick={() => void toggleActive(resident)}>{resident.is_active ? <UserRoundX className="h-4 w-4 text-destructive" /> : <CheckCircle2 className="h-4 w-4 text-success" />}</Button></div></td>
                   </tr>
                 ))}
               </tbody>
@@ -334,7 +334,7 @@ function ResidentsPage() {
         )}
       </div>
 
-      <div className="mt-4 flex items-center justify-between gap-3 text-sm text-muted-foreground">
+      <div className="page-pagination mt-5 flex items-center justify-between gap-3 border-t border-border pt-4 text-sm text-muted-foreground">
         <span>{total} morador(es)</span>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" disabled={page === 0 || residents.isLoading} onClick={() => setPage((value) => Math.max(0, value - 1))}><ChevronLeft className="mr-1 h-4 w-4" /> Anterior</Button>

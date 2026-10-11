@@ -101,23 +101,23 @@ function AccountApprovalsPage() {
   }
 
   if (isPlatformAdmin === null) return <div className="p-8 text-sm text-muted-foreground">Verificando permissões administrativas…</div>;
-  if (!isPlatformAdmin) return <section className="rounded-xl border bg-card p-8"><ShieldX className="mb-3 h-8 w-8 text-destructive" /><h1 className="text-xl font-semibold">Acesso restrito</h1><p className="mt-2 text-sm text-muted-foreground">Somente o administrador principal pode analisar cadastros e liberar contas.</p><Button className="mt-5" variant="outline" onClick={() => void navigate({ to: "/app" })}>Voltar ao painel</Button></section>;
+  if (!isPlatformAdmin) return <section className="rounded-lg border bg-card p-8"><ShieldX className="mb-3 h-8 w-8 text-destructive" /><h1 className="text-xl font-semibold">Acesso restrito</h1><p className="mt-2 text-sm text-muted-foreground">Somente o administrador principal pode analisar cadastros e liberar contas.</p><Button className="mt-5" variant="outline" onClick={() => void navigate({ to: "/app" })}>Voltar ao painel</Button></section>;
 
   return (
     <div className="space-y-6">
       <PageHeader title="Aprovação de cadastros" description="Analise o perfil solicitado antes de liberar o acesso. As permissões são aplicadas no banco de dados." />
-      <div className="flex items-start gap-3 rounded-xl border bg-card p-4 text-sm"><ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-primary" /><p className="text-muted-foreground">A conta continua bloqueada enquanto estiver pendente. Selecione a associação e o perfil adequados; a escolha não concede privilégios de administrador da plataforma.</p></div>
+      <div className="flex items-start gap-3 rounded-lg border bg-card p-4 text-sm"><ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-primary" /><p className="text-muted-foreground">A conta continua bloqueada enquanto estiver pendente. Selecione a associação e o perfil adequados; a escolha não concede privilégios de administrador da plataforma.</p></div>
       {requests.isLoading ? <p className="text-sm text-muted-foreground">Carregando solicitações…</p> : null}
-      {requests.isError ? <section className="rounded-xl border p-5"><p className="text-sm text-destructive">Não foi possível carregar os cadastros pendentes. Verifique se a migração de aprovação foi aplicada no Supabase.</p><Button className="mt-3" variant="outline" onClick={() => void requests.refetch()}>Tentar novamente</Button></section> : null}
-      {!requests.isLoading && !requests.isError && (requests.data?.length ?? 0) === 0 ? <section className="rounded-xl border bg-card p-8 text-center"><Check className="mx-auto mb-3 h-8 w-8 text-primary" /><h2 className="font-semibold">Nenhum cadastro pendente</h2><p className="mt-1 text-sm text-muted-foreground">Novas solicitações aparecerão aqui.</p></section> : null}
+      {requests.isError ? <section className="rounded-lg border p-5"><p className="text-sm text-destructive">Não foi possível carregar os cadastros pendentes. Verifique se a migração de aprovação foi aplicada no Supabase.</p><Button className="mt-3" variant="outline" onClick={() => void requests.refetch()}>Tentar novamente</Button></section> : null}
+      {!requests.isLoading && !requests.isError && (requests.data?.length ?? 0) === 0 ? <section className="rounded-lg border bg-card p-8 text-center"><Check className="mx-auto mb-3 h-8 w-8 text-primary" /><h2 className="font-semibold">Nenhum cadastro pendente</h2><p className="mt-1 text-sm text-muted-foreground">Novas solicitações aparecerão aqui.</p></section> : null}
       <div className="space-y-4">
         {(requests.data ?? []).map((row) => {
           const selectedAssociation = associationByUser[row.user_id] ?? row.requested_association_id ?? "";
           const selectedRole = roleByUser[row.user_id] ?? "morador";
-          return <section key={row.id} className="rounded-xl border bg-card p-5 shadow-sm">
+          return <section key={row.id} className="rounded-lg border bg-card p-5 shadow-sm">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="flex items-start gap-3"><div className="rounded-lg bg-muted p-2"><UserRound className="h-5 w-5" /></div><div><h2 className="font-semibold">{row.full_name || "Nome não informado"}</h2><p className="text-sm text-muted-foreground">{row.email}</p><p className="mt-1 text-xs text-muted-foreground">Solicitado em {new Date(row.requested_at).toLocaleString("pt-BR")}</p></div></div>
-              <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-3 py-1 text-xs font-medium text-amber-900"><Clock3 className="h-3.5 w-3.5" /> Pendente</span>
+              <span className="inline-flex items-center gap-1 rounded-full bg-warning-subtle px-3 py-1 text-xs font-medium text-warning"><Clock3 className="h-3.5 w-3.5" /> Pendente</span>
             </div>
             <div className="mt-5 grid gap-4 sm:grid-cols-2">
               <label className="space-y-1 text-sm"><span className="font-medium">Associação (opcional)</span><select className="w-full rounded-md border bg-background px-3 py-2" value={selectedAssociation} onChange={(e) => setAssociationByUser((old) => ({ ...old, [row.user_id]: e.target.value }))}><option value="">Sem vínculo por enquanto</option>{(associations.data ?? []).map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}</select></label>

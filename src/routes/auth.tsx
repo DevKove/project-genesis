@@ -234,17 +234,17 @@ function AuthPage() {
 
   return (
     <div className="grid min-h-screen lg:grid-cols-2">
-      <div className="hidden bg-hero p-12 text-primary-foreground lg:flex lg:flex-col lg:justify-between">
+      <div className="hidden border-r border-sidebar-border bg-sidebar p-12 text-sidebar-foreground lg:flex lg:flex-col lg:justify-between">
         <Link to="/auth" className="flex items-center gap-2 text-lg font-semibold"><Building2 className="h-6 w-6" /> Morada360</Link>
         <div>
-          <h1 className="text-5xl font-bold leading-tight">Sua comunidade,<br />organizada de ponta a ponta.</h1>
+          <h1 className="text-5xl font-bold leading-tight">Morada360</h1><p className="mt-6 text-3xl font-semibold leading-snug">Sua comunidade,<br />organizada de ponta a ponta.</p>
           <p className="mt-4 max-w-md opacity-80">Moradores, unidades, comunicados e governança em um só lugar — com segurança e transparência.</p>
         </div>
         <p className="text-sm opacity-60">Dados protegidos conforme a LGPD.</p>
       </div>
-      <div className="flex items-center justify-center p-6">
-        <div className="w-full max-w-sm">
-          <h2 className="mb-6 text-3xl font-bold">Bem-vindo</h2>
+      <div className="flex items-center justify-center bg-card px-5 py-10 sm:px-10">
+        <div className="w-full max-w-md">
+          <Link to="/auth" className="mb-8 flex items-center gap-2 text-xl font-bold text-primary lg:hidden"><Building2 className="h-6 w-6" /> Morada360</Link><h2 className="mb-7 text-3xl font-bold">Bem-vindo</h2>
           <div className="mb-4 space-y-2"><Label htmlFor="auth-association-code">Código da associação</Label><Input id="auth-association-code" value={associationCode} onChange={(event) => setAssociationCode(event.target.value.replace(/\D/g, "").slice(0, 6))} inputMode="numeric" autoComplete="off" maxLength={6} placeholder="Digite os 6 dígitos" disabled={loading || createNewAssociation} /><p className="text-xs text-muted-foreground">Peça o código de 6 dígitos à administração da associação. O acesso a uma associação existente depende de aprovação administrativa.</p><label className="flex items-start gap-2 text-sm text-muted-foreground"><input type="checkbox" checked={createNewAssociation} onChange={(event) => setCreateNewAssociation(event.target.checked)} disabled={loading} className="mt-1 h-4 w-4 shrink-0 accent-primary" /><span>Minha associação ainda não está cadastrada</span></label></div>
           <Button variant="outline" className="mb-4 w-full" onClick={google} disabled={loading}>Continuar com Google</Button>
           <div className="mb-4 text-center text-xs text-muted-foreground">ou</div>
@@ -258,7 +258,7 @@ function AuthPage() {
                 <div><Label htmlFor="li-email">E-mail</Label><Input id="li-email" name="email" type="email" autoComplete="email" required /></div>
                 <div><Label htmlFor="li-pw">Senha</Label><Input id="li-pw" name="password" type="password" autoComplete="current-password" required /></div>
                 <Button type="submit" className="w-full" disabled={loading}>{loading ? "Aguarde…" : "Entrar"}</Button>
-                <button type="button" onClick={forgot} disabled={loading} className="w-full text-center text-sm text-muted-foreground hover:text-foreground disabled:opacity-50">Esqueci minha senha</button>
+                <Button variant="ghost" type="button" onClick={forgot} disabled={loading} className="w-full text-center text-sm text-muted-foreground hover:text-foreground disabled:opacity-50">Esqueci minha senha</Button>
               </form>
             </TabsContent>
             <TabsContent value="signup">

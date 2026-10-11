@@ -265,7 +265,7 @@ function DocumentsPage() {
       </div>
 
       {formOpen && manager && (
-        <form onSubmit={uploadDocument} className="mb-6 space-y-4 rounded-xl border bg-card p-5 shadow-soft">
+        <form onSubmit={uploadDocument} className="mb-6 space-y-4 rounded-lg border bg-card p-5 shadow-soft">
           <div className="flex items-center justify-between"><h2 className="text-lg font-semibold">Enviar documento</h2><Button type="button" variant="ghost" size="icon" aria-label="Fechar formulário" onClick={() => setFormOpen(false)}><X className="h-4 w-4" /></Button></div>
           <div className="grid gap-4 sm:grid-cols-2">
             <div><Label htmlFor="document-title">Título *</Label><Input id="document-title" name="title" required maxLength={160} /></div>
@@ -288,7 +288,7 @@ function DocumentsPage() {
 
       {documents.isError && <div role="alert" className="mb-4 rounded-lg border border-destructive/40 p-4 text-sm">Não foi possível carregar os documentos. <Button variant="link" className="px-0" onClick={() => void documents.refetch()}>Tentar novamente</Button></div>}
 
-      <div className="overflow-hidden rounded-xl border bg-card">
+      <div className="overflow-hidden rounded-lg border bg-card">
         {documents.isLoading ? <p className="p-8 text-center text-sm text-muted-foreground">Carregando documentos…</p> : documents.data?.items.length ? (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[800px] text-left text-sm">
@@ -310,7 +310,7 @@ function DocumentsPage() {
         ) : <EmptyState><div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-muted"><FileText className="h-6 w-6" /></div><p>Nenhum documento disponível.</p>{manager && <Button className="mt-4" onClick={() => setFormOpen(true)}><Plus className="mr-2 h-4 w-4" /> Enviar primeiro documento</Button>}</EmptyState>}
       </div>
 
-      <div className="mt-4 flex items-center justify-between gap-3 text-sm text-muted-foreground"><span>{total} documento(s)</span><div className="flex items-center gap-2"><Button variant="outline" size="sm" disabled={page === 0 || documents.isLoading} onClick={() => setPage((value) => Math.max(0, value - 1))}>Anterior</Button><span>Página {page + 1} de {totalPages}</span><Button variant="outline" size="sm" disabled={page + 1 >= totalPages || documents.isLoading} onClick={() => setPage((value) => value + 1)}>Próxima</Button></div></div>
+      <div className="page-pagination mt-5 flex items-center justify-between gap-3 border-t border-border pt-4 text-sm text-muted-foreground"><span>{total} documento(s)</span><div className="flex items-center gap-2"><Button variant="outline" size="sm" disabled={page === 0 || documents.isLoading} onClick={() => setPage((value) => Math.max(0, value - 1))}>Anterior</Button><span>Página {page + 1} de {totalPages}</span><Button variant="outline" size="sm" disabled={page + 1 >= totalPages || documents.isLoading} onClick={() => setPage((value) => value + 1)}>Próxima</Button></div></div>
     </>
   );
 }

@@ -136,7 +136,7 @@ function ServiceRequestsPage() {
         action={<Button onClick={() => setFormOpen((open) => !open)}><Plus className="mr-2 h-4 w-4" /> Nova solicitação</Button>}
       />
       {formOpen && (
-        <form onSubmit={createRequest} className="mb-6 space-y-4 rounded-xl border bg-card p-5 shadow-soft">
+        <form onSubmit={createRequest} className="mb-6 space-y-4 rounded-lg border bg-card p-5 shadow-soft">
           <div className="grid gap-4 sm:grid-cols-2">
             <div><Label htmlFor="request-title">Título *</Label><Input id="request-title" name="title" required maxLength={160} /></div>
             <div>
@@ -160,7 +160,7 @@ function ServiceRequestsPage() {
         </form>
       )}
 
-      <div className="mb-5 grid gap-3 sm:grid-cols-[1fr_220px]">
+      <div className="mb-5 grid gap-3 sm:grid-cols-[minmax(0,1fr)_220px]">
         <div className="relative"><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input className="pl-9" aria-label="Buscar solicitação" placeholder="Buscar pelo título…" value={search} onChange={(event) => { setSearch(event.target.value); setPage(0); }} /></div>
         <select aria-label="Filtrar por situação" className="h-10 rounded-md border border-input bg-background px-3 text-sm" value={statusFilter} onChange={(event) => { setStatusFilter(event.target.value); setPage(0); }}>
           <option value="all">Todas as situações</option>
@@ -170,7 +170,7 @@ function ServiceRequestsPage() {
 
       {requests.isError && <div role="alert" className="mb-4 rounded-lg border border-destructive/40 p-4 text-sm"><p>Não foi possível carregar as solicitações. Verifique sua conexão e permissões.</p><Button variant="link" className="px-0" onClick={() => void requests.refetch()}>Tentar novamente</Button></div>}
 
-      <div className="overflow-hidden rounded-xl border bg-card">
+      <div className="overflow-hidden rounded-lg border bg-card">
         {requests.isLoading ? <p className="p-8 text-center text-sm text-muted-foreground">Carregando solicitações…</p> :
           requests.data?.items.length ? <div className="divide-y">{requests.data.items.map((item) => (
             <article key={item.id} className="p-4 sm:p-5">
@@ -187,7 +187,7 @@ function ServiceRequestsPage() {
           ))}</div> : <EmptyState><div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-muted"><ClipboardList className="h-6 w-6" /></div><p>Nenhuma solicitação encontrada para os filtros selecionados.</p></EmptyState>}
       </div>
 
-      <div className="mt-4 flex items-center justify-between gap-3 text-sm text-muted-foreground"><span>{total} solicitação(ões)</span><div className="flex items-center gap-2"><Button variant="outline" size="sm" disabled={page === 0 || requests.isLoading} onClick={() => setPage((value) => Math.max(0, value - 1))}><ChevronLeft className="mr-1 h-4 w-4" /> Anterior</Button><span>Página {page + 1} de {totalPages}</span><Button variant="outline" size="sm" disabled={page + 1 >= totalPages || requests.isLoading} onClick={() => setPage((value) => value + 1)}>Próxima <ChevronRight className="ml-1 h-4 w-4" /></Button></div></div>
+      <div className="page-pagination mt-5 flex items-center justify-between gap-3 border-t border-border pt-4 text-sm text-muted-foreground"><span>{total} solicitação(ões)</span><div className="flex items-center gap-2"><Button variant="outline" size="sm" disabled={page === 0 || requests.isLoading} onClick={() => setPage((value) => Math.max(0, value - 1))}><ChevronLeft className="mr-1 h-4 w-4" /> Anterior</Button><span>Página {page + 1} de {totalPages}</span><Button variant="outline" size="sm" disabled={page + 1 >= totalPages || requests.isLoading} onClick={() => setPage((value) => value + 1)}>Próxima <ChevronRight className="ml-1 h-4 w-4" /></Button></div></div>
     </>
   );
 }

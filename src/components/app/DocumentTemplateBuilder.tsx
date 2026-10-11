@@ -29,7 +29,7 @@ const templates: TemplateDefinition[] = [
       { id: "agenda", label: "Pauta", multiline: true, required: true },
       { id: "decisions", label: "Deliberações e encaminhamentos", multiline: true, required: true },
     ],
-    build: (v, a, city) => `ATA DE ${v.meeting_type.toLocaleUpperCase("pt-BR")}\n\nAos ${v.date}, às ${v.time}, em ${v.place}, reuniu-se ${a}${city ? `, em ${city}` : ""}.\n\nPRESIDENTE DA REUNIÃO: ${v.chair}\nSECRETÁRIO(A): ${v.secretary}\n\nPARTICIPANTES\n${v.participants}\n\nPAUTA\n${v.agenda}\n\nDELIBERAÇÕES E ENCAMINHAMENTOS\n${v.decisions}\n\nNada mais havendo a tratar, lavrou-se a presente ata para leitura e assinatura dos responsáveis.\n\n________________________________\n${v.chair} — Presidente da reunião\n\n________________________________\n${v.secretary} — Secretário(a)`,
+    build: (v, a, city) => `ATA DE ${(v["meeting_type"] ?? "").toLocaleUpperCase("pt-BR")}\n\nAos ${v["date"]}, às ${v["time"]}, em ${v["place"]}, reuniu-se ${a}${city ? `, em ${city}` : ""}.\n\nPRESIDENTE DA REUNIÃO: ${v["chair"]}\nSECRETÁRIO(A): ${v["secretary"]}\n\nPARTICIPANTES\n${v["participants"]}\n\nPAUTA\n${v["agenda"]}\n\nDELIBERAÇÕES E ENCAMINHAMENTOS\n${v["decisions"]}\n\nNada mais havendo a tratar, lavrou-se a presente ata para leitura e assinatura dos responsáveis.\n\n________________________________\n${v["chair"]} — Presidente da reunião\n\n________________________________\n${v["secretary"]} — Secretário(a)`,
   },
   {
     id: "residence-statement", name: "Declaração de residência", description: "Declaração para conferência e assinatura da associação.", category: "geral",
@@ -40,7 +40,7 @@ const templates: TemplateDefinition[] = [
       { id: "since", label: "Residente desde", placeholder: "DD/MM/AAAA" },
       ...commonFields,
     ],
-    build: (v, a, city) => `DECLARAÇÃO DE RESIDÊNCIA\n\nA ${a}${city ? `, situada em ${city}` : ""}, para os devidos fins e conforme as informações constantes em seus registros, declara que ${v.resident}, identificado(a) pelo documento ${v.document}, está vinculado(a) à unidade/endereço ${v.unit}${v.since ? ` desde ${v.since}` : ""}.\n\nEsta declaração é emitida a pedido do(a) interessado(a), com base nos dados informados e sujeitos à conferência pela associação.\n\n${v.date}\n\n________________________________\n${v.responsible}\nRepresentante da associação`,
+    build: (v, a, city) => `DECLARAÇÃO DE RESIDÊNCIA\n\nA ${a}${city ? `, situada em ${city}` : ""}, para os devidos fins e conforme as informações constantes em seus registros, declara que ${v["resident"]}, identificado(a) pelo documento ${v["document"]}, está vinculado(a) à unidade/endereço ${v["unit"]}${v["since"] ? ` desde ${v["since"]}` : ""}.\n\nEsta declaração é emitida a pedido do(a) interessado(a), com base nos dados informados e sujeitos à conferência pela associação.\n\n${v["date"]}\n\n________________________________\n${v["responsible"]}\nRepresentante da associação`,
   },
   {
     id: "authorization", name: "Autorização de acesso", description: "Autorização para visitante, prestador ou entrada específica.", category: "geral",
@@ -54,7 +54,7 @@ const templates: TemplateDefinition[] = [
       { id: "notes", label: "Observações", multiline: true },
       ...commonFields,
     ],
-    build: (v, a) => `AUTORIZAÇÃO DE ACESSO\n\nA ${a} autoriza, mediante conferência de identidade e cumprimento das normas internas, o acesso abaixo descrito.\n\nSOLICITANTE: ${v.requester}\nUNIDADE / LOTE: ${v.unit}\nPESSOA / EMPRESA AUTORIZADA: ${v.authorized_person}\nDOCUMENTO: ${v.document || "Não informado"}\nFINALIDADE: ${v.purpose}\nPERÍODO: ${v.period}\nOBSERVAÇÕES: ${v.notes || "Nenhuma"}\n\nEsta autorização não dispensa os procedimentos de segurança e identificação adotados pela associação.\n\nEmitida em ${v.date}.\n\n________________________________\n${v.responsible}\nResponsável pela emissão`,
+    build: (v, a) => `AUTORIZAÇÃO DE ACESSO\n\nA ${a} autoriza, mediante conferência de identidade e cumprimento das normas internas, o acesso abaixo descrito.\n\nSOLICITANTE: ${v["requester"]}\nUNIDADE / LOTE: ${v["unit"]}\nPESSOA / EMPRESA AUTORIZADA: ${v["authorized_person"]}\nDOCUMENTO: ${v["document"] || "Não informado"}\nFINALIDADE: ${v["purpose"]}\nPERÍODO: ${v["period"]}\nOBSERVAÇÕES: ${v["notes"] || "Nenhuma"}\n\nEsta autorização não dispensa os procedimentos de segurança e identificação adotados pela associação.\n\nEmitida em ${v["date"]}.\n\n________________________________\n${v["responsible"]}\nResponsável pela emissão`,
   },
   {
     id: "official-notice", name: "Comunicado oficial", description: "Comunicado institucional para os associados e moradores.", category: "geral",
@@ -65,7 +65,7 @@ const templates: TemplateDefinition[] = [
       { id: "contact", label: "Contato para dúvidas" },
       ...commonFields,
     ],
-    build: (v, a, city) => `COMUNICADO OFICIAL\n\n${a}${city ? ` — ${city}` : ""}\nData: ${v.date}\n\nASSUNTO: ${v.subject}\nDESTINATÁRIOS: ${v.audience}\n\n${v.body}\n\n${v.contact ? `Dúvidas ou informações: ${v.contact}\n\n` : ""}Atenciosamente,\n${v.responsible}\n${a}`,
+    build: (v, a, city) => `COMUNICADO OFICIAL\n\n${a}${city ? ` — ${city}` : ""}\nData: ${v["date"]}\n\nASSUNTO: ${v["subject"]}\nDESTINATÁRIOS: ${v["audience"]}\n\n${v["body"]}\n\n${v["contact"] ? `Dúvidas ou informações: ${v["contact"]}\n\n` : ""}Atenciosamente,\n${v["responsible"]}\n${a}`,
   },
   {
     id: "warning", name: "Notificação / advertência", description: "Modelo administrativo para descrever fato e solicitar regularização.", category: "regulamentos",
@@ -78,7 +78,7 @@ const templates: TemplateDefinition[] = [
       { id: "action", label: "Providência solicitada e prazo", multiline: true, required: true },
       ...commonFields,
     ],
-    build: (v, a) => `NOTIFICAÇÃO ADMINISTRATIVA\n\nDESTINATÁRIO: ${v.recipient}\nUNIDADE / LOTE: ${v.unit}\nDATA DO FATO: ${v.occurrence_date}\nDATA DA EMISSÃO: ${v.date}\n\nA ${a} registra a presente notificação para ciência do(a) destinatário(a), nos termos abaixo.\n\nDESCRIÇÃO DOS FATOS\n${v.facts}\n\nREGRA INDICADA\n${v.rule}\n\nPROVIDÊNCIA SOLICITADA E PRAZO\n${v.action}\n\nO destinatário poderá apresentar esclarecimentos à administração pelos canais oficiais da associação. Este modelo deve ser conferido conforme o estatuto, o regulamento e os procedimentos aplicáveis antes da emissão.\n\n________________________________\n${v.responsible}\nRepresentante da associação`,
+    build: (v, a) => `NOTIFICAÇÃO ADMINISTRATIVA\n\nDESTINATÁRIO: ${v["recipient"]}\nUNIDADE / LOTE: ${v["unit"]}\nDATA DO FATO: ${v["occurrence_date"]}\nDATA DA EMISSÃO: ${v["date"]}\n\nA ${a} registra a presente notificação para ciência do(a) destinatário(a), nos termos abaixo.\n\nDESCRIÇÃO DOS FATOS\n${v["facts"]}\n\nREGRA INDICADA\n${v["rule"]}\n\nPROVIDÊNCIA SOLICITADA E PRAZO\n${v["action"]}\n\nO destinatário poderá apresentar esclarecimentos à administração pelos canais oficiais da associação. Este modelo deve ser conferido conforme o estatuto, o regulamento e os procedimentos aplicáveis antes da emissão.\n\n________________________________\n${v["responsible"]}\nRepresentante da associação`,
   },
   {
     id: "service-request", name: "Solicitação administrativa", description: "Registro formal de pedido dirigido à administração.", category: "geral",
@@ -90,7 +90,7 @@ const templates: TemplateDefinition[] = [
       { id: "attachments", label: "Documentos anexos" },
       ...commonFields,
     ],
-    build: (v, a) => `SOLICITAÇÃO ADMINISTRATIVA\n\nÀ administração de ${a}\n\nSOLICITANTE: ${v.requester}\nUNIDADE / LOTE: ${v.unit || "Não informado"}\nDATA: ${v.date}\nASSUNTO: ${v.subject}\n\nDESCRIÇÃO DO PEDIDO\n${v.request}\n\nANEXOS: ${v.attachments || "Não informado"}\n\nSolicito análise e retorno pelos canais de contato cadastrados.\n\n________________________________\n${v.requester}`,
+    build: (v, a) => `SOLICITAÇÃO ADMINISTRATIVA\n\nÀ administração de ${a}\n\nSOLICITANTE: ${v["requester"]}\nUNIDADE / LOTE: ${v["unit"] || "Não informado"}\nDATA: ${v["date"]}\nASSUNTO: ${v["subject"]}\n\nDESCRIÇÃO DO PEDIDO\n${v["request"]}\n\nANEXOS: ${v["attachments"] || "Não informado"}\n\nSolicito análise e retorno pelos canais de contato cadastrados.\n\n________________________________\n${v["requester"]}`,
   },
   {
     id: "responsibility-term", name: "Termo de responsabilidade", description: "Termo para registrar compromisso e condições acordadas.", category: "contratos",
@@ -102,7 +102,7 @@ const templates: TemplateDefinition[] = [
       { id: "period", label: "Prazo / vigência" },
       ...commonFields,
     ],
-    build: (v, a) => `TERMO DE RESPONSABILIDADE\n\nPelo presente instrumento, ${v.person}, documento ${v.document}, declara ciência e assume responsabilidade quanto a: ${v.subject}.\n\nCONDIÇÕES E RESPONSABILIDADES\n${v.conditions}\n\nPRAZO / VIGÊNCIA: ${v.period || "Conforme acordado entre as partes"}\n\nO presente termo deverá ser lido e conferido pelas partes antes da assinatura.\n\nData: ${v.date}\n\n________________________________\n${v.person}\nResponsável\n\n________________________________\n${v.responsible}\nRepresentante da associação`,
+    build: (v, a) => `TERMO DE RESPONSABILIDADE\n\nPelo presente instrumento, ${v["person"]}, documento ${v["document"]}, declara ciência e assume responsabilidade quanto a: ${v["subject"]}.\n\nCONDIÇÕES E RESPONSABILIDADES\n${v["conditions"]}\n\nPRAZO / VIGÊNCIA: ${v["period"] || "Conforme acordado entre as partes"}\n\nO presente termo deverá ser lido e conferido pelas partes antes da assinatura.\n\nData: ${v["date"]}\n\n________________________________\n${v["person"]}\nResponsável\n\n________________________________\n${v["responsible"]}\nRepresentante da associação`,
   },
   {
     id: "meeting-invitation", name: "Convocação de assembleia", description: "Convocação com pauta, data, horário e local.", category: "atas",
@@ -116,7 +116,7 @@ const templates: TemplateDefinition[] = [
       { id: "notice_date", label: "Data de emissão", required: true },
       { id: "responsible", label: "Responsável pela convocação", required: true },
     ],
-    build: (v, a, city) => `EDITAL DE CONVOCAÇÃO — ${v.assembly_type.toLocaleUpperCase("pt-BR")}\n\nA administração de ${a}${city ? `, ${city}` : ""}, observadas as disposições estatutárias aplicáveis, convoca os associados para assembleia a realizar-se em ${v.date}, às ${v.time_first}${v.time_second ? `, em segunda convocação às ${v.time_second}` : ""}, no local ${v.place}.\n\nORDEM DO DIA\n${v.agenda}\n\nData de emissão: ${v.notice_date}\n\n________________________________\n${v.responsible}\nResponsável pela convocação\n\nVerifique os prazos, o quórum e as regras de convocação previstos no estatuto antes da publicação.`,
+    build: (v, a, city) => `EDITAL DE CONVOCAÇÃO — ${(v["assembly_type"] ?? "").toLocaleUpperCase("pt-BR")}\n\nA administração de ${a}${city ? `, ${city}` : ""}, observadas as disposições estatutárias aplicáveis, convoca os associados para assembleia a realizar-se em ${v["date"]}, às ${v["time_first"]}${v["time_second"] ? `, em segunda convocação às ${v["time_second"]}` : ""}, no local ${v["place"]}.\n\nORDEM DO DIA\n${v["agenda"]}\n\nData de emissão: ${v["notice_date"]}\n\n________________________________\n${v["responsible"]}\nResponsável pela convocação\n\nVerifique os prazos, o quórum e as regras de convocação previstos no estatuto antes da publicação.`,
   },
 ];
 
@@ -145,11 +145,12 @@ export function DocumentTemplateBuilder({
   userId: string;
   onSaved: () => Promise<unknown> | void;
 }) {
-  const [templateId, setTemplateId] = useState(templates[0].id);
+  const [templateId, setTemplateId] = useState(templates[0]?.id ?? "meeting-minutes");
   const [values, setValues] = useState<Record<string, string>>({});
   const [documentTitle, setDocumentTitle] = useState("");
   const [saving, setSaving] = useState(false);
   const template = templates.find((item) => item.id === templateId) ?? templates[0];
+  if (!template) throw new Error("Nenhum modelo disponível");
   const normalizedValues = useMemo(() => Object.fromEntries(template.fields.map((field) => [field.id, values[field.id]?.trim() || (field.required ? "________________" : "")])), [template, values]);
   const generatedBody = useMemo(() => template.build(normalizedValues, associationName, city ?? ""), [template, normalizedValues, associationName, city]);
   const ready = template.fields.filter((field) => field.required).every((field) => Boolean(values[field.id]?.trim()));
@@ -232,7 +233,7 @@ export function DocumentTemplateBuilder({
   }
 
   return (
-    <section className="mb-6 space-y-5 rounded-xl border bg-card p-4 shadow-soft sm:p-6">
+    <section className="mb-6 space-y-5 rounded-lg border bg-card p-4 shadow-soft sm:p-6">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div><h2 className="flex items-center gap-2 text-lg font-semibold"><WandSparkles className="h-5 w-5 text-primary" /> Criar documento a partir de modelo</h2><p className="mt-1 text-sm text-muted-foreground">Preencha os campos, confira o texto e gere uma versão para imprimir, salvar em PDF ou arquivar.</p></div>
       </div>
@@ -248,11 +249,11 @@ export function DocumentTemplateBuilder({
         </div>
         <div className="min-w-0 rounded-lg border bg-muted/20 p-3 sm:p-5">
           <div className="mb-3 flex items-center gap-2 text-sm font-medium"><FileText className="h-4 w-4" /> Pré-visualização</div>
-          <article className="min-h-80 bg-white p-5 text-gray-900 shadow-sm sm:p-8">
-            <div className="border-b-2 border-gray-800 pb-3"><div className="font-semibold">{associationName}</div><div className="text-xs text-gray-500">Documento emitido pelo Morada360</div></div>
+          <article className="min-h-80 bg-paper p-5 text-paper-foreground shadow-sm sm:p-8">
+            <div className="border-b-2 border-paper-foreground pb-3"><div className="font-semibold">{associationName}</div><div className="text-xs text-paper-muted">Documento emitido pelo Morada360</div></div>
             <h3 className="my-6 text-center text-base font-bold">{documentTitle.trim() || template.name}</h3>
             <pre className="whitespace-pre-wrap break-words font-sans text-sm leading-7">{generatedBody}</pre>
-            <div className="mt-8 border-t pt-3 text-xs text-gray-500">Confira os dados e as regras internas antes de assinar ou distribuir.</div>
+            <div className="mt-8 border-t pt-3 text-xs text-paper-muted">Confira os dados e as regras internas antes de assinar ou distribuir.</div>
           </article>
         </div>
       </div>

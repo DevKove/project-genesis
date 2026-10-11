@@ -216,7 +216,7 @@ function AnnouncementsPage() {
       </div>
 
       {formOpen && manager && (
-        <form key={editing?.id ?? "new"} onSubmit={saveAnnouncement} className="mb-6 space-y-4 rounded-xl border bg-card p-5 shadow-soft">
+        <form key={editing?.id ?? "new"} onSubmit={saveAnnouncement} className="mb-6 space-y-4 rounded-lg border bg-card p-5 shadow-soft">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold">{editing ? "Editar comunicado" : "Novo comunicado"}</h2>
             <Button type="button" variant="ghost" size="icon" aria-label="Fechar formulário" onClick={() => { setFormOpen(false); setEditing(null); }}><X className="h-4 w-4" /></Button>
@@ -249,11 +249,11 @@ function AnnouncementsPage() {
       )}
 
       {announcements.isLoading ? (
-        <div className="rounded-xl border bg-card p-8 text-center text-sm text-muted-foreground">Carregando comunicados…</div>
+        <div className="rounded-lg border bg-card p-8 text-center text-sm text-muted-foreground">Carregando comunicados…</div>
       ) : announcements.data?.items.length ? (
         <div className="space-y-3">
           {announcements.data.items.map((item) => (
-            <article key={item.id} className="rounded-xl border bg-card p-5 shadow-soft">
+            <article key={item.id} className="rounded-lg border bg-card p-5 shadow-soft">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div className="min-w-0 flex-1">
                   <div className="mb-2 flex flex-wrap items-center gap-2">
@@ -280,7 +280,7 @@ function AnnouncementsPage() {
         </EmptyState>
       )}
 
-      <div className="mt-4 flex items-center justify-between gap-3 text-sm text-muted-foreground">
+      <div className="page-pagination mt-5 flex items-center justify-between gap-3 border-t border-border pt-4 text-sm text-muted-foreground">
         <span>{total} comunicado(s)</span>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" disabled={page === 0 || announcements.isLoading} onClick={() => setPage((value) => Math.max(0, value - 1))}><ChevronLeft className="mr-1 h-4 w-4" /> Anterior</Button>

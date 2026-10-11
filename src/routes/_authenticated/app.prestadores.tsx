@@ -181,7 +181,7 @@ function VendorsPage() {
 
   if (!current) return null;
   if (!manager) {
-    return <div className="rounded-xl border bg-card p-8"><h1 className="text-xl font-semibold">Acesso restrito</h1><p className="mt-2 text-sm text-muted-foreground">O cadastro de prestadores está disponível apenas para gestores autorizados da associação.</p></div>;
+    return <div className="rounded-lg border bg-card p-8"><h1 className="text-xl font-semibold">Acesso restrito</h1><p className="mt-2 text-sm text-muted-foreground">O cadastro de prestadores está disponível apenas para gestores autorizados da associação.</p></div>;
   }
   const total = vendors.data?.count ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
@@ -189,14 +189,14 @@ function VendorsPage() {
   return (
     <>
       <PageHeader title="Prestadores" description="Mantenha os contatos e serviços contratados pela associação." action={<Button onClick={openCreate}><Plus className="mr-2 h-4 w-4" /> Novo prestador</Button>} />
-      <div className="mb-5 grid gap-3 sm:grid-cols-[1fr_220px]">
+      <div className="mb-5 grid gap-3 sm:grid-cols-[minmax(0,1fr)_220px]">
         <div className="relative"><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input className="pl-9" aria-label="Buscar prestador" placeholder="Buscar pelo nome…" value={search} onChange={(event) => { setSearch(event.target.value); setPage(0); }} /></div>
         <select aria-label="Filtrar prestadores" className="h-10 rounded-md border border-input bg-background px-3 text-sm" value={activeFilter} onChange={(event) => { setActiveFilter(event.target.value); setPage(0); }}>
           <option value="active">Ativos</option><option value="inactive">Inativos</option><option value="all">Todos</option>
         </select>
       </div>
 
-      {formOpen && <form key={editing?.id ?? "new"} onSubmit={saveVendor} className="mb-6 space-y-4 rounded-xl border bg-card p-5 shadow-soft">
+      {formOpen && <form key={editing?.id ?? "new"} onSubmit={saveVendor} className="mb-6 space-y-4 rounded-lg border bg-card p-5 shadow-soft">
         <div className="flex items-center justify-between"><h2 className="text-lg font-semibold">{editing ? "Editar prestador" : "Novo prestador"}</h2><Button type="button" variant="ghost" size="icon" aria-label="Fechar formulário" onClick={() => { setFormOpen(false); setEditing(null); }}><X className="h-4 w-4" /></Button></div>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <div><Label htmlFor="vendor-name">Nome / empresa *</Label><Input id="vendor-name" name="name" required maxLength={160} defaultValue={editing?.name ?? ""} /></div>
@@ -211,18 +211,18 @@ function VendorsPage() {
       </form>}
 
       {vendors.isError && <div role="alert" className="mb-4 rounded-lg border border-destructive/40 p-4 text-sm"><p>Não foi possível carregar os prestadores. Verifique sua conexão e permissões.</p><Button variant="link" className="px-0" onClick={() => void vendors.refetch()}>Tentar novamente</Button></div>}
-      <div className="overflow-hidden rounded-xl border bg-card">
+      <div className="overflow-hidden rounded-lg border bg-card">
         {vendors.isLoading ? <p className="p-8 text-center text-sm text-muted-foreground">Carregando prestadores…</p> :
           vendors.data?.items.length ? <div className="divide-y">{vendors.data.items.map((vendor) => <article key={vendor.id} className="p-4 sm:p-5">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><h2 className="font-semibold">{vendor.name}</h2><span className="rounded-full bg-muted px-2.5 py-1 text-xs">{CATEGORIES[vendor.service_category as keyof typeof CATEGORIES] ?? vendor.service_category}</span><span className="rounded-full bg-muted px-2.5 py-1 text-xs">{vendor.is_active ? "Ativo" : "Inativo"}</span></div>
-                {vendor.contact_name && <p className="mt-2 text-sm">Contato: {vendor.contact_name}</p>}{vendor.phone && <p className="mt-1 text-sm text-muted-foreground">Telefone: {vendor.phone}</p>}{vendor.email && <p className="mt-1 text-sm text-muted-foreground">E-mail: {vendor.email}</p>}{vendor.notes && <p className="mt-2 whitespace-pre-wrap text-sm">{vendor.notes}</p>}{vendor.identity_document_path && <Button variant="outline" size="sm" onClick={() => void openIdentityDocument(vendor.identity_document_path!)}><FileText className="mr-1 h-4 w-4" /> Documento</Button>}
+                {vendor.contact_name && <p className="mt-2 text-sm">Contato: {vendor.contact_name}</p>}{vendor.phone && <p className="mt-1 text-sm text-muted-foreground">Telefone: {vendor.phone}</p>}{vendor.email && <p className="mt-1 text-sm text-muted-foreground">E-mail: {vendor.email}</p>}{vendor.notes && <p className="mt-2 whitespace-pre-wrap text-sm">{vendor.notes}</p>}{vendor.identity_document_path && <Button variant="outline" size="sm" onClick={() => { if (vendor.identity_document_path) void openIdentityDocument(vendor.identity_document_path); }}><FileText className="mr-1 h-4 w-4" /> Documento</Button>}
               </div>
               <div className="flex gap-2"><Button variant="outline" size="sm" onClick={() => openEdit(vendor)}><Pencil className="mr-1 h-4 w-4" /> Editar</Button><Button variant="outline" size="sm" disabled={changingId === vendor.id} onClick={() => void toggleActive(vendor)}>{vendor.is_active ? "Desativar" : "Reativar"}</Button></div>
             </div>
           </article>)}</div> : <EmptyState><div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-muted"><Building2 className="h-6 w-6" /></div><p>Nenhum prestador encontrado para os filtros selecionados.</p></EmptyState>}
       </div>
-      <div className="mt-4 flex items-center justify-between gap-3 text-sm text-muted-foreground"><span>{total} prestador(es)</span><div className="flex items-center gap-2"><Button variant="outline" size="sm" disabled={page === 0 || vendors.isLoading} onClick={() => setPage((value) => Math.max(0, value - 1))}><ChevronLeft className="mr-1 h-4 w-4" /> Anterior</Button><span>Página {page + 1} de {totalPages}</span><Button variant="outline" size="sm" disabled={page + 1 >= totalPages || vendors.isLoading} onClick={() => setPage((value) => value + 1)}>Próxima <ChevronRight className="ml-1 h-4 w-4" /></Button></div></div>
+      <div className="page-pagination mt-5 flex items-center justify-between gap-3 border-t border-border pt-4 text-sm text-muted-foreground"><span>{total} prestador(es)</span><div className="flex items-center gap-2"><Button variant="outline" size="sm" disabled={page === 0 || vendors.isLoading} onClick={() => setPage((value) => Math.max(0, value - 1))}><ChevronLeft className="mr-1 h-4 w-4" /> Anterior</Button><span>Página {page + 1} de {totalPages}</span><Button variant="outline" size="sm" disabled={page + 1 >= totalPages || vendors.isLoading} onClick={() => setPage((value) => value + 1)}>Próxima <ChevronRight className="ml-1 h-4 w-4" /></Button></div></div>
     </>
   );
 }

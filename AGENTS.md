@@ -8,3 +8,7 @@
 > Commits you push to the connected branch sync back to Lovable and show up in
 > the editor, so keep the branch in a working state.
 <!-- LOVABLE:END -->
+
+## Presentation architecture
+- Keep administrative presentation in semantic global tokens, existing UI primitives and the shared app shell; preserve route-specific data/permission logic to avoid workflow regressions.
+- Use the existing Radix Sheet/Dialog primitives for mobile navigation and modal editing so keyboard focus and Escape behavior stay accessible.
