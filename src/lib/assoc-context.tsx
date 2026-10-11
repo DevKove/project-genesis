@@ -21,6 +21,7 @@ type Ctx = {
 
 const AssocCtx = createContext<Ctx | null>(null);
 const KEY = "morada360.assoc";
+const EMPTY_MEMBERSHIPS: Membership[] = [];
 
 export function AssocProvider({ userId, children }: { userId: string; children: ReactNode }) {
   const q = useQuery({
@@ -52,7 +53,7 @@ export function AssocProvider({ userId, children }: { userId: string; children: 
     }
     setCurrentIdState(id);
   };
-  const memberships = q.data ?? [];
+  const memberships = q.data ?? EMPTY_MEMBERSHIPS;
   const current = useMemo(
     () => memberships.find((m) => m.association_id === currentId) ?? memberships[0] ?? null,
     [memberships, currentId],
