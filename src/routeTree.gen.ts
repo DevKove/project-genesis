@@ -11,11 +11,29 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
+import { Route as AguardandoAprovacaoRouteImport } from './routes/aguardando-aprovacao'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as CookiesRouteImport } from './routes/cookies'
+import { Route as PrivacidadeRouteImport } from './routes/privacidade'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as TermosDeUsoRouteImport } from './routes/termos-de-uso'
+import { Route as AuthenticatedAdminAprovacoesRouteImport } from './routes/_authenticated/admin-aprovacoes'
 import { Route as AuthenticatedAppRouteImport } from './routes/_authenticated/app'
+import { Route as AuthenticatedConviteRouteImport } from './routes/_authenticated/convite'
 import { Route as AuthenticatedAppIndexRouteImport } from './routes/_authenticated/app.index'
+import { Route as AuthenticatedAppAdminAprovacoesRouteImport } from './routes/_authenticated/app.admin-aprovacoes'
+import { Route as AuthenticatedAppAdminPerfisRouteImport } from './routes/_authenticated/app.admin-perfis'
+import { Route as AuthenticatedAppAuditoriaRouteImport } from './routes/_authenticated/app.auditoria'
+import { Route as AuthenticatedAppComunicadosRouteImport } from './routes/_authenticated/app.comunicados'
+import { Route as AuthenticatedAppConfiguracoesRouteImport } from './routes/_authenticated/app.configuracoes'
+import { Route as AuthenticatedAppDocumentosRouteImport } from './routes/_authenticated/app.documentos'
+import { Route as AuthenticatedAppMembrosRouteImport } from './routes/_authenticated/app.membros'
+import { Route as AuthenticatedAppMoradoresRouteImport } from './routes/_authenticated/app.moradores'
 import { Route as AuthenticatedAppNovaRouteImport } from './routes/_authenticated/app.nova'
+import { Route as AuthenticatedAppOcorrenciasRouteImport } from './routes/_authenticated/app.ocorrencias'
+import { Route as AuthenticatedAppPrestadoresRouteImport } from './routes/_authenticated/app.prestadores'
+import { Route as AuthenticatedAppSolicitacoesRouteImport } from './routes/_authenticated/app.solicitacoes'
+import { Route as AuthenticatedAppUnidadesRouteImport } from './routes/_authenticated/app.unidades'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -26,9 +44,24 @@ const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
   id: '/_authenticated',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AguardandoAprovacaoRoute = AguardandoAprovacaoRouteImport.update({
+  id: '/aguardando-aprovacao',
+  path: '/aguardando-aprovacao',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CookiesRoute = CookiesRouteImport.update({
+  id: '/cookies',
+  path: '/cookies',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrivacidadeRoute = PrivacidadeRouteImport.update({
+  id: '/privacidade',
+  path: '/privacidade',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
@@ -36,9 +69,25 @@ const ResetPasswordRoute = ResetPasswordRouteImport.update({
   path: '/reset-password',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TermosDeUsoRoute = TermosDeUsoRouteImport.update({
+  id: '/termos-de-uso',
+  path: '/termos-de-uso',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedAdminAprovacoesRoute =
+  AuthenticatedAdminAprovacoesRouteImport.update({
+    id: '/admin-aprovacoes',
+    path: '/admin-aprovacoes',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedAppRoute = AuthenticatedAppRouteImport.update({
   id: '/app',
   path: '/app',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedConviteRoute = AuthenticatedConviteRouteImport.update({
+  id: '/convite',
+  path: '/convite',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedAppIndexRoute = AuthenticatedAppIndexRouteImport.update({
@@ -46,58 +95,252 @@ const AuthenticatedAppIndexRoute = AuthenticatedAppIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AuthenticatedAppRoute,
 } as any)
+const AuthenticatedAppAdminAprovacoesRoute =
+  AuthenticatedAppAdminAprovacoesRouteImport.update({
+    id: '/admin-aprovacoes',
+    path: '/admin-aprovacoes',
+    getParentRoute: () => AuthenticatedAppRoute,
+  } as any)
+const AuthenticatedAppAdminPerfisRoute =
+  AuthenticatedAppAdminPerfisRouteImport.update({
+    id: '/admin-perfis',
+    path: '/admin-perfis',
+    getParentRoute: () => AuthenticatedAppRoute,
+  } as any)
+const AuthenticatedAppAuditoriaRoute =
+  AuthenticatedAppAuditoriaRouteImport.update({
+    id: '/auditoria',
+    path: '/auditoria',
+    getParentRoute: () => AuthenticatedAppRoute,
+  } as any)
+const AuthenticatedAppComunicadosRoute =
+  AuthenticatedAppComunicadosRouteImport.update({
+    id: '/comunicados',
+    path: '/comunicados',
+    getParentRoute: () => AuthenticatedAppRoute,
+  } as any)
+const AuthenticatedAppConfiguracoesRoute =
+  AuthenticatedAppConfiguracoesRouteImport.update({
+    id: '/configuracoes',
+    path: '/configuracoes',
+    getParentRoute: () => AuthenticatedAppRoute,
+  } as any)
+const AuthenticatedAppDocumentosRoute =
+  AuthenticatedAppDocumentosRouteImport.update({
+    id: '/documentos',
+    path: '/documentos',
+    getParentRoute: () => AuthenticatedAppRoute,
+  } as any)
+const AuthenticatedAppMembrosRoute = AuthenticatedAppMembrosRouteImport.update({
+  id: '/membros',
+  path: '/membros',
+  getParentRoute: () => AuthenticatedAppRoute,
+} as any)
+const AuthenticatedAppMoradoresRoute =
+  AuthenticatedAppMoradoresRouteImport.update({
+    id: '/moradores',
+    path: '/moradores',
+    getParentRoute: () => AuthenticatedAppRoute,
+  } as any)
 const AuthenticatedAppNovaRoute = AuthenticatedAppNovaRouteImport.update({
   id: '/nova',
   path: '/nova',
   getParentRoute: () => AuthenticatedAppRoute,
 } as any)
+const AuthenticatedAppOcorrenciasRoute =
+  AuthenticatedAppOcorrenciasRouteImport.update({
+    id: '/ocorrencias',
+    path: '/ocorrencias',
+    getParentRoute: () => AuthenticatedAppRoute,
+  } as any)
+const AuthenticatedAppPrestadoresRoute =
+  AuthenticatedAppPrestadoresRouteImport.update({
+    id: '/prestadores',
+    path: '/prestadores',
+    getParentRoute: () => AuthenticatedAppRoute,
+  } as any)
+const AuthenticatedAppSolicitacoesRoute =
+  AuthenticatedAppSolicitacoesRouteImport.update({
+    id: '/solicitacoes',
+    path: '/solicitacoes',
+    getParentRoute: () => AuthenticatedAppRoute,
+  } as any)
+const AuthenticatedAppUnidadesRoute =
+  AuthenticatedAppUnidadesRouteImport.update({
+    id: '/unidades',
+    path: '/unidades',
+    getParentRoute: () => AuthenticatedAppRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/aguardando-aprovacao': typeof AguardandoAprovacaoRoute
   '/auth': typeof AuthRoute
+  '/cookies': typeof CookiesRoute
+  '/privacidade': typeof PrivacidadeRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/termos-de-uso': typeof TermosDeUsoRoute
+  '/admin-aprovacoes': typeof AuthenticatedAdminAprovacoesRoute
   '/app': typeof AuthenticatedAppRouteWithChildren
+  '/convite': typeof AuthenticatedConviteRoute
+  '/app/admin-aprovacoes': typeof AuthenticatedAppAdminAprovacoesRoute
+  '/app/admin-perfis': typeof AuthenticatedAppAdminPerfisRoute
+  '/app/auditoria': typeof AuthenticatedAppAuditoriaRoute
+  '/app/comunicados': typeof AuthenticatedAppComunicadosRoute
+  '/app/configuracoes': typeof AuthenticatedAppConfiguracoesRoute
+  '/app/documentos': typeof AuthenticatedAppDocumentosRoute
+  '/app/membros': typeof AuthenticatedAppMembrosRoute
+  '/app/moradores': typeof AuthenticatedAppMoradoresRoute
   '/app/nova': typeof AuthenticatedAppNovaRoute
+  '/app/ocorrencias': typeof AuthenticatedAppOcorrenciasRoute
+  '/app/prestadores': typeof AuthenticatedAppPrestadoresRoute
+  '/app/solicitacoes': typeof AuthenticatedAppSolicitacoesRoute
+  '/app/unidades': typeof AuthenticatedAppUnidadesRoute
   '/app/': typeof AuthenticatedAppIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/aguardando-aprovacao': typeof AguardandoAprovacaoRoute
   '/auth': typeof AuthRoute
+  '/cookies': typeof CookiesRoute
+  '/privacidade': typeof PrivacidadeRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/termos-de-uso': typeof TermosDeUsoRoute
+  '/admin-aprovacoes': typeof AuthenticatedAdminAprovacoesRoute
+  '/convite': typeof AuthenticatedConviteRoute
+  '/app/admin-aprovacoes': typeof AuthenticatedAppAdminAprovacoesRoute
+  '/app/admin-perfis': typeof AuthenticatedAppAdminPerfisRoute
+  '/app/auditoria': typeof AuthenticatedAppAuditoriaRoute
+  '/app/comunicados': typeof AuthenticatedAppComunicadosRoute
+  '/app/configuracoes': typeof AuthenticatedAppConfiguracoesRoute
+  '/app/documentos': typeof AuthenticatedAppDocumentosRoute
+  '/app/membros': typeof AuthenticatedAppMembrosRoute
+  '/app/moradores': typeof AuthenticatedAppMoradoresRoute
   '/app/nova': typeof AuthenticatedAppNovaRoute
+  '/app/ocorrencias': typeof AuthenticatedAppOcorrenciasRoute
+  '/app/prestadores': typeof AuthenticatedAppPrestadoresRoute
+  '/app/solicitacoes': typeof AuthenticatedAppSolicitacoesRoute
+  '/app/unidades': typeof AuthenticatedAppUnidadesRoute
   '/app': typeof AuthenticatedAppIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
+  '/aguardando-aprovacao': typeof AguardandoAprovacaoRoute
   '/auth': typeof AuthRoute
+  '/cookies': typeof CookiesRoute
+  '/privacidade': typeof PrivacidadeRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/termos-de-uso': typeof TermosDeUsoRoute
+  '/_authenticated/admin-aprovacoes': typeof AuthenticatedAdminAprovacoesRoute
   '/_authenticated/app': typeof AuthenticatedAppRouteWithChildren
+  '/_authenticated/convite': typeof AuthenticatedConviteRoute
+  '/_authenticated/app/admin-aprovacoes': typeof AuthenticatedAppAdminAprovacoesRoute
+  '/_authenticated/app/admin-perfis': typeof AuthenticatedAppAdminPerfisRoute
+  '/_authenticated/app/auditoria': typeof AuthenticatedAppAuditoriaRoute
+  '/_authenticated/app/comunicados': typeof AuthenticatedAppComunicadosRoute
+  '/_authenticated/app/configuracoes': typeof AuthenticatedAppConfiguracoesRoute
+  '/_authenticated/app/documentos': typeof AuthenticatedAppDocumentosRoute
+  '/_authenticated/app/membros': typeof AuthenticatedAppMembrosRoute
+  '/_authenticated/app/moradores': typeof AuthenticatedAppMoradoresRoute
   '/_authenticated/app/nova': typeof AuthenticatedAppNovaRoute
+  '/_authenticated/app/ocorrencias': typeof AuthenticatedAppOcorrenciasRoute
+  '/_authenticated/app/prestadores': typeof AuthenticatedAppPrestadoresRoute
+  '/_authenticated/app/solicitacoes': typeof AuthenticatedAppSolicitacoesRoute
+  '/_authenticated/app/unidades': typeof AuthenticatedAppUnidadesRoute
   '/_authenticated/app/': typeof AuthenticatedAppIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/auth' | '/reset-password' | '/app' | '/app/nova' | '/app/'
+  fullPaths:
+    | '/'
+    | '/aguardando-aprovacao'
+    | '/auth'
+    | '/cookies'
+    | '/privacidade'
+    | '/reset-password'
+    | '/termos-de-uso'
+    | '/admin-aprovacoes'
+    | '/app'
+    | '/convite'
+    | '/app/admin-aprovacoes'
+    | '/app/admin-perfis'
+    | '/app/auditoria'
+    | '/app/comunicados'
+    | '/app/configuracoes'
+    | '/app/documentos'
+    | '/app/membros'
+    | '/app/moradores'
+    | '/app/nova'
+    | '/app/ocorrencias'
+    | '/app/prestadores'
+    | '/app/solicitacoes'
+    | '/app/unidades'
+    | '/app/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/reset-password' | '/app/nova' | '/app'
+  to:
+    | '/'
+    | '/aguardando-aprovacao'
+    | '/auth'
+    | '/cookies'
+    | '/privacidade'
+    | '/reset-password'
+    | '/termos-de-uso'
+    | '/admin-aprovacoes'
+    | '/convite'
+    | '/app/admin-aprovacoes'
+    | '/app/admin-perfis'
+    | '/app/auditoria'
+    | '/app/comunicados'
+    | '/app/configuracoes'
+    | '/app/documentos'
+    | '/app/membros'
+    | '/app/moradores'
+    | '/app/nova'
+    | '/app/ocorrencias'
+    | '/app/prestadores'
+    | '/app/solicitacoes'
+    | '/app/unidades'
+    | '/app'
   id:
     | '__root__'
     | '/'
     | '/_authenticated'
+    | '/aguardando-aprovacao'
     | '/auth'
+    | '/cookies'
+    | '/privacidade'
     | '/reset-password'
+    | '/termos-de-uso'
+    | '/_authenticated/admin-aprovacoes'
     | '/_authenticated/app'
+    | '/_authenticated/convite'
+    | '/_authenticated/app/admin-aprovacoes'
+    | '/_authenticated/app/admin-perfis'
+    | '/_authenticated/app/auditoria'
+    | '/_authenticated/app/comunicados'
+    | '/_authenticated/app/configuracoes'
+    | '/_authenticated/app/documentos'
+    | '/_authenticated/app/membros'
+    | '/_authenticated/app/moradores'
     | '/_authenticated/app/nova'
+    | '/_authenticated/app/ocorrencias'
+    | '/_authenticated/app/prestadores'
+    | '/_authenticated/app/solicitacoes'
+    | '/_authenticated/app/unidades'
     | '/_authenticated/app/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
+  AguardandoAprovacaoRoute: typeof AguardandoAprovacaoRoute
   AuthRoute: typeof AuthRoute
+  CookiesRoute: typeof CookiesRoute
+  PrivacidadeRoute: typeof PrivacidadeRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
+  TermosDeUsoRoute: typeof TermosDeUsoRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -116,11 +359,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/aguardando-aprovacao': {
+      id: '/aguardando-aprovacao'
+      path: '/aguardando-aprovacao'
+      fullPath: '/aguardando-aprovacao'
+      preLoaderRoute: typeof AguardandoAprovacaoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/auth': {
       id: '/auth'
       path: '/auth'
       fullPath: '/auth'
       preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/cookies': {
+      id: '/cookies'
+      path: '/cookies'
+      fullPath: '/cookies'
+      preLoaderRoute: typeof CookiesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/privacidade': {
+      id: '/privacidade'
+      path: '/privacidade'
+      fullPath: '/privacidade'
+      preLoaderRoute: typeof PrivacidadeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/reset-password': {
@@ -130,11 +394,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ResetPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/termos-de-uso': {
+      id: '/termos-de-uso'
+      path: '/termos-de-uso'
+      fullPath: '/termos-de-uso'
+      preLoaderRoute: typeof TermosDeUsoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/admin-aprovacoes': {
+      id: '/_authenticated/admin-aprovacoes'
+      path: '/admin-aprovacoes'
+      fullPath: '/admin-aprovacoes'
+      preLoaderRoute: typeof AuthenticatedAdminAprovacoesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/app': {
       id: '/_authenticated/app'
       path: '/app'
       fullPath: '/app'
       preLoaderRoute: typeof AuthenticatedAppRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/convite': {
+      id: '/_authenticated/convite'
+      path: '/convite'
+      fullPath: '/convite'
+      preLoaderRoute: typeof AuthenticatedConviteRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/app/': {
@@ -144,6 +429,62 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAppIndexRouteImport
       parentRoute: typeof AuthenticatedAppRoute
     }
+    '/_authenticated/app/admin-aprovacoes': {
+      id: '/_authenticated/app/admin-aprovacoes'
+      path: '/admin-aprovacoes'
+      fullPath: '/app/admin-aprovacoes'
+      preLoaderRoute: typeof AuthenticatedAppAdminAprovacoesRouteImport
+      parentRoute: typeof AuthenticatedAppRoute
+    }
+    '/_authenticated/app/admin-perfis': {
+      id: '/_authenticated/app/admin-perfis'
+      path: '/admin-perfis'
+      fullPath: '/app/admin-perfis'
+      preLoaderRoute: typeof AuthenticatedAppAdminPerfisRouteImport
+      parentRoute: typeof AuthenticatedAppRoute
+    }
+    '/_authenticated/app/auditoria': {
+      id: '/_authenticated/app/auditoria'
+      path: '/auditoria'
+      fullPath: '/app/auditoria'
+      preLoaderRoute: typeof AuthenticatedAppAuditoriaRouteImport
+      parentRoute: typeof AuthenticatedAppRoute
+    }
+    '/_authenticated/app/comunicados': {
+      id: '/_authenticated/app/comunicados'
+      path: '/comunicados'
+      fullPath: '/app/comunicados'
+      preLoaderRoute: typeof AuthenticatedAppComunicadosRouteImport
+      parentRoute: typeof AuthenticatedAppRoute
+    }
+    '/_authenticated/app/configuracoes': {
+      id: '/_authenticated/app/configuracoes'
+      path: '/configuracoes'
+      fullPath: '/app/configuracoes'
+      preLoaderRoute: typeof AuthenticatedAppConfiguracoesRouteImport
+      parentRoute: typeof AuthenticatedAppRoute
+    }
+    '/_authenticated/app/documentos': {
+      id: '/_authenticated/app/documentos'
+      path: '/documentos'
+      fullPath: '/app/documentos'
+      preLoaderRoute: typeof AuthenticatedAppDocumentosRouteImport
+      parentRoute: typeof AuthenticatedAppRoute
+    }
+    '/_authenticated/app/membros': {
+      id: '/_authenticated/app/membros'
+      path: '/membros'
+      fullPath: '/app/membros'
+      preLoaderRoute: typeof AuthenticatedAppMembrosRouteImport
+      parentRoute: typeof AuthenticatedAppRoute
+    }
+    '/_authenticated/app/moradores': {
+      id: '/_authenticated/app/moradores'
+      path: '/moradores'
+      fullPath: '/app/moradores'
+      preLoaderRoute: typeof AuthenticatedAppMoradoresRouteImport
+      parentRoute: typeof AuthenticatedAppRoute
+    }
     '/_authenticated/app/nova': {
       id: '/_authenticated/app/nova'
       path: '/nova'
@@ -151,16 +492,68 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAppNovaRouteImport
       parentRoute: typeof AuthenticatedAppRoute
     }
+    '/_authenticated/app/ocorrencias': {
+      id: '/_authenticated/app/ocorrencias'
+      path: '/ocorrencias'
+      fullPath: '/app/ocorrencias'
+      preLoaderRoute: typeof AuthenticatedAppOcorrenciasRouteImport
+      parentRoute: typeof AuthenticatedAppRoute
+    }
+    '/_authenticated/app/prestadores': {
+      id: '/_authenticated/app/prestadores'
+      path: '/prestadores'
+      fullPath: '/app/prestadores'
+      preLoaderRoute: typeof AuthenticatedAppPrestadoresRouteImport
+      parentRoute: typeof AuthenticatedAppRoute
+    }
+    '/_authenticated/app/solicitacoes': {
+      id: '/_authenticated/app/solicitacoes'
+      path: '/solicitacoes'
+      fullPath: '/app/solicitacoes'
+      preLoaderRoute: typeof AuthenticatedAppSolicitacoesRouteImport
+      parentRoute: typeof AuthenticatedAppRoute
+    }
+    '/_authenticated/app/unidades': {
+      id: '/_authenticated/app/unidades'
+      path: '/unidades'
+      fullPath: '/app/unidades'
+      preLoaderRoute: typeof AuthenticatedAppUnidadesRouteImport
+      parentRoute: typeof AuthenticatedAppRoute
+    }
   }
 }
 
 interface AuthenticatedAppRouteChildren {
+  AuthenticatedAppAdminAprovacoesRoute: typeof AuthenticatedAppAdminAprovacoesRoute
+  AuthenticatedAppAdminPerfisRoute: typeof AuthenticatedAppAdminPerfisRoute
+  AuthenticatedAppAuditoriaRoute: typeof AuthenticatedAppAuditoriaRoute
+  AuthenticatedAppComunicadosRoute: typeof AuthenticatedAppComunicadosRoute
+  AuthenticatedAppConfiguracoesRoute: typeof AuthenticatedAppConfiguracoesRoute
+  AuthenticatedAppDocumentosRoute: typeof AuthenticatedAppDocumentosRoute
+  AuthenticatedAppMembrosRoute: typeof AuthenticatedAppMembrosRoute
+  AuthenticatedAppMoradoresRoute: typeof AuthenticatedAppMoradoresRoute
   AuthenticatedAppNovaRoute: typeof AuthenticatedAppNovaRoute
+  AuthenticatedAppOcorrenciasRoute: typeof AuthenticatedAppOcorrenciasRoute
+  AuthenticatedAppPrestadoresRoute: typeof AuthenticatedAppPrestadoresRoute
+  AuthenticatedAppSolicitacoesRoute: typeof AuthenticatedAppSolicitacoesRoute
+  AuthenticatedAppUnidadesRoute: typeof AuthenticatedAppUnidadesRoute
   AuthenticatedAppIndexRoute: typeof AuthenticatedAppIndexRoute
 }
 
 const AuthenticatedAppRouteChildren: AuthenticatedAppRouteChildren = {
+  AuthenticatedAppAdminAprovacoesRoute: AuthenticatedAppAdminAprovacoesRoute,
+  AuthenticatedAppAdminPerfisRoute: AuthenticatedAppAdminPerfisRoute,
+  AuthenticatedAppAuditoriaRoute: AuthenticatedAppAuditoriaRoute,
+  AuthenticatedAppComunicadosRoute: AuthenticatedAppComunicadosRoute,
+  AuthenticatedAppConfiguracoesRoute: AuthenticatedAppConfiguracoesRoute,
+  AuthenticatedAppDocumentosRoute: AuthenticatedAppDocumentosRoute,
+  AuthenticatedAppMembrosRoute: AuthenticatedAppMembrosRoute,
+  AuthenticatedAppMoradoresRoute: AuthenticatedAppMoradoresRoute,
   AuthenticatedAppNovaRoute: AuthenticatedAppNovaRoute,
+  AuthenticatedAppOcorrenciasRoute: AuthenticatedAppOcorrenciasRoute,
+  AuthenticatedAppPrestadoresRoute: AuthenticatedAppPrestadoresRoute,
+  AuthenticatedAppSolicitacoesRoute: AuthenticatedAppSolicitacoesRoute,
+  AuthenticatedAppUnidadesRoute: AuthenticatedAppUnidadesRoute,
   AuthenticatedAppIndexRoute: AuthenticatedAppIndexRoute,
 }
 
@@ -168,11 +561,15 @@ const AuthenticatedAppRouteWithChildren =
   AuthenticatedAppRoute._addFileChildren(AuthenticatedAppRouteChildren)
 
 interface AuthenticatedRouteRouteChildren {
+  AuthenticatedAdminAprovacoesRoute: typeof AuthenticatedAdminAprovacoesRoute
   AuthenticatedAppRoute: typeof AuthenticatedAppRouteWithChildren
+  AuthenticatedConviteRoute: typeof AuthenticatedConviteRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedAdminAprovacoesRoute: AuthenticatedAdminAprovacoesRoute,
   AuthenticatedAppRoute: AuthenticatedAppRouteWithChildren,
+  AuthenticatedConviteRoute: AuthenticatedConviteRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =
@@ -181,8 +578,12 @@ const AuthenticatedRouteRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
+  AguardandoAprovacaoRoute: AguardandoAprovacaoRoute,
   AuthRoute: AuthRoute,
+  CookiesRoute: CookiesRoute,
+  PrivacidadeRoute: PrivacidadeRoute,
   ResetPasswordRoute: ResetPasswordRoute,
+  TermosDeUsoRoute: TermosDeUsoRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
