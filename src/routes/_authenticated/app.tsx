@@ -146,7 +146,7 @@ function Shell({ email, userId }: { email: string; userId: string }) {
       <a href="#app-main" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-md focus:bg-card focus:p-3">Ir para o conteúdo</a>
       <aside className="app-shell-sidebar sticky top-0 hidden h-dvh w-[var(--sidebar-width)] shrink-0 flex-col border-r border-white/10 p-4 text-sidebar-foreground md:flex">{navigationContent()}</aside>
       <div className="min-w-0 flex-1">
-        <header className="grid min-h-20 grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b border-border bg-card px-4 sm:px-6 lg:px-10">
+        <header className="app-shell-header grid min-h-20 grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b border-white/70 px-4 sm:px-6 lg:px-10">
           <div className="flex min-w-0 items-center gap-3">
             <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
               <SheetTrigger asChild><Button variant="outline" size="icon" className="shrink-0 md:hidden" aria-label="Abrir navegação"><Menu /></Button></SheetTrigger>
