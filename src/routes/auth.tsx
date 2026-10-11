@@ -29,7 +29,7 @@ export const Route = createFileRoute("/auth")({
 });
 
 function AuthPage() {
-  const { redirect, association_id, association_code } = Route.useSearch();
+  const { redirect, association_code } = Route.useSearch();
   const target = safeInternalPath(redirect);
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
@@ -215,6 +215,7 @@ function AuthPage() {
 
   async function google() {
     let requestedAssociationId = "";
+    let requestedAssociationCode = "";
     if (adminAccess) {
       adminAccessRef.current = true;
     } else if (authTab === "signup") {
@@ -232,6 +233,7 @@ function AuthPage() {
         return;
       }
       requestedAssociationId = matches[0].id;
+      requestedAssociationCode = code;
     }
     setLoading(true);
     try {
