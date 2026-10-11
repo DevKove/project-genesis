@@ -48,8 +48,7 @@ function AuthPage() {
       const requestedAssociationId = association_id && association_id !== "__new__" ? association_id : "";
       let accountApproved = false;
       try {
-        const db = supabase as any;
-        const { data: profile, error: profileError } = await db
+        const { data: profile, error: profileError } = await supabase
           .from("profiles")
           .select("account_status")
           .eq("id", user.id)
