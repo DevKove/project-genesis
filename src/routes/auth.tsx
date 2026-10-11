@@ -11,10 +11,10 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { safeInternalPath } from "@/lib/safe-redirect";
 import { buildAppUrl } from "@/lib/app-url";
 
-type Search = { redirect?: string | undefined; association_id?: string | undefined; association_required?: string | undefined };
+type Search = { redirect?: string | undefined; association_id?: string | undefined; association_code?: string | undefined; association_required?: string | undefined };
 
 export const Route = createFileRoute("/auth")({
-  validateSearch: (s: Record<string, unknown>): Search => ({ redirect: typeof s["redirect"] === "string" ? s["redirect"] : undefined, association_id: typeof s["association_id"] === "string" ? s["association_id"] : undefined, association_required: typeof s["association_required"] === "string" ? s["association_required"] : undefined }),
+  validateSearch: (s: Record<string, unknown>): Search => ({ redirect: typeof s["redirect"] === "string" ? s["redirect"] : undefined, association_id: typeof s["association_id"] === "string" ? s["association_id"] : undefined, association_code: typeof s["association_code"] === "string" ? s["association_code"] : undefined, association_required: typeof s["association_required"] === "string" ? s["association_required"] : undefined }),
   head: () => ({
     meta: [
       { title: "Entrar — Morada360" },
@@ -29,7 +29,7 @@ export const Route = createFileRoute("/auth")({
 });
 
 function AuthPage() {
-  const { redirect, association_id } = Route.useSearch();
+  const { redirect, association_id, association_code } = Route.useSearch();
   const target = safeInternalPath(redirect);
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
@@ -49,7 +49,18 @@ function AuthPage() {
       handledSession.current = user.id;
       // Only process an association explicitly selected during the Google signup flow.
       // Existing Google logins must not be forced into a new membership request based on editable metadata.
-      const requestedAssociationId = (association_id && association_id !== "__new__" ? association_id : "") || pendingAssociationId.current;
+      let callbackAssociationId = "";
+      if (association_code && /^\d{6}$/.test(association_code)) {
+        const { data: codeMatches, error: codeError } = await supabase.rpc("lookup_association_by_code", { _code: association_code });
+        if (codeError || !codeMatches?.length) {
+          toast.error("O código da associação não pôde ser validado. Entre novamente e informe o código correto.");
+          await supabase.auth.signOut();
+          if (active) void navigate({ to: "/auth", search: { redirect: target } });
+          return;
+        }
+        callbackAssociationId = codeMatches[0].id;
+      }
+      const requestedAssociationId = callbackAssociationId || pendingAssociationId.current;
       let accountApproved = false;
       let isPlatformAdmin = false;
       try {
@@ -125,7 +136,7 @@ function AuthPage() {
       active = false;
       data.subscription.unsubscribe();
     };
-  }, [association_id, navigate, target]);
+  }, [association_code, navigate, target]);
 
   async function signIn(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -227,7 +238,7 @@ function AuthPage() {
       // BASE_URL is "/" on a root deployment and "/project-genesis/" on GitHub Pages.
       const callback = new URL(buildAppUrl("/auth", window.location.origin, import.meta.env.BASE_URL));
       callback.searchParams.set("redirect", target);
-      if (requestedAssociationId && requestedAssociationId !== "__new__") callback.searchParams.set("association_id", requestedAssociationId);
+      if (requestedAssociationCode) callback.searchParams.set("association_code", requestedAssociationCode);
 
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
