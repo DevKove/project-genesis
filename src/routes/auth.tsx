@@ -76,14 +76,20 @@ function AuthPage() {
       }
       let storedAssociationId = "";
       try {
-        storedAssociationId = sessionStorage.getItem("morada360.pendingAssociationId") || "";
-      } catch { /* Session storage may be unavailable; the in-memory value remains usable. */ }
+        storedAssociationId = sessionStorage.getItem("morada360.pendingAssociationId")
+          || localStorage.getItem("morada360.pendingAssociationId")
+          || "";
+      } catch {
+        try { storedAssociationId = localStorage.getItem("morada360.pendingAssociationId") || ""; } catch { /* Storage can be disabled by the browser. */ }
+      }
       let requestedAssociationId = callbackAssociationId || pendingAssociationId.current || storedAssociationId;
       if (!requestedAssociationId && pendingAssociationCode && /^\d{6}$/.test(pendingAssociationCode)) {
         const { data: recoveredMatches, error: recoveredLookupError } = await supabase.rpc("lookup_association_by_code", { _code: pendingAssociationCode });
         if (!recoveredLookupError && recoveredMatches?.length) requestedAssociationId = recoveredMatches[0].id;
       }
       try { sessionStorage.removeItem("morada360.pendingAssociationId"); } catch { /* Ignore unavailable session storage. */ }
+      try { localStorage.removeItem("morada360.pendingAssociationId"); } catch { /* Ignore unavailable local storage. */ }
+      try { sessionStorage.removeItem("morada360.pendingAssociationCode"); } catch { /* Ignore unavailable session storage. */ }
       try { localStorage.removeItem("morada360.pendingAssociationCode"); } catch { /* Ignore unavailable local storage. */ }
       let accountApproved = false;
       let isPlatformAdmin = false;
@@ -267,10 +273,16 @@ function AuthPage() {
         return;
       }
       requestedAssociationCode = code;
+      // Persist both the code and its resolved association ID before leaving for Google's domain.
+      // The ID is the most reliable fallback if the OAuth callback loses its query string.
+      const associationId = matches[0].id as string;
+      pendingAssociationId.current = associationId;
+      try { sessionStorage.setItem("morada360.pendingAssociationId", associationId); } catch { /* Fall back to local storage. */ }
       try {
-        sessionStorage.setItem("morada360.pendingAssociationCode", code);
+        localStorage.setItem("morada360.pendingAssociationId", associationId);
         localStorage.setItem("morada360.pendingAssociationCode", code);
-      } catch { /* The callback URL still carries the code if storage is unavailable. */ }
+      } catch { /* The callback URL and session storage remain available where supported. */ }
+      try { sessionStorage.setItem("morada360.pendingAssociationCode", code); } catch { /* The callback URL carries the code too. */ }
     }
     setLoading(true);
     try {
