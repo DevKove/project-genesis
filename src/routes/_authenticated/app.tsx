@@ -1,6 +1,6 @@
 import { createFileRoute, Link, Outlet, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { AlertTriangle, Building2, ClipboardList, FileText, History, Home, LayoutDashboard, LogOut, Megaphone, Settings, UserCog, Users } from "lucide-react";
+import { AlertTriangle, Building2, ClipboardList, FileText, History, Home, LayoutDashboard, LogOut, Megaphone, Settings, UserCog, Users, ShieldCheck } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { AssocProvider, useAssoc } from "@/lib/assoc-context";
 import { isManager, ROLE_LABELS } from "@/lib/roles";
@@ -25,6 +25,15 @@ function AppLayout() {
 function Shell({ email, userId }: { email: string; userId: string }) {
   const { memberships, current, setCurrentId, loading, error, refetch } = useAssoc();
   const navigate = useNavigate();
+  const platformAdmin = useQuery({
+    queryKey: ["platform-admin-role", userId],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("user_roles").select("role").eq("user_id", userId).eq("role", "platform_admin").maybeSingle();
+      if (error) throw error;
+      return Boolean(data);
+    },
+    refetchInterval: 60000,
+  });
   const pendingJoinRequests = useQuery({
     queryKey: ["association-join-requests-count", current?.association_id],
     enabled: Boolean(current?.association_id && current.role === "admin"),
@@ -70,6 +79,7 @@ function Shell({ email, userId }: { email: string; userId: string }) {
     { to: "/app/auditoria", label: "Auditoria", icon: History, exact: false },
     { to: "/app/prestadores", label: "Prestadores", icon: Building2, exact: false },
     { to: "/app/configuracoes", label: "Configurações", icon: Settings, exact: false },
+    ...(platformAdmin.data ? [{ to: "/admin-aprovacoes", label: "Aprovar cadastros", icon: ShieldCheck, exact: false }] : []),
   ] as const;
   const visibleNav = nav.filter((item) => (item.to !== "/app/auditoria" && item.to !== "/app/configuracoes") || current.role === "admin" || current.role === "presidente");
   const associationLogo = current.associations?.logo_url;
@@ -107,7 +117,7 @@ function Shell({ email, userId }: { email: string; userId: string }) {
             {associationLogo ? <img src={associationLogo} alt="" className="h-8 w-8 shrink-0 rounded-md object-contain" /> : null}
             <span className="truncate font-semibold">{current.associations?.name ?? "Morada360"}</span>
           </div>
-          <select aria-label="Navegação" className="max-w-[45%] rounded border bg-background px-2 py-2 text-sm" value="" onChange={(e) => e.target.value && navigate({ to: e.target.value })}>
+          <select aria-label="Navegação" className="max-w-[45%] rounded border bg-background px-2 py-2 text-sm" value="" onChange={(e) => e.target.value && navigate({ to: e.target.value as any })}>
             <option value="">Menu</option>
             {visibleNav.map((n) => <option key={n.to} value={n.to}>{n.label}{n.to === "/app/membros" && current.role === "admin" && (pendingJoinRequests.data ?? 0) > 0 ? ` (${pendingJoinRequests.data})` : ""}</option>)}
           </select>
