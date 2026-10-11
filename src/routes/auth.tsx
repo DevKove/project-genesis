@@ -46,7 +46,20 @@ function AuthPage() {
       // Only process an association explicitly selected during the Google signup flow.
       // Existing Google logins must not be forced into a new membership request based on editable metadata.
       const requestedAssociationId = association_id && association_id !== "__new__" ? association_id : "";
+      let accountApproved = false;
       try {
+        const db = supabase as any;
+        const { data: profile, error: profileError } = await db
+          .from("profiles")
+          .select("account_status")
+          .eq("id", user.id)
+          .maybeSingle();
+        accountApproved = !profileError && profile?.account_status === "approved";
+
+        // Do not create a membership request or trigger any association workflow
+        // until the administrator has approved the account itself.
+        if (!accountApproved) return;
+
         if (requestedAssociationId) {
           const { error } = await supabase.rpc("request_association_membership", { _association_id: requestedAssociationId });
           if (error) toast.error("Não foi possível registrar a solicitação de acesso à associação.");
@@ -67,9 +80,9 @@ function AuthPage() {
           }
         }
       } catch {
-        toast.error("Não foi possível concluir o registro da solicitação de acesso.");
+        toast.error("Não foi possível concluir a verificação do cadastro.");
       } finally {
-        if (active) void navigate({ to: target });
+        if (active) void navigate({ to: accountApproved ? target : "/aguardando-aprovacao" });
       }
     };
     supabase.auth.getSession().then(({ data, error }) => {
