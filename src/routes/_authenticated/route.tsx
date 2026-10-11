@@ -9,8 +9,7 @@ export const Route = createFileRoute("/_authenticated")({
       if (!error && data.user) {
         // Authentication alone is not sufficient: new accounts remain blocked
         // until an administrator changes their server-controlled approval state.
-        const db = supabase as any;
-        const { data: profile, error: profileError } = await db
+        const { data: profile, error: profileError } = await supabase
           .from("profiles")
           .select("account_status")
           .eq("id", data.user.id)
