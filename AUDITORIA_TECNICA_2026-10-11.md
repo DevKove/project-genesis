@@ -193,3 +193,16 @@ O commit que atualizou este relatório também passou:
 - [Deploy GitHub Pages](https://github.com/DevKove/project-genesis/actions/runs/38150466039): **success**.
 
 Esses resultados validam lint/testes/build do repositório e a publicação estática. **Não validam o runtime da Edge Function**, porque a listagem do projeto Supabase não apresentou funções implantadas; também não substituem teste HTTP de CORS, teste real de autenticação, varredura completa de dependências/segredos ou teste de carga.
+
+
+### Atualização operacional — Edge Function implantada (11/10/2026)
+
+A função `notify-association-join-request` foi implantada no projeto Supabase conectado `ivajgtokxrzwnspihllr`, usando o código versionado em `main`.
+
+- Estado informado pelo Supabase: `ACTIVE`, versão 1.
+- Verificação JWT da plataforma: habilitada (`verify_jwt=true`).
+- Código implantado contém CORS por origem configurada, validação de sessão, bloqueio de perfis não aprovados e verificações de autorização por associação/evento.
+- **Pendente:** teste HTTP ponta a ponta. A implantação não comprova que as variáveis de ambiente estejam completas nem que o envio de e-mail funcione.
+- Testes ainda necessários: sem token (401), token inválido (401), conta não aprovada (403), usuário sem permissão (403), origem CORS permitida/não permitida e envio com destinatário de teste. Nenhum e-mail real foi enviado durante esta revisão.
+
+A implantação fecha a pendência de ausência da função no projeto, mas não fecha a validação funcional nem a auditoria geral.
