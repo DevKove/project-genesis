@@ -79,3 +79,11 @@ Esses são testes de autorização no banco com papéis/claims simulados e trans
 ### Isolamento de perfil e estado do Storage
 
 Em nova transação revertida, sob `authenticated`, a consulta RLS ao perfil de outro usuário retornou zero linhas; o próprio perfil permaneceu acessível. A consulta de objetos no Storage encontrou somente um objeto no bucket público `association-logos`; não havia objetos nos buckets privados para realizar um teste negativo real de download. Portanto, a política de documentos privados foi revisada estaticamente, mas a autorização de download entre usuários/associações permanece sem teste de objeto real.
+
+
+## Advisor de performance — 11/10/2026
+
+O Performance Advisor não reportou achados críticos nesta consulta; sinalizou 8 índices como não utilizados até o momento (`incidents_association_status_created_idx`, `service_requests_association_status_created_idx`, `account_access_requests_reviewed_by_idx`, `profiles_approved_by_idx`, `association_join_requests_reviewed_by_idx`, `association_join_requests_user_id_idx`, `user_notifications_association_id_idx`, `announcements_association_id_idx`). Não removi esses índices: o projeto tem pouca atividade observada e a remoção prematura pode degradar consultas futuras; reavaliar após coletar métricas de uso representativas.
+
+## Situação de encerramento
+A revisão estática, os checks de privilégios e os testes negativos SQL descritos acima foram realizados. A suíte automatizada e o deploy passaram no commit anterior; para o commit que contém esta última atualização do relatório, confirmar os workflows em Actions. A auditoria de segurança não pode ser certificada como integralmente concluída enquanto faltarem testes E2E com JWTs/contas reais, teste de acesso cruzado a objetos privados (o Storage não contém objetos privados de teste) e ativação de leaked-password protection no painel Supabase Auth.
