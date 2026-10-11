@@ -1,7 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Building2, Clock3, LogOut, RefreshCw, ShieldAlert } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { CreateAssociation } from "@/components/app/CreateAssociation";
 import { Button } from "@/components/ui/button";
 
 type JoinRequestStatus = {
@@ -83,11 +82,11 @@ export function NoAssociationAccess({ userId }: { userId: string }) {
 
   return (
     <div className="flex min-h-screen items-center justify-center p-6">
-      <div className="w-full max-w-lg">
-        <div className="mb-5 flex items-center gap-3"><Building2 className="h-8 w-8 text-primary" /><div><h1 className="text-3xl font-bold">Configure sua associação</h1><p className="mt-1 text-sm text-muted-foreground">Sua conta ainda não está vinculada a uma associação.</p></div></div>
-        <CreateAssociation />
-        <Button className="mt-5" variant="ghost" onClick={() => void signOut()}><LogOut className="mr-2 h-4 w-4" /> Sair</Button>
-      </div>
+      <section className="w-full max-w-lg rounded-2xl border border-border bg-card p-6 shadow-soft sm:p-8">
+        <div className="mb-5 flex items-center gap-3"><Building2 className="h-8 w-8 text-primary" /><div><h1 className="text-2xl font-bold">Nenhuma associação vinculada</h1><p className="mt-1 text-sm text-muted-foreground">Para manter cada grupo separado, somente o administrador principal pode cadastrar uma nova associação.</p></div></div>
+        <div className="rounded-xl border border-border bg-muted/50 p-4 text-sm leading-6 text-muted-foreground">Peça à administração da sua associação o código de 6 dígitos. Saia da conta e entre novamente informando esse código na tela de acesso. Se você já solicitou acesso, aguarde a aprovação do administrador da associação.</div>
+        <Button className="mt-5" onClick={() => void signOut()}><LogOut className="mr-2 h-4 w-4" /> Sair e informar o código</Button>
+      </section>
     </div>
   );
 }
