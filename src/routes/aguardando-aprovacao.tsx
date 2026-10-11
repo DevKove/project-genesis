@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Clock3, ShieldCheck, ShieldX } from "lucide-react";
@@ -13,7 +13,7 @@ function PendingApprovalPage() {
   const navigate = useNavigate();
   const [status, setStatus] = useState<"loading" | "pending" | "approved" | "rejected" | "unavailable">("loading");
 
-  async function checkStatus() {
+  const checkStatus = useCallback(async () => {
     setStatus("loading");
     try {
       const { data: userData } = await supabase.auth.getUser();
@@ -34,9 +34,9 @@ function PendingApprovalPage() {
     } catch {
       setStatus("unavailable");
     }
-  }
+  }, [navigate]);
 
-  useEffect(() => { void checkStatus(); }, []);
+  useEffect(() => { void checkStatus(); }, [checkStatus]);
 
   async function signOut() {
     await supabase.auth.signOut();
