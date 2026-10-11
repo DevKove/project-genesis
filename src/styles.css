@@ -57,20 +57,20 @@
 }
 
 :root {
-  --radius: 0.5rem;
-  --background: oklch(0.975 0.003 160);
-  --foreground: oklch(0.25 0.022 165);
+  --radius: 0.8rem;
+  --background: oklch(0.975 0.012 250);
+  --foreground: oklch(0.23 0.035 255);
   --card: oklch(1 0 0);
   --card-foreground: var(--foreground);
   --popover: var(--card);
   --popover-foreground: var(--foreground);
-  --primary: oklch(0.39 0.065 165);
+  --primary: oklch(0.39 0.11 162);
   --primary-foreground: oklch(0.99 0.002 160);
-  --primary-glow: oklch(0.51 0.085 165);
-  --secondary: oklch(0.94 0.009 160);
-  --secondary-foreground: oklch(0.32 0.04 165);
-  --muted: oklch(0.95 0.004 160);
-  --muted-foreground: oklch(0.48 0.015 165);
+  --primary-glow: oklch(0.58 0.13 162);
+  --secondary: oklch(0.95 0.012 250);
+  --secondary-foreground: oklch(0.30 0.035 255);
+  --muted: oklch(0.955 0.01 250);
+  --muted-foreground: oklch(0.50 0.025 255);
   --accent: oklch(0.61 0.12 70);
   --accent-foreground: oklch(0.99 0.002 70);
   --success: oklch(0.43 0.095 155);
@@ -79,29 +79,29 @@
   --warning-subtle: oklch(0.96 0.03 80);
   --destructive: oklch(0.52 0.18 27);
   --destructive-foreground: oklch(0.99 0.002 27);
-  --border: oklch(0.89 0.008 160);
-  --input: oklch(0.84 0.012 160);
-  --ring: oklch(0.51 0.085 165);
+  --border: oklch(0.90 0.015 250);
+  --input: oklch(0.86 0.015 250);
+  --ring: oklch(0.58 0.13 162);
   --chart-1: var(--primary);
   --chart-2: var(--accent);
   --chart-3: var(--success);
   --chart-4: var(--warning);
   --chart-5: oklch(0.5 0.08 250);
-  --sidebar: oklch(0.25 0.039 165);
-  --sidebar-foreground: oklch(0.93 0.008 160);
-  --sidebar-primary: oklch(0.78 0.095 80);
-  --sidebar-primary-foreground: oklch(0.25 0.039 165);
-  --sidebar-accent: oklch(0.34 0.044 165);
-  --sidebar-accent-foreground: oklch(0.99 0.002 160);
-  --sidebar-border: oklch(0.36 0.027 165);
-  --sidebar-ring: oklch(0.78 0.095 80);
+  --sidebar: oklch(0.16 0.025 255);
+  --sidebar-foreground: oklch(0.94 0.012 250);
+  --sidebar-primary: oklch(0.78 0.13 162);
+  --sidebar-primary-foreground: oklch(0.16 0.025 255);
+  --sidebar-accent: oklch(0.25 0.035 255);
+  --sidebar-accent-foreground: oklch(0.99 0.004 250);
+  --sidebar-border: oklch(0.30 0.025 255);
+  --sidebar-ring: oklch(0.78 0.13 162);
   --overlay: oklch(0.16 0.02 165 / 0.55);
   --paper: oklch(1 0 0);
   --paper-foreground: oklch(0.22 0 0);
   --paper-muted: oklch(0.46 0 0);
-  --gradient-hero: linear-gradient(140deg, var(--sidebar), var(--primary));
+  --gradient-hero: linear-gradient(140deg, oklch(0.16 0.025 255), oklch(0.25 0.06 255) 58%, oklch(0.36 0.11 162));
   --shadow-soft: 0 1px 3px color-mix(in oklab, var(--foreground) 5%, transparent);
-  --shadow-panel: 0 12px 36px color-mix(in oklab, var(--foreground) 14%, transparent);
+  --shadow-panel: 0 18px 50px color-mix(in oklab, oklch(0.16 0.025 255) 12%, transparent);
   --motion-fast: 160ms;
   --motion-normal: 220ms;
   --space-page: 2rem;
@@ -265,3 +265,16 @@
     scroll-behavior: auto !important;
   }
 }
+
+
+/* Identidade visual Morada360 alinhada ao portal de autenticação. */
+@layer base {
+  body { background-image: radial-gradient(oklch(0.62 0.025 255 / 0.13) 0.7px, transparent 0.7px); background-size: 22px 22px; }
+  ::selection { background: oklch(0.82 0.10 162 / 0.35); color: oklch(0.20 0.03 255); }
+}
+.app-shell-sidebar { background: linear-gradient(155deg, oklch(0.15 0.025 255), oklch(0.19 0.035 255) 65%, oklch(0.20 0.055 162)); }
+.app-shell-brand { background: linear-gradient(135deg, oklch(0.78 0.13 162 / 0.18), oklch(0.70 0.12 220 / 0.14)); box-shadow: inset 0 0 0 1px oklch(0.99 0.005 250 / 0.10); }
+.app-shell-header { background: color-mix(in oklab, white 92%, oklch(0.93 0.03 220)); backdrop-filter: blur(18px); }
+.app-content { animation: app-content-enter 360ms ease-out both; }
+@keyframes app-content-enter { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+@media (prefers-reduced-motion: reduce) { .app-content { animation: none; } }
