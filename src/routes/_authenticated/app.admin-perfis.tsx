@@ -53,7 +53,6 @@ function AdminProfilesPage() {
   const [saving, setSaving] = useState(false);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
-  const db = supabase as any;
 
   useEffect(() => {
     if (!avatarFile) {
@@ -73,7 +72,7 @@ function AdminProfilesPage() {
         if (alive) void navigate({ to: "/auth" });
         return;
       }
-      const { data, error } = await db.from("user_roles").select("role").eq("user_id", auth.user.id).eq("role", "platform_admin").maybeSingle();
+      const { data, error } = await supabase.from("user_roles").select("role").eq("user_id", auth.user.id).eq("role", "platform_admin").maybeSingle();
       if (alive) setIsAdmin(!error && Boolean(data));
     })();
     return () => { alive = false; };
@@ -83,11 +82,11 @@ function AdminProfilesPage() {
     queryKey: ["platform-admin-profiles"],
     enabled: isAdmin === true,
     queryFn: async () => {
-      const { data, error } = await db.rpc("admin_list_user_profiles");
+      const { data, error } = await supabase.rpc("admin_list_user_profiles");
       if (error) throw error;
-      return ((data ?? []) as ProfileRow[]).map((p) => ({
+      return (data ?? []).map((p) => ({
         ...p,
-        memberships: Array.isArray(p.memberships) ? p.memberships : [],
+        memberships: Array.isArray(p.memberships) ? (p.memberships as unknown as Membership[]) : [],
       }));
     },
   });
@@ -131,7 +130,7 @@ function AdminProfilesPage() {
         avatarUrlToSave = supabase.storage.from("profile-avatars").getPublicUrl(objectPath).data.publicUrl;
       }
 
-      const { error: profileError } = await db.from("profiles").update({
+      const { error: profileError } = await supabase.from("profiles").update({
         full_name: draft.full_name.trim() || null,
         phone: draft.phone.trim() || null,
         avatar_url: avatarUrlToSave,
