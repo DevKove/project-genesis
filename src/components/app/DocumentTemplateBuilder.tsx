@@ -15,7 +15,7 @@ const commonFields: TemplateField[] = [
   { id: "responsible", label: "Responsável pela emissão", required: true },
 ];
 
-const templates: TemplateDefinition[] = [
+const templates: [TemplateDefinition, ...TemplateDefinition[]] = [
   {
     id: "meeting-minutes", name: "Ata de reunião", description: "Registro de reunião, decisões e encaminhamentos.", category: "atas",
     fields: [
@@ -150,7 +150,6 @@ export function DocumentTemplateBuilder({
   const [documentTitle, setDocumentTitle] = useState("");
   const [saving, setSaving] = useState(false);
   const template = templates.find((item) => item.id === templateId) ?? templates[0];
-  if (!template) throw new Error("Nenhum modelo disponível");
   const normalizedValues = useMemo(() => Object.fromEntries(template.fields.map((field) => [field.id, values[field.id]?.trim() || (field.required ? "________________" : "")])), [template, values]);
   const generatedBody = useMemo(() => template.build(normalizedValues, associationName, city ?? ""), [template, normalizedValues, associationName, city]);
   const ready = template.fields.filter((field) => field.required).every((field) => Boolean(values[field.id]?.trim()));
