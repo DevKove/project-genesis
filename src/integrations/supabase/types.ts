@@ -14,6 +14,53 @@ export type Database = {
   }
   public: {
     Tables: {
+      account_access_requests: {
+        Row: {
+          email: string
+          full_name: string | null
+          id: string
+          requested_association_id: string | null
+          requested_at: string
+          review_note: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          email: string
+          full_name?: string | null
+          id?: string
+          requested_association_id?: string | null
+          requested_at?: string
+          review_note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          email?: string
+          full_name?: string | null
+          id?: string
+          requested_association_id?: string | null
+          requested_at?: string
+          review_note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "account_access_requests_requested_association_id_fkey"
+            columns: ["requested_association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       announcements: {
         Row: {
           association_id: string
@@ -45,6 +92,56 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "announcements_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      association_join_requests: {
+        Row: {
+          association_id: string
+          association_name: string
+          email: string
+          full_name: string | null
+          id: string
+          requested_at: string
+          review_note: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          association_id: string
+          association_name: string
+          email: string
+          full_name?: string | null
+          id?: string
+          requested_at?: string
+          review_note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          association_id?: string
+          association_name?: string
+          email?: string
+          full_name?: string | null
+          id?: string
+          requested_at?: string
+          review_note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "association_join_requests_association_id_fkey"
             columns: ["association_id"]
             isOneToOne: false
             referencedRelation: "associations"
@@ -87,6 +184,7 @@ export type Database = {
       associations: {
         Row: {
           address: string | null
+          association_code: string
           city: string | null
           cnpj: string | null
           created_at: string
@@ -104,6 +202,7 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          association_code: string
           city?: string | null
           cnpj?: string | null
           created_at?: string
@@ -121,6 +220,7 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          association_code?: string
           city?: string | null
           cnpj?: string | null
           created_at?: string
@@ -171,6 +271,115 @@ export type Database = {
         }
         Relationships: []
       }
+      documents: {
+        Row: {
+          association_id: string
+          category: string
+          created_at: string
+          deleted_at: string | null
+          description: string | null
+          file_path: string
+          id: string
+          mime_type: string
+          size_bytes: number
+          title: string
+          updated_at: string
+          uploaded_by: string
+          visibility: string
+        }
+        Insert: {
+          association_id: string
+          category?: string
+          created_at?: string
+          deleted_at?: string | null
+          description?: string | null
+          file_path: string
+          id?: string
+          mime_type: string
+          size_bytes: number
+          title: string
+          updated_at?: string
+          uploaded_by: string
+          visibility?: string
+        }
+        Update: {
+          association_id?: string
+          category?: string
+          created_at?: string
+          deleted_at?: string | null
+          description?: string | null
+          file_path?: string
+          id?: string
+          mime_type?: string
+          size_bytes?: number
+          title?: string
+          updated_at?: string
+          uploaded_by?: string
+          visibility?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "documents_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      incidents: {
+        Row: {
+          assigned_to: string | null
+          association_id: string
+          category: string
+          created_at: string
+          created_by: string
+          description: string
+          id: string
+          priority: string
+          resolution_notes: string | null
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_to?: string | null
+          association_id: string
+          category?: string
+          created_at?: string
+          created_by: string
+          description: string
+          id?: string
+          priority?: string
+          resolution_notes?: string | null
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_to?: string | null
+          association_id?: string
+          category?: string
+          created_at?: string
+          created_by?: string
+          description?: string
+          id?: string
+          priority?: string
+          resolution_notes?: string | null
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "incidents_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invitations: {
         Row: {
           association_id: string
@@ -217,27 +426,42 @@ export type Database = {
       }
       profiles: {
         Row: {
+          account_status: string
+          approval_requested_at: string | null
+          approved_at: string | null
+          approved_by: string | null
           avatar_url: string | null
           created_at: string
           full_name: string | null
           id: string
           phone: string | null
+          rejection_reason: string | null
           updated_at: string
         }
         Insert: {
+          account_status?: string
+          approval_requested_at?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
           avatar_url?: string | null
           created_at?: string
           full_name?: string | null
           id: string
           phone?: string | null
+          rejection_reason?: string | null
           updated_at?: string
         }
         Update: {
+          account_status?: string
+          approval_requested_at?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
           avatar_url?: string | null
           created_at?: string
           full_name?: string | null
           id?: string
           phone?: string | null
+          rejection_reason?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -251,6 +475,10 @@ export type Database = {
           email: string | null
           full_name: string
           id: string
+          identity_document_mime_type: string | null
+          identity_document_name: string | null
+          identity_document_path: string | null
+          identity_document_size_bytes: number | null
           is_active: boolean
           lgpd_consent: boolean
           notes: string | null
@@ -268,6 +496,10 @@ export type Database = {
           email?: string | null
           full_name: string
           id?: string
+          identity_document_mime_type?: string | null
+          identity_document_name?: string | null
+          identity_document_path?: string | null
+          identity_document_size_bytes?: number | null
           is_active?: boolean
           lgpd_consent?: boolean
           notes?: string | null
@@ -285,6 +517,10 @@ export type Database = {
           email?: string | null
           full_name?: string
           id?: string
+          identity_document_mime_type?: string | null
+          identity_document_name?: string | null
+          identity_document_path?: string | null
+          identity_document_size_bytes?: number | null
           is_active?: boolean
           lgpd_consent?: boolean
           notes?: string | null
@@ -303,10 +539,60 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "residents_unit_id_fkey"
-            columns: ["unit_id"]
+            foreignKeyName: "residents_association_unit_fk"
+            columns: ["association_id", "unit_id"]
             isOneToOne: false
             referencedRelation: "units"
+            referencedColumns: ["association_id", "id"]
+          },
+        ]
+      }
+      service_requests: {
+        Row: {
+          association_id: string
+          category: string
+          created_at: string
+          created_by: string
+          description: string
+          id: string
+          priority: string
+          resolution_notes: string | null
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          association_id: string
+          category?: string
+          created_at?: string
+          created_by: string
+          description: string
+          id?: string
+          priority?: string
+          resolution_notes?: string | null
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          association_id?: string
+          category?: string
+          created_at?: string
+          created_by?: string
+          description?: string
+          id?: string
+          priority?: string
+          resolution_notes?: string | null
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_requests_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
             referencedColumns: ["id"]
           },
         ]
@@ -361,6 +647,57 @@ export type Database = {
           },
         ]
       }
+      user_notifications: {
+        Row: {
+          association_id: string | null
+          created_at: string
+          id: string
+          message: string
+          notification_type: string
+          read_at: string | null
+          recipient_id: string
+          request_id: string | null
+          title: string
+        }
+        Insert: {
+          association_id?: string | null
+          created_at?: string
+          id?: string
+          message: string
+          notification_type: string
+          read_at?: string | null
+          recipient_id: string
+          request_id?: string | null
+          title: string
+        }
+        Update: {
+          association_id?: string | null
+          created_at?: string
+          id?: string
+          message?: string
+          notification_type?: string
+          read_at?: string | null
+          recipient_id?: string
+          request_id?: string | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_notifications_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_notifications_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "association_join_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           id: string
@@ -379,36 +716,163 @@ export type Database = {
         }
         Relationships: []
       }
+      vendors: {
+        Row: {
+          association_id: string
+          contact_name: string | null
+          created_at: string
+          created_by: string
+          email: string | null
+          id: string
+          identity_document_mime_type: string | null
+          identity_document_name: string | null
+          identity_document_path: string | null
+          identity_document_size_bytes: number | null
+          is_active: boolean
+          name: string
+          notes: string | null
+          phone: string | null
+          service_category: string
+          updated_at: string
+        }
+        Insert: {
+          association_id: string
+          contact_name?: string | null
+          created_at?: string
+          created_by: string
+          email?: string | null
+          id?: string
+          identity_document_mime_type?: string | null
+          identity_document_name?: string | null
+          identity_document_path?: string | null
+          identity_document_size_bytes?: number | null
+          is_active?: boolean
+          name: string
+          notes?: string | null
+          phone?: string | null
+          service_category?: string
+          updated_at?: string
+        }
+        Update: {
+          association_id?: string
+          contact_name?: string | null
+          created_at?: string
+          created_by?: string
+          email?: string | null
+          id?: string
+          identity_document_mime_type?: string | null
+          identity_document_name?: string | null
+          identity_document_path?: string | null
+          identity_document_size_bytes?: number | null
+          is_active?: boolean
+          name?: string
+          notes?: string | null
+          phone?: string | null
+          service_category?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vendors_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
-      [_ in never]: never
+      association_member_directory: {
+        Row: {
+          association_id: string | null
+          full_name: string | null
+          user_id: string | null
+        }
+        Insert: {
+          association_id?: string | null
+          full_name?: never
+          user_id?: string | null
+        }
+        Update: {
+          association_id?: string | null
+          full_name?: never
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "association_members_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       accept_invitation: { Args: { _token: string }; Returns: string }
+      admin_list_user_profiles: {
+        Args: never
+        Returns: {
+          account_status: string
+          avatar_url: string
+          created_at: string
+          email: string
+          full_name: string
+          memberships: Json
+          phone: string
+          platform_role: string
+          user_id: string
+        }[]
+      }
+      admin_update_association_member_role: {
+        Args: { _association_id: string; _new_role: string; _user_id: string }
+        Returns: undefined
+      }
       create_association: {
         Args: { _city?: string; _cnpj?: string; _name: string; _state?: string }
         Returns: string
       }
-      has_assoc_role: {
-        Args: {
-          _assoc: string
-          _roles: Database["public"]["Enums"]["assoc_role"][]
-          _user: string
-        }
-        Returns: boolean
+      list_pending_account_access: {
+        Args: never
+        Returns: {
+          email: string
+          full_name: string
+          id: string
+          requested_association_id: string
+          requested_at: string
+          status: string
+          user_id: string
+        }[]
       }
-      has_role: {
+      lookup_association_by_code: {
+        Args: { _code: string }
+        Returns: {
+          city: string
+          id: string
+          name: string
+          state: string
+        }[]
+      }
+      request_association_membership: {
+        Args: { _association_id: string }
+        Returns: string
+      }
+      review_account_access: {
         Args: {
-          _role: Database["public"]["Enums"]["app_role"]
+          _association_id?: string
+          _association_role?: Database["public"]["Enums"]["assoc_role"]
+          _decision: string
+          _note?: string
           _user_id: string
         }
-        Returns: boolean
+        Returns: undefined
       }
-      is_assoc_manager: {
-        Args: { _assoc: string; _user: string }
-        Returns: boolean
+      review_association_join_request: {
+        Args: { _decision: string; _note?: string; _request_id: string }
+        Returns: string
       }
-      is_member: { Args: { _assoc: string; _user: string }; Returns: boolean }
     }
     Enums: {
       app_role: "platform_admin" | "platform_staff"
