@@ -73,7 +73,7 @@ function Shell({ email, userId }: { email: string; userId: string }) {
             <ShieldCheck className="mb-4 h-9 w-9 text-primary" />
             <h1 className="text-2xl font-semibold">Administração principal</h1>
             <p className="mt-2 text-sm leading-6 text-muted-foreground">Sua conta tem permissão de administrador da plataforma, mas ainda não está vinculada a uma associação. Você pode analisar e aprovar novos cadastros por aqui.</p>
-            <Link to="/admin-aprovacoes" className="mt-5 inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"><ShieldCheck className="h-4 w-4" /> Aprovar cadastros</Link>
+            <Link to="/app/admin-aprovacoes" className="mt-5 inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"><ShieldCheck className="h-4 w-4" /> Aprovar cadastros</Link>
             <button onClick={() => void supabase.auth.signOut()} className="ml-3 rounded-lg border px-4 py-2 text-sm">Sair</button>
           </section>
         </div>
@@ -94,7 +94,7 @@ function Shell({ email, userId }: { email: string; userId: string }) {
     { to: "/app/auditoria", label: "Auditoria", icon: History, exact: false },
     { to: "/app/prestadores", label: "Prestadores", icon: Building2, exact: false },
     { to: "/app/configuracoes", label: "Configurações", icon: Settings, exact: false },
-    ...(platformAdmin.data ? [{ to: "/admin-aprovacoes", label: "Aprovar cadastros", icon: ShieldCheck, exact: false }, { to: "/app/admin-perfis", label: "Gerenciar perfis", icon: UserCog, exact: false }] : []),
+    ...(platformAdmin.data ? [{ to: "/app/admin-aprovacoes", label: "Aprovar cadastros", icon: ShieldCheck, exact: false }, { to: "/app/admin-perfis", label: "Gerenciar perfis", icon: UserCog, exact: false }] : []),
   ] as const;
   const visibleNav = nav.filter((item) => (item.to !== "/app/auditoria" && item.to !== "/app/configuracoes") || current.role === "admin" || current.role === "presidente");
   const associationLogo = current.associations?.logo_url;
