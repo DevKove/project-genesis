@@ -155,7 +155,7 @@ function AdminProfilesPage() {
 
       const originalMembership = editing.memberships.find((m) => m.association_id === draft.association_id);
       if (draft.association_id && draft.role && originalMembership?.role !== draft.role) {
-        const { error: roleError } = await db.rpc("admin_update_association_member_role", {
+        const { error: roleError } = await supabase.rpc("admin_update_association_member_role", {
           _user_id: editing.user_id,
           _association_id: draft.association_id,
           _new_role: draft.role,
