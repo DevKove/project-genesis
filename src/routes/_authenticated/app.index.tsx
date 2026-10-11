@@ -10,31 +10,53 @@ import { PageHeader } from "@/components/app/PageHeader";
 
 export const Route = createFileRoute("/_authenticated/app/")({ component: Dashboard });
 
-async function count(table: "units" | "residents" | "association_members" | "announcements", assoc: string, extra?: (q: any) => any) {
-  let q = supabase.from(table).select("id", { count: "exact", head: true }).eq("association_id", assoc);
-  if (extra) q = extra(q);
-  const { count: c, error } = await q;
+async function count(table: "units" | "residents" | "association_members" | "announcements", assoc: string) {
+  const { count: result, error } = await supabase
+    .from(table)
+    .select("id", { count: "exact", head: true })
+    .eq("association_id", assoc);
   if (error) throw error;
-  return c ?? 0;
+  return result ?? 0;
+}
+
+async function countOccupiedUnits(assoc: string) {
+  const { count: result, error } = await supabase
+    .from("units")
+    .select("id", { count: "exact", head: true })
+    .eq("association_id", assoc)
+    .eq("status", "ocupada");
+  if (error) throw error;
+  return result ?? 0;
+}
+
+async function countActiveResidents(assoc: string) {
+  const { count: result, error } = await supabase
+    .from("residents")
+    .select("id", { count: "exact", head: true })
+    .eq("association_id", assoc)
+    .eq("is_active", true);
+  if (error) throw error;
+  return result ?? 0;
 }
 
 function Dashboard() {
   const { current } = useAssoc();
-  if (!current) return null;
-  const assoc = current.association_id;
-  const manager = isManager(current.role);
+  const assoc = current?.association_id ?? "";
+  const manager = current ? isManager(current.role) : false;
   const stats = useQuery({
     queryKey: ["stats", assoc],
+    enabled: Boolean(assoc),
     queryFn: async () => ({
       units: await count("units", assoc),
-      occupied: await count("units", assoc, (q) => q.eq("status", "ocupada")),
-      residents: manager ? await count("residents", assoc, (q) => q.eq("is_active", true)) : 0,
+      occupied: await countOccupiedUnits(assoc),
+      residents: manager ? await countActiveResidents(assoc) : 0,
       members: await count("association_members", assoc),
       announcements: await count("announcements", assoc),
     }),
   });
   const latest = useQuery({
     queryKey: ["announcements", assoc, "latest"],
+    enabled: Boolean(assoc),
     queryFn: async () => {
       const { data, error } = await supabase.from("announcements").select("id,title,created_at")
         .eq("association_id", assoc).order("created_at", { ascending: false }).limit(5);
@@ -42,6 +64,7 @@ function Dashboard() {
       return data ?? [];
     },
   });
+  if (!current) return null;
   const s = stats.data;
   const cards = [
     { label: "Unidades", value: s?.units, sub: s ? `${s.occupied} ocupadas` : "", icon: Home, show: true },
