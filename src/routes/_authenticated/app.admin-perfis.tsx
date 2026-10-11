@@ -108,6 +108,7 @@ function AdminProfilesPage() {
     event.preventDefault();
     if (!editing || !isAdmin) return;
     setSaving(true);
+    let uploadedAvatarPath: string | null = null;
     try {
       let avatarUrlToSave = draft.avatar_url.trim() || null;
       if (avatarFile) {
@@ -127,16 +128,30 @@ function AdminProfilesPage() {
           upsert: false,
         });
         if (uploadError) throw new Error(`Não foi possível enviar a foto: ${uploadError.message}`);
+        uploadedAvatarPath = objectPath;
         avatarUrlToSave = supabase.storage.from("profile-avatars").getPublicUrl(objectPath).data.publicUrl;
       }
 
-      const { error: profileError } = await supabase.from("profiles").update({
+      const { data: updatedProfile, error: profileError } = await supabase.from("profiles").update({
         full_name: draft.full_name.trim() || null,
         phone: draft.phone.trim() || null,
         avatar_url: avatarUrlToSave,
         updated_at: new Date().toISOString(),
-      }).eq("id", editing.user_id);
+      }).eq("id", editing.user_id).select("id").maybeSingle();
       if (profileError) throw profileError;
+      if (!updatedProfile) throw new Error("Perfil não encontrado ou sem permissão para editar.");
+
+      const oldAvatarMarker = "/storage/v1/object/public/profile-avatars/";
+      const oldAvatarPath = editing.avatar_url?.includes(oldAvatarMarker)
+        ? editing.avatar_url.split(oldAvatarMarker)[1]
+        : null;
+      if (oldAvatarPath && editing.avatar_url !== avatarUrlToSave) {
+        const { error: cleanupError } = await supabase.storage.from("profile-avatars").remove([oldAvatarPath]);
+        if (cleanupError) console.error("[admin-perfis] Não foi possível remover a foto antiga:", cleanupError);
+      }
+      // The uploaded object is now referenced by the saved profile and must not
+      // be removed if a later role update fails.
+      uploadedAvatarPath = null;
 
       const originalMembership = editing.memberships.find((m) => m.association_id === draft.association_id);
       if (draft.association_id && draft.role && originalMembership?.role !== draft.role) {
@@ -152,6 +167,14 @@ function AdminProfilesPage() {
       setAvatarFile(null);
       await queryClient.invalidateQueries({ queryKey: ["platform-admin-profiles"] });
     } catch (error) {
+      if (uploadedAvatarPath) {
+        try {
+          const { error: cleanupError } = await supabase.storage.from("profile-avatars").remove([uploadedAvatarPath]);
+          if (cleanupError) console.error("[admin-perfis] Não foi possível limpar a foto temporária:", cleanupError);
+        } catch (cleanupError) {
+          console.error("[admin-perfis] Erro ao limpar a foto temporária:", cleanupError);
+        }
+      }
       toast.error(error instanceof Error ? error.message : "Não foi possível atualizar o perfil.");
       await queryClient.invalidateQueries({ queryKey: ["platform-admin-profiles"] });
     } finally {
