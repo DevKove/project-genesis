@@ -96,6 +96,7 @@ function AuthPage() {
         if (!accountApproved) return;
 
         if (requestedAssociationId && !isPlatformAdmin) {
+          try { localStorage.setItem("morada360.assoc", requestedAssociationId); } catch { /* Selection remains session-local if storage is unavailable. */ }
           const { data: existingMembership, error: membershipError } = await supabase.from("association_members").select("association_id").eq("user_id", user.id).eq("association_id", requestedAssociationId).maybeSingle();
           if (membershipError) throw membershipError;
           if (!existingMembership) {
@@ -325,7 +326,6 @@ function AuthPage() {
                   <Input id="auth-association-code" value={associationCode} onChange={(event) => setAssociationCode(event.target.value.replace(/\D/g, "").slice(0, 6))} inputMode="numeric" autoComplete="off" maxLength={6} placeholder="Ex.: 123456" disabled={loading || createNewAssociation || adminAccess} className="mt-1.5 h-11 rounded-xl border-slate-200 bg-white tracking-[0.18em] focus-visible:ring-emerald-500" />
                   <p className="mt-2 text-xs leading-5 text-slate-500">Obrigatório para entrar ou criar conta em uma associação existente. O acesso depende de aprovação.</p>
                   <label className="mt-3 flex cursor-pointer items-start gap-2.5 text-sm text-slate-600"><input type="checkbox" checked={adminAccess} onChange={(event) => { setAdminAccess(event.target.checked); adminAccessRef.current = event.target.checked; if (event.target.checked) setCreateNewAssociation(false); }} disabled={loading} className="mt-0.5 h-4 w-4 shrink-0 accent-emerald-600" /><span className="flex items-start gap-1.5"><KeyRound className="mt-0.5 h-4 w-4 shrink-0 text-emerald-700" /> Acesso do administrador principal (sem código)</span></label>
-                  <label className="mt-3 flex cursor-pointer items-start gap-2.5 text-sm text-slate-600"><input type="checkbox" checked={createNewAssociation} onChange={(event) => setCreateNewAssociation(event.target.checked)} disabled={loading} className="mt-0.5 h-4 w-4 shrink-0 accent-emerald-600" /><span>Minha associação ainda não está cadastrada</span></label>
                 </div>
                 <Button variant="outline" className="mb-4 h-11 w-full rounded-xl border-slate-200 bg-white font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50" onClick={google} disabled={loading}>
                   <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" aria-hidden="true"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.09-1.92 3.27-4.75 3.27-8.1Z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.65l-3.57-2.77c-.99.66-2.25 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.15v2.84A11 11 0 0 0 12 23Z"/><path fill="#FBBC05" d="M5.84 14.11A6.6 6.6 0 0 1 5.5 12c0-.73.13-1.44.34-2.11V7.05H2.15A11 11 0 0 0 1 12c0 1.78.43 3.46 1.15 4.95l3.69-2.84Z"/><path fill="#EA4335" d="M12 5.36c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 1.4 14.97 0 12 0A11 11 0 0 0 2.15 7.05l3.69 2.84C6.71 7.29 9.14 5.36 12 5.36Z"/></svg>
