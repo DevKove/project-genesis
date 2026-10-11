@@ -36,6 +36,7 @@ function AuthPage() {
   const [authTab, setAuthTab] = useState<"login" | "signup">("login");
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [associationCode, setAssociationCode] = useState("");
+  const associationCodeInput = useRef<HTMLInputElement>(null);
   const [createNewAssociation, setCreateNewAssociation] = useState(false);
   const [adminAccess, setAdminAccess] = useState(false);
   const pendingAssociationId = useRef<string>("");
@@ -155,7 +156,7 @@ function AuthPage() {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
     if (!adminAccess) {
-      const code = associationCode.trim();
+      const code = (associationCodeInput.current?.value ?? associationCode).replace(/\D/g, "").slice(0, 6);
       if (!/^\d{6}$/.test(code)) { toast.error("Informe o código de 6 dígitos da sua associação."); return; }
       const { data: matches, error: lookupError } = await supabase.rpc("lookup_association_by_code", { _code: code });
       if (lookupError || !matches?.length) { toast.error("Código não encontrado. Confira os 6 dígitos com a administração."); return; }
@@ -190,7 +191,7 @@ function AuthPage() {
     const password = String(f.get("password"));
     let requestedAssociationId: string | null = null;
     if (!createNewAssociation) {
-      const code = associationCode.trim();
+      const code = (associationCodeInput.current?.value ?? associationCode).replace(/\D/g, "").slice(0, 6);
       if (!/^\d{6}$/.test(code)) {
         toast.error("Informe o código da associação com exatamente 6 dígitos.");
         return;
@@ -238,7 +239,7 @@ function AuthPage() {
       adminAccessRef.current = true;
     }
     if (!adminAccess && (authTab === "login" || (authTab === "signup" && !createNewAssociation))) {
-      const code = associationCode.trim();
+      const code = (associationCodeInput.current?.value ?? associationCode).replace(/\D/g, "").slice(0, 6);
       if (!/^\d{6}$/.test(code)) {
         toast.error("Informe o código da associação com exatamente 6 dígitos.");
         return;
@@ -337,7 +338,7 @@ function AuthPage() {
                 <div className="mb-5 rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
                   <div className="mb-2 flex items-center justify-between gap-2"><div className="flex items-center gap-2 text-sm font-semibold text-slate-800"><Building2 className="h-4 w-4 text-emerald-600" /> Vincule sua associação</div><Dialog><DialogTrigger asChild><Button type="button" variant="ghost" size="sm" className="h-8 gap-1 rounded-lg px-2 text-emerald-700"><CircleHelp className="h-4 w-4" /> Ajuda</Button></DialogTrigger><DialogContent className="max-w-lg rounded-2xl"><DialogHeader><DialogTitle className="flex items-center gap-2"><CircleHelp className="h-5 w-5 text-emerald-600" /> Como acessar o Morada360</DialogTitle><DialogDescription>O código direciona sua conta para o grupo correto e mantém os dados de cada associação separados.</DialogDescription></DialogHeader><div className="space-y-4 text-sm leading-6 text-slate-600"><div className="flex gap-3"><span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-emerald-50 font-bold text-emerald-700">1</span><p><strong className="text-slate-900">Peça o código.</strong> Solicite ao administrador da sua associação o código exclusivo de 6 dígitos.</p></div><div className="flex gap-3"><span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-emerald-50 font-bold text-emerald-700">2</span><p><strong className="text-slate-900">Informe o código antes de entrar.</strong> Ele vale para login com Google e para e-mail e senha.</p></div><div className="flex gap-3"><span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-emerald-50 font-bold text-emerald-700">3</span><p><strong className="text-slate-900">Aguarde a aprovação.</strong> Se ainda não for membro, sua solicitação será enviada à administração da associação.</p></div><div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-amber-900"><strong>Acesso administrativo:</strong> somente o administrador principal da plataforma pode entrar sem código. Essa permissão é verificada após a autenticação.</div></div></DialogContent></Dialog></div>
                   <Label htmlFor="auth-association-code" className="text-xs font-medium text-slate-600">Código da associação</Label>
-                  <Input id="auth-association-code" value={associationCode} onChange={(event) => setAssociationCode(event.target.value.replace(/\D/g, "").slice(0, 6))} inputMode="numeric" autoComplete="off" maxLength={6} placeholder="Ex.: 123456" disabled={loading || createNewAssociation || adminAccess} className="mt-1.5 h-11 rounded-xl border-slate-200 bg-white tracking-[0.18em] focus-visible:ring-emerald-500" />
+                  <Input id="auth-association-code" ref={associationCodeInput} value={associationCode} onChange={(event) => setAssociationCode(event.currentTarget.value.replace(/\D/g, "").slice(0, 6))} inputMode="numeric" autoComplete="off" maxLength={6} placeholder="Ex.: 123456" disabled={loading || createNewAssociation || adminAccess} className="mt-1.5 h-11 rounded-xl border-slate-200 bg-white tracking-[0.18em] focus-visible:ring-emerald-500" />
                   <p className="mt-2 text-xs leading-5 text-slate-500">Obrigatório para entrar ou criar conta em uma associação existente. O acesso depende de aprovação.</p>
                   <label className="mt-3 flex cursor-pointer items-start gap-2.5 text-sm text-slate-600"><input type="checkbox" checked={adminAccess} onChange={(event) => { setAdminAccess(event.target.checked); adminAccessRef.current = event.target.checked; if (event.target.checked) setCreateNewAssociation(false); }} disabled={loading} className="mt-0.5 h-4 w-4 shrink-0 accent-emerald-600" /><span className="flex items-start gap-1.5"><KeyRound className="mt-0.5 h-4 w-4 shrink-0 text-emerald-700" /> Acesso do administrador principal (sem código)</span></label>
                 </div>
