@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Building2 } from "lucide-react";
+import { ArrowRight, Building2, ShieldCheck, Sparkles, Users } from "lucide-react";
 import { safeInternalPath } from "@/lib/safe-redirect";
 import { buildAppUrl } from "@/lib/app-url";
 
@@ -232,47 +232,81 @@ function AuthPage() {
   }
 
   return (
-    <div className="grid min-h-screen lg:grid-cols-2">
-      <div className="hidden border-r border-sidebar-border bg-sidebar p-12 text-sidebar-foreground lg:flex lg:flex-col lg:justify-between">
-        <Link to="/auth" className="flex items-center gap-2 text-lg font-semibold"><Building2 className="h-6 w-6" /> Morada360</Link>
-        <div>
-          <h1 className="text-5xl font-bold leading-tight">Morada360</h1><p className="mt-6 text-3xl font-semibold leading-snug">Sua comunidade,<br />organizada de ponta a ponta.</p>
-          <p className="mt-4 max-w-md opacity-80">Moradores, unidades, comunicados e governança em um só lugar — com segurança e transparência.</p>
-        </div>
-        <p className="text-sm opacity-60">Dados protegidos conforme a LGPD.</p>
+    <main className="relative min-h-screen overflow-hidden bg-[#f4f7fb] text-slate-900">
+      <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
+        <div className="absolute -left-32 -top-40 h-[30rem] w-[30rem] rounded-full bg-emerald-200/40 blur-3xl" />
+        <div className="absolute -bottom-40 right-0 h-[34rem] w-[34rem] rounded-full bg-sky-200/40 blur-3xl" />
+        <div className="absolute inset-0 opacity-20" style={{ backgroundImage: "radial-gradient(#64748b 0.7px, transparent 0.7px)", backgroundSize: "22px 22px" }} />
       </div>
-      <div className="flex items-center justify-center bg-card px-5 py-10 sm:px-10">
-        <div className="w-full max-w-md">
-          <Link to="/auth" className="mb-8 flex items-center gap-2 text-xl font-bold text-primary lg:hidden"><Building2 className="h-6 w-6" /> Morada360</Link><h2 className="mb-7 text-3xl font-bold">Bem-vindo</h2>
-          <div className="mb-4 space-y-2"><Label htmlFor="auth-association-code">Código da associação</Label><Input id="auth-association-code" value={associationCode} onChange={(event) => setAssociationCode(event.target.value.replace(/\D/g, "").slice(0, 6))} inputMode="numeric" autoComplete="off" maxLength={6} placeholder="Digite os 6 dígitos" disabled={loading || createNewAssociation} /><p className="text-xs text-muted-foreground">Peça o código de 6 dígitos à administração da associação. O acesso a uma associação existente depende de aprovação administrativa.</p><label className="flex items-start gap-2 text-sm text-muted-foreground"><input type="checkbox" checked={createNewAssociation} onChange={(event) => setCreateNewAssociation(event.target.checked)} disabled={loading} className="mt-1 h-4 w-4 shrink-0 accent-primary" /><span>Minha associação ainda não está cadastrada</span></label></div>
-          <Button variant="outline" className="mb-4 w-full" onClick={google} disabled={loading}>Continuar com Google</Button>
-          <div className="mb-4 text-center text-xs text-muted-foreground">ou</div>
-          <Tabs defaultValue="login" onValueChange={(value) => setAuthTab(value as "login" | "signup")}>
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="login">Entrar</TabsTrigger>
-              <TabsTrigger value="signup">Criar conta</TabsTrigger>
-            </TabsList>
-            <TabsContent value="login">
-              <form onSubmit={signIn} className="mt-4 space-y-4">
-                <div><Label htmlFor="li-email">E-mail</Label><Input id="li-email" name="email" type="email" autoComplete="email" required /></div>
-                <div><Label htmlFor="li-pw">Senha</Label><Input id="li-pw" name="password" type="password" autoComplete="current-password" required /></div>
-                <Button type="submit" className="w-full" disabled={loading}>{loading ? "Aguarde…" : "Entrar"}</Button>
-                <Button variant="ghost" type="button" onClick={forgot} disabled={loading} className="w-full text-center text-sm text-muted-foreground hover:text-foreground disabled:opacity-50">Esqueci minha senha</Button>
-              </form>
-            </TabsContent>
-            <TabsContent value="signup">
-              <form onSubmit={signUp} className="mt-4 space-y-4">
-                <div><Label htmlFor="su-name">Nome completo</Label><Input id="su-name" name="name" autoComplete="name" minLength={2} required /></div>
-                <div><Label htmlFor="su-email">E-mail</Label><Input id="su-email" name="email" type="email" autoComplete="email" required /></div>
-                <p className="text-xs text-muted-foreground">{createNewAssociation ? "Você poderá cadastrar uma nova associação após confirmar o e-mail." : associationCode.length === 6 ? `Código informado: ${associationCode}` : "Informe o código de 6 dígitos da sua associação acima."}</p>
-                <div><Label htmlFor="su-pw">Senha</Label><Input id="su-pw" name="password" type="password" autoComplete="new-password" minLength={8} required /></div>
-                <div className="flex items-start gap-2 text-sm leading-5 text-muted-foreground"><input id="su-terms" type="checkbox" checked={termsAccepted} onChange={(e) => setTermsAccepted(e.target.checked)} required className="mt-1 h-4 w-4 shrink-0 accent-primary" /><div><label htmlFor="su-terms">Li e aceito os Termos de Uso e declaro estar ciente do Aviso de Privacidade.</label><div className="mt-1"><Link to="/termos-de-uso" className="text-foreground underline underline-offset-4">Ler Termos de Uso</Link><span> · </span><Link to="/privacidade" className="text-foreground underline underline-offset-4">Ler Aviso de Privacidade</Link></div></div></div>
-                <Button type="submit" className="w-full" disabled={loading}>{loading ? "Aguarde…" : "Criar conta"}</Button>
-              </form>
-            </TabsContent>
-          </Tabs>
-        </div>
+      <div className="relative mx-auto grid min-h-screen w-full max-w-[1440px] lg:grid-cols-[1fr_0.92fr]">
+        <section className="relative hidden flex-col justify-between overflow-hidden bg-slate-950 px-12 py-10 text-white lg:flex xl:px-16 xl:py-12">
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_15%_15%,rgba(16,185,129,0.25),transparent_42%),radial-gradient(ellipse_at_85%_85%,rgba(59,130,246,0.24),transparent_40%)]" />
+          <div className="absolute -right-32 top-1/4 h-96 w-96 rounded-full border border-white/10" />
+          <div className="absolute -right-20 top-[29%] h-72 w-72 rounded-full border border-white/10" />
+          <Link to="/auth" className="relative z-10 flex items-center gap-3">
+            <span className="flex h-12 w-12 items-center justify-center rounded-2xl border border-white/15 bg-white/10 text-emerald-300"><Building2 className="h-6 w-6" /></span>
+            <span><span className="block text-xl font-bold tracking-tight">Morada<span className="text-emerald-300">360</span></span><span className="block text-[10px] font-semibold uppercase tracking-[0.24em] text-slate-400">Gestão de comunidades</span></span>
+          </Link>
+          <div className="relative z-10 max-w-xl py-14">
+            <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-emerald-300/20 bg-emerald-300/10 px-3.5 py-2 text-xs font-semibold text-emerald-200"><Sparkles className="h-4 w-4" /> Uma nova forma de cuidar da sua comunidade</div>
+            <h1 className="text-5xl font-semibold leading-[1.12] tracking-tight xl:text-6xl">Sua comunidade,<span className="mt-2 block bg-gradient-to-r from-emerald-300 via-teal-200 to-sky-300 bg-clip-text text-transparent">em harmonia.</span></h1>
+            <p className="mt-6 max-w-lg text-base leading-7 text-slate-300 xl:text-lg">Tudo o que sua associação precisa para organizar moradores, unidades, comunicados e solicitações — em uma experiência simples e conectada.</p>
+            <div className="mt-10 grid max-w-lg grid-cols-2 gap-3">
+              <div className="rounded-2xl border border-white/10 bg-white/[0.06] p-4"><span className="mb-3 flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-300/15 text-emerald-200"><Users className="h-5 w-5" /></span><p className="text-sm font-semibold">Gestão integrada</p><p className="mt-1 text-xs leading-5 text-slate-400">Pessoas e informações em um só lugar.</p></div>
+              <div className="rounded-2xl border border-white/10 bg-white/[0.06] p-4"><span className="mb-3 flex h-9 w-9 items-center justify-center rounded-xl bg-sky-300/15 text-sky-200"><ShieldCheck className="h-5 w-5" /></span><p className="text-sm font-semibold">Acesso protegido</p><p className="mt-1 text-xs leading-5 text-slate-400">Privacidade e controle de acesso.</p></div>
+            </div>
+          </div>
+          <div className="relative z-10 flex items-center justify-between gap-4 border-t border-white/10 pt-5 text-xs text-slate-400"><span>© {new Date().getFullYear()} Morada360</span><span className="inline-flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-emerald-400" /> Ambiente de acesso seguro</span></div>
+        </section>
+        <section className="relative flex min-h-screen items-center justify-center px-4 py-8 sm:px-8 sm:py-12">
+          <div className="w-full max-w-[460px]">
+            <Link to="/auth" className="mb-7 flex items-center justify-center gap-3 lg:hidden"><span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-900 text-emerald-300"><Building2 className="h-5 w-5" /></span><span className="text-xl font-bold tracking-tight">Morada<span className="text-emerald-600">360</span></span></Link>
+            <div className="overflow-hidden rounded-[28px] border border-white/80 bg-white/95 shadow-[0_24px_80px_-28px_rgba(15,23,42,0.28)] backdrop-blur-xl">
+              <div className="border-b border-slate-100 px-6 pb-5 pt-7 sm:px-9 sm:pt-9">
+                <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700"><span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> Portal da associação</div>
+                <h2 className="text-3xl font-bold tracking-tight text-slate-900">Que bom ter você aqui.</h2><p className="mt-2 text-sm leading-6 text-slate-500">Entre na sua conta ou crie seu acesso para continuar.</p>
+              </div>
+              <div className="px-6 py-6 sm:px-9 sm:py-8">
+                <div className="mb-5 rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
+                  <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-slate-800"><Building2 className="h-4 w-4 text-emerald-600" /> Vincule sua associação</div>
+                  <Label htmlFor="auth-association-code" className="text-xs font-medium text-slate-600">Código da associação</Label>
+                  <Input id="auth-association-code" value={associationCode} onChange={(event) => setAssociationCode(event.target.value.replace(/\D/g, "").slice(0, 6))} inputMode="numeric" autoComplete="off" maxLength={6} placeholder="Ex.: 123456" disabled={loading || createNewAssociation} className="mt-1.5 h-11 rounded-xl border-slate-200 bg-white tracking-[0.18em] focus-visible:ring-emerald-500" />
+                  <p className="mt-2 text-xs leading-5 text-slate-500">Solicite os 6 dígitos à administração. O acesso a uma associação existente depende de aprovação.</p>
+                  <label className="mt-3 flex cursor-pointer items-start gap-2.5 text-sm text-slate-600"><input type="checkbox" checked={createNewAssociation} onChange={(event) => setCreateNewAssociation(event.target.checked)} disabled={loading} className="mt-0.5 h-4 w-4 shrink-0 accent-emerald-600" /><span>Minha associação ainda não está cadastrada</span></label>
+                </div>
+                <Button variant="outline" className="mb-4 h-11 w-full rounded-xl border-slate-200 bg-white font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50" onClick={google} disabled={loading}>
+                  <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" aria-hidden="true"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.09-1.92 3.27-4.75 3.27-8.1Z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.65l-3.57-2.77c-.99.66-2.25 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.15v2.84A11 11 0 0 0 12 23Z"/><path fill="#FBBC05" d="M5.84 14.11A6.6 6.6 0 0 1 5.5 12c0-.73.13-1.44.34-2.11V7.05H2.15A11 11 0 0 0 1 12c0 1.78.43 3.46 1.15 4.95l3.69-2.84Z"/><path fill="#EA4335" d="M12 5.36c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 1.4 14.97 0 12 0A11 11 0 0 0 2.15 7.05l3.69 2.84C6.71 7.29 9.14 5.36 12 5.36Z"/></svg>
+                  Continuar com Google
+                </Button>
+                <div className="mb-5 flex items-center gap-3 text-[11px] font-medium uppercase tracking-[0.18em] text-slate-400"><span className="h-px flex-1 bg-slate-200" /> ou use seu e-mail <span className="h-px flex-1 bg-slate-200" /></div>
+                <Tabs defaultValue="login" onValueChange={(value) => setAuthTab(value as "login" | "signup")}>
+                  <TabsList className="grid h-11 w-full grid-cols-2 rounded-xl bg-slate-100 p-1"><TabsTrigger value="login" className="rounded-lg text-sm font-semibold data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm">Entrar</TabsTrigger><TabsTrigger value="signup" className="rounded-lg text-sm font-semibold data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm">Criar conta</TabsTrigger></TabsList>
+                  <TabsContent value="login">
+                    <form onSubmit={signIn} className="mt-5 space-y-4">
+                      <div className="space-y-1.5"><Label htmlFor="li-email" className="text-sm font-semibold text-slate-700">E-mail</Label><Input id="li-email" name="email" type="email" autoComplete="email" placeholder="voce@exemplo.com" required className="h-11 rounded-xl border-slate-200 focus-visible:ring-emerald-500" /></div>
+                      <div className="space-y-1.5"><Label htmlFor="li-pw" className="text-sm font-semibold text-slate-700">Senha</Label><Input id="li-pw" name="password" type="password" autoComplete="current-password" placeholder="Digite sua senha" required className="h-11 rounded-xl border-slate-200 focus-visible:ring-emerald-500" /></div>
+                      <Button type="submit" className="h-11 w-full rounded-xl bg-slate-900 font-semibold text-white shadow-lg shadow-slate-900/10 transition hover:bg-slate-800" disabled={loading}>{loading ? "Aguarde…" : <>Entrar na plataforma <ArrowRight className="ml-2 h-4 w-4" /></>}</Button>
+                      <Button variant="ghost" type="button" onClick={forgot} disabled={loading} className="w-full text-sm font-medium text-slate-500 hover:text-slate-900 disabled:opacity-50">Esqueci minha senha</Button>
+                    </form>
+                  </TabsContent>
+                  <TabsContent value="signup">
+                    <form onSubmit={signUp} className="mt-5 space-y-4">
+                      <div className="space-y-1.5"><Label htmlFor="su-name" className="text-sm font-semibold text-slate-700">Nome completo</Label><Input id="su-name" name="name" autoComplete="name" minLength={2} required placeholder="Como podemos chamar você?" className="h-11 rounded-xl border-slate-200 focus-visible:ring-emerald-500" /></div>
+                      <div className="space-y-1.5"><Label htmlFor="su-email" className="text-sm font-semibold text-slate-700">E-mail</Label><Input id="su-email" name="email" type="email" autoComplete="email" required placeholder="voce@exemplo.com" className="h-11 rounded-xl border-slate-200 focus-visible:ring-emerald-500" /></div>
+                      <p className="rounded-xl bg-slate-50 px-3 py-2 text-xs leading-5 text-slate-500">{createNewAssociation ? "Você poderá cadastrar uma nova associação após confirmar o e-mail." : associationCode.length === 6 ? `Código informado: ${associationCode}` : "Informe o código de 6 dígitos da sua associação acima."}</p>
+                      <div className="space-y-1.5"><Label htmlFor="su-pw" className="text-sm font-semibold text-slate-700">Senha (mínimo 8 caracteres)</Label><Input id="su-pw" name="password" type="password" autoComplete="new-password" minLength={8} required placeholder="Crie uma senha segura" className="h-11 rounded-xl border-slate-200 focus-visible:ring-emerald-500" /></div>
+                      <div className="flex items-start gap-2.5 text-sm leading-5 text-slate-500"><input id="su-terms" type="checkbox" checked={termsAccepted} onChange={(e) => setTermsAccepted(e.target.checked)} required className="mt-1 h-4 w-4 shrink-0 accent-emerald-600" /><div><label htmlFor="su-terms">Li e aceito os Termos de Uso e declaro estar ciente do Aviso de Privacidade.</label><div className="mt-1.5"><Link to="/termos-de-uso" className="font-medium text-emerald-700 underline underline-offset-4 hover:text-emerald-800">Ler Termos de Uso</Link><span className="px-1.5">·</span><Link to="/privacidade" className="font-medium text-emerald-700 underline underline-offset-4 hover:text-emerald-800">Ler Aviso de Privacidade</Link></div></div></div>
+                      <Button type="submit" className="h-11 w-full rounded-xl bg-slate-900 font-semibold text-white shadow-lg shadow-slate-900/10 transition hover:bg-slate-800" disabled={loading}>{loading ? "Aguarde…" : <>Criar minha conta <ArrowRight className="ml-2 h-4 w-4" /></>}</Button>
+                    </form>
+                  </TabsContent>
+                </Tabs>
+              </div>
+            </div>
+            <p className="mt-5 flex items-center justify-center gap-2 px-3 text-center text-xs leading-5 text-slate-500"><ShieldCheck className="h-4 w-4 shrink-0 text-emerald-600" /> Seus dados são tratados com cuidado e protegidos conforme a LGPD.</p>
+            <div className="mt-3 flex justify-center gap-4 text-xs text-slate-400"><Link to="/termos-de-uso" className="hover:text-slate-600">Termos de Uso</Link><span>•</span><Link to="/privacidade" className="hover:text-slate-600">Privacidade</Link></div>
+          </div>
+        </section>
       </div>
-    </div>
+    </main>
   );
 }
