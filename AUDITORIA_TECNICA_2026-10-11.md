@@ -206,3 +206,40 @@ A função `notify-association-join-request` foi implantada no projeto Supabase 
 - Testes ainda necessários: sem token (401), token inválido (401), conta não aprovada (403), usuário sem permissão (403), origem CORS permitida/não permitida e envio com destinatário de teste. Nenhum e-mail real foi enviado durante esta revisão.
 
 A implantação fecha a pendência de ausência da função no projeto, mas não fecha a validação funcional nem a auditoria geral.
+
+
+---
+
+## Complemento 3 — conferência de workflows, grants e RPCs (11/10/2026)
+
+### CI/CD após o último registro
+
+O commit `484e01def4d24e393555b28cf4aaad1d634e96ed` teve os seguintes resultados:
+- [Quality checks](https://github.com/DevKove/project-genesis/actions/runs/38150697530): **success**.
+- [Deploy GitHub Pages](https://github.com/DevKove/project-genesis/actions/runs/38150697512): **success**.
+- [Deploy Cloudflare Workers](https://github.com/DevKove/project-genesis/actions/runs/38150697540): **skipped** pela condição do workflow.
+
+O sucesso do Pages comprova publicação estática e o workflow de qualidade comprova apenas os comandos executados por ele; nenhum dos dois comprova chamadas autenticadas à Edge Function ou testes de segurança no navegador.
+
+### Revisão de permissões no banco
+
+Uma consulta direta aos privilégios efetivos confirmou que as oito RPCs SECURITY DEFINER sinalizadas pelo Supabase Security Advisor têm EXECUTE concedido a `authenticated`, sem EXECUTE concedido a `anon` para essas oito funções. A exceção intencional é `lookup_association_by_code(text)`, executável por `anon` e `authenticated`, necessária ao fluxo de ingresso por código e ainda sujeita a mitigação de enumeração/rate limiting.
+
+A tabela `private.association_admin_handoffs` tem privilégios de tabela concedidos apenas a `postgres` entre os papéis listados na consulta; não foi encontrado grant direto para `anon` ou `authenticated`. Ela permanece sem RLS, mas está no schema `private`; reavaliar se o schema e as funções auxiliares mantêm isolamento adequado sempre que a arquitetura for alterada.
+
+A leitura das definições das oito RPCs mostrou `search_path` vazio e verificações explícitas de identidade/autoridade em seus corpos. Em particular, `admin_list_user_profiles`, `admin_update_association_member_role` e `review_account_access` exigem o papel `platform_admin` por meio de `private.has_role`; as funções de associação usam `private.has_assoc_role` ou verificações equivalentes. Essa inspeção estática não substitui testes negativos com identidades reais de teste e associações distintas.
+
+### Logs e teste de runtime
+
+A consulta de logs encontrou atividade geral recente em Auth, Edge, PostgREST e Storage, mas nenhuma entrada identificável de chamada à função `notify-association-join-request` na janela consultada. Portanto, **não há evidência de que os cenários HTTP da função tenham sido executados**. Não foi enviado e-mail real. Permanecem pendentes as respostas esperadas (401/403/400/502), CORS com origem permitida e bloqueada, e confirmação das variáveis de ambiente da função.
+
+### Estado dos achados que ainda bloqueiam uma conclusão final
+
+- **Pendente de configuração:** habilitar a proteção contra senhas comprometidas em Supabase Auth. [Orientação oficial](https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection).
+- **Pendente de mitigação:** limitar enumeração de `lookup_association_by_code` e testar abuso de tentativas.
+- **Pendente de verificação:** teste HTTP real da Edge Function e confirmação de configuração de e-mail, sem expor valores secretos.
+- **Pendente de verificação:** scanner de dependências e varredura completa de segredos no histórico Git.
+- **Pendente de verificação:** cabeçalhos HTTP/CSP/HSTS de produção e autorização real de upload/download em cada bucket com contas de associações distintas.
+- **Pendente de verificação:** E2E, regressão e carga/estresse em ambiente controlado.
+
+**Conclusão:** foram confirmados os resultados de CI/CD e os grants das RPCs. A auditoria permanece **parcial**; nenhuma evidência coletada nesta etapa autoriza declarar o sistema totalmente auditado ou certificado como seguro.
