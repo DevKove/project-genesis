@@ -65,7 +65,22 @@ function Shell({ email, userId }: { email: string; userId: string }) {
     );
   }
 
-  if (!current) return <NoAssociationAccess userId={userId} />;
+  if (!current) {
+    if (platformAdmin.data) {
+      return (
+        <div className="flex min-h-screen items-center justify-center bg-background p-6">
+          <section className="w-full max-w-xl rounded-2xl border bg-card p-8 shadow-soft">
+            <ShieldCheck className="mb-4 h-9 w-9 text-primary" />
+            <h1 className="text-2xl font-semibold">Administração principal</h1>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">Sua conta tem permissão de administrador da plataforma, mas ainda não está vinculada a uma associação. Você pode analisar e aprovar novos cadastros por aqui.</p>
+            <Link to="/admin-aprovacoes" className="mt-5 inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"><ShieldCheck className="h-4 w-4" /> Aprovar cadastros</Link>
+            <button onClick={() => void supabase.auth.signOut()} className="ml-3 rounded-lg border px-4 py-2 text-sm">Sair</button>
+          </section>
+        </div>
+      );
+    }
+    return <NoAssociationAccess userId={userId} />;
+  }
 
   const nav = [
     { to: "/app", label: "Painel", icon: LayoutDashboard, exact: true },
