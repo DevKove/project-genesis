@@ -94,7 +94,7 @@ function Shell({ email, userId }: { email: string; userId: string }) {
     { to: "/app/auditoria", label: "Auditoria", icon: History, exact: false },
     { to: "/app/prestadores", label: "Prestadores", icon: Building2, exact: false },
     { to: "/app/configuracoes", label: "Configurações", icon: Settings, exact: false },
-    ...(platformAdmin.data ? [{ to: "/admin-aprovacoes", label: "Aprovar cadastros", icon: ShieldCheck, exact: false }] : []),
+    ...(platformAdmin.data ? [{ to: "/admin-aprovacoes", label: "Aprovar cadastros", icon: ShieldCheck, exact: false }, { to: "/admin-perfis", label: "Gerenciar perfis", icon: UserCog, exact: false }] : []),
   ] as const;
   const visibleNav = nav.filter((item) => (item.to !== "/app/auditoria" && item.to !== "/app/configuracoes") || current.role === "admin" || current.role === "presidente");
   const associationLogo = current.associations?.logo_url;
