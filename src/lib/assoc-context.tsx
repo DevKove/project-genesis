@@ -37,12 +37,15 @@ export function AssocProvider({ userId, children }: { userId: string; children: 
     },
   });
   const [currentId, setCurrentIdState] = useState<string | null>(null);
+  const [selectionLoaded, setSelectionLoaded] = useState(false);
   useEffect(() => {
     try {
       setCurrentIdState(localStorage.getItem(KEY));
     } catch {
       // The app remains usable if browser storage is disabled.
       setCurrentIdState(null);
+    } finally {
+      setSelectionLoaded(true);
     }
   }, []);
   const setCurrentId = (id: string) => {
@@ -54,17 +57,20 @@ export function AssocProvider({ userId, children }: { userId: string; children: 
     setCurrentIdState(id);
   };
   const memberships = q.data ?? EMPTY_MEMBERSHIPS;
-  const current = useMemo(
-    () => memberships.find((m) => m.association_id === currentId) ?? memberships[0] ?? null,
-    [memberships, currentId],
-  );
+  const current = useMemo(() => {
+    if (!selectionLoaded) return null;
+    // If a code selected an association for which membership is still pending,
+    // never silently fall back to another association the user already belongs to.
+    if (currentId) return memberships.find((m) => m.association_id === currentId) ?? null;
+    return memberships[0] ?? null;
+  }, [memberships, currentId, selectionLoaded]);
   return (
     <AssocCtx.Provider value={{
       userId,
       memberships,
       current,
       setCurrentId,
-      loading: q.isLoading,
+      loading: q.isLoading || !selectionLoaded,
       error: q.isError,
       refetch: () => q.refetch(),
     }}>
