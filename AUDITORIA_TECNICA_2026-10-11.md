@@ -70,3 +70,55 @@ Os testes foram executados com transações `BEGIN/ROLLBACK`; nenhum dado sinté
 Os problemas de sincronização de migrações, módulos sem estrutura, notificações e políticas de desempenho identificados durante a auditoria foram corrigidos no ambiente conectado e registrados no repositório. O pipeline de qualidade e o deploy mais recente passaram.
 
 A auditoria não deve ser interpretada como certificação de que cada clique foi testado em navegador: os fluxos que dependem de uma sessão real, provedores externos, envio de arquivos ou carga concorrente permanecem explicitamente listados para homologação.
+
+
+---
+
+## Complemento da auditoria — revisão do código e CORS (11/10/2026)
+
+Esta revisão complementar segue os critérios de `auditoria.md`. Foi feita inspeção estática dos arquivos disponíveis no branch `main`; ela não substitui execução local de scanners, testes E2E nem uma validação independente.
+
+### Achado corrigido
+
+**SEC-CORS-001 — Cabeçalho CORS permissivo na função de notificações**
+
+- **Severidade:** baixa a média (configuração excessivamente permissiva; CORS não é mecanismo de autenticação).
+- **Evidência anterior:** `supabase/functions/notify-association-join-request/index.ts` definia `Access-Control-Allow-Origin` como `APP_URL ?? "*"`. Se a variável estivesse ausente, a resposta de preflight e os erros retornavam origem curinga; quando configurada com uma URL contendo caminho, o valor podia não corresponder ao cabeçalho Origin do navegador.
+- **Correção aplicada:** a função agora extrai a origem de `APP_URL`, permite `Access-Control-Allow-Origin` somente quando o cabeçalho `Origin` da requisição coincide exatamente com essa origem e inclui `Vary: Origin`. Origem ausente, inválida ou diferente não recebe autorização CORS.
+- **Arquivo alterado:** `supabase/functions/notify-association-join-request/index.ts`.
+- **Commit:** [1ef3ad5522be043951d17c7f642e8524a96ace1d](https://github.com/DevKove/project-genesis/commit/1ef3ad5522be043951d17c7f642e8524a96ace1d).
+- **Reteste:** pendente enquanto os workflows de qualidade e publicação desse commit terminam. A inspeção do código confirma a restrição implementada, mas ainda não foi feito teste HTTP de preflight em ambiente implantado.
+
+### Estado da validação automatizada
+
+- [Quality checks do commit](https://github.com/DevKove/project-genesis/actions/runs/38149854782): em execução no momento do registro.
+- [Deploy GitHub Pages do commit](https://github.com/DevKove/project-genesis/actions/runs/38149854732): em execução no momento do registro.
+- O workflow Cloudflare foi marcado como ignorado para esse push; portanto, não há evidência de que a função Supabase/Edge tenha sido implantada por esse workflow.
+- O último commit anterior tinha quality checks e deploy GitHub Pages concluídos com sucesso, mas isso não valida a correção CORS recém-introduzida.
+
+### Matriz resumida dos critérios do prompt
+
+| Área | Estado desta revisão |
+|---|---|
+| Inventário de arquitetura e arquivos-chave | Revisado parcialmente; aplicação React/TypeScript, TanStack Start, Supabase e workflows GitHub Actions identificados |
+| Segredos no código/histórico Git | Não verificado integralmente; não foi feita varredura completa do histórico nem rotação de credenciais |
+| RLS, isolamento multiassociação e RPCs | Há evidências de testes transacionais documentadas acima; testes E2E com contas reais permanecem pendentes |
+| Autenticação, sessão, recuperação, MFA e rate limiting | Revisão documental/parcial; homologação ponta a ponta pendente |
+| XSS, injeção, CSRF e SSRF | Não verificado de ponta a ponta; aplicabilidade depende dos fluxos reais e endpoints |
+| Upload/download e autorização de arquivos | Políticas documentadas; upload/download/exclusão reais no navegador permanecem pendentes |
+| CORS da função de notificação | Corrigido no código; reteste após implantação pendente |
+| Cabeçalhos HTTP/CSP/HSTS | Não verificado integralmente em respostas da produção |
+| Dependências e cadeia de suprimentos | Arquivo de dependências inspecionado; scanner de vulnerabilidades não executado nesta revisão |
+| Lint, testes e build do commit atual | Aguardando conclusão dos workflows vinculados ao commit |
+| Testes de carga/estresse e regressão em produção | Não executados; exigem ambiente isolado e contas/dados de teste |
+
+### Próximas ações prioritárias
+
+1. Confirmar conclusão bem-sucedida dos workflows do commit acima e testar preflight CORS com origem permitida, origem não permitida e `APP_URL` ausente/inválida.
+2. Habilitar a proteção do Supabase contra senhas comprometidas no painel de autenticação, conforme já indicado neste relatório.
+3. Executar testes E2E com duas contas de teste pertencentes a associações diferentes, cobrindo autorização, convites, notificações, documentos e perfis.
+4. Executar auditoria de dependências e varredura de segredos no histórico Git; não imprimir nem copiar valores secretos para os relatórios.
+5. Verificar cabeçalhos HTTP reais da implantação e concluir os fluxos de recuperação de senha, Google OAuth, uploads/downloads e logout.
+6. Só classificar como **corrigido e validado** após evidência de reteste; itens sem execução continuam **pendentes** ou **não verificados**.
+
+**Conclusão complementar:** foi corrigida uma configuração CORS permissiva na função de notificações e registrado o estado de validação. A aplicação continua sem certificação de segurança completa; os itens pendentes acima precisam ser testados antes de declarar prontidão para produção.
