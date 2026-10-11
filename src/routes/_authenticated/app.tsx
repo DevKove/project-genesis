@@ -113,38 +113,38 @@ function Shell({ email, userId }: { email: string; userId: string }) {
   const activePage = visibleNav.find((item) => item.exact ? pathname.replace(/\/$/, "") === item.to : pathname.startsWith(item.to))?.label ?? "Associação";
   function navigationContent(mobile = false) {
     return <>
-      <Link to="/app" onClick={() => setMobileOpen(false)} className="mb-7 flex items-center gap-3 px-2 text-xl font-bold">
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-sidebar-accent text-sidebar-primary"><Building2 className="h-5 w-5" /></span>
+      <Link to="/app" onClick={() => setMobileOpen(false)} className="mb-7 flex items-center gap-3 px-2 text-xl font-bold tracking-tight">
+        <span className="app-shell-brand flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-emerald-200"><Building2 className="h-5 w-5" /></span>
         Morada360
       </Link>
-      <div className="mb-6 rounded-lg border border-sidebar-border bg-sidebar-accent/40 p-3">
+      <div className="mb-6 rounded-2xl border border-white/10 bg-white/[0.05] p-3 shadow-inner">
         <div className="mb-3 flex min-w-0 items-center gap-2">
           {associationLogo ? <img src={associationLogo} alt="" className="h-8 w-8 shrink-0 rounded-md bg-paper object-contain p-1" /> : <Building2 className="h-5 w-5 shrink-0 text-sidebar-primary" />}
           <div className="min-w-0"><p className="truncate text-sm font-semibold">{current?.associations?.name ?? "Associação"}</p><p className="mt-0.5 text-xs text-sidebar-foreground/80">{ROLE_LABELS[current?.role ?? "morador"] ?? current?.role}</p></div>
         </div>
         <Select value={current?.association_id} onValueChange={(v) => { setMobileOpen(false); return v === "__new" ? navigate({ to: "/app/nova" }) : setCurrentId(v); }}>
-          <SelectTrigger aria-label="Selecionar associação" className="border-sidebar-border bg-sidebar text-sidebar-foreground"><SelectValue /></SelectTrigger>
+          <SelectTrigger aria-label="Selecionar associação" className="border-white/10 bg-slate-950/50 text-sidebar-foreground focus:ring-emerald-400"><SelectValue /></SelectTrigger>
           <SelectContent>{memberships.map((m) => <SelectItem key={m.association_id} value={m.association_id}>{m.associations?.name ?? "Associação sem nome"}</SelectItem>)}<SelectItem value="__new">+ Nova associação</SelectItem></SelectContent>
         </Select>
       </div>
       <nav aria-label={mobile ? "Navegação móvel" : "Navegação principal"} className="min-h-0 flex-1 space-y-1 overflow-y-auto">
         {visibleNav.map((n, index) => <div key={n.to}>
           {(index === 0 || n.to === "/app/membros" || n.to === "/app/admin-aprovacoes") && <p className="px-3 pb-2 pt-4 text-[11px] font-semibold uppercase text-sidebar-foreground/75">{index === 0 ? "Associação" : n.to === "/app/membros" ? "Administração" : "Plataforma"}</p>}
-          <Link to={n.to} activeOptions={{ exact: n.exact }} onClick={() => setMobileOpen(false)} className="transition-ui flex min-h-11 items-center gap-3 rounded-md border-l-2 border-transparent px-3 py-2 text-sm text-sidebar-foreground/90 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground" activeProps={{ className: "border-sidebar-primary bg-sidebar-accent text-sidebar-accent-foreground font-semibold" }}>
+          <Link to={n.to} activeOptions={{ exact: n.exact }} onClick={() => setMobileOpen(false)} className="transition-ui flex min-h-11 items-center gap-3 rounded-xl border border-transparent px-3 py-2 text-sm text-sidebar-foreground/80 hover:border-white/10 hover:bg-white/[0.07] hover:text-white" activeProps={{ className: "border-emerald-300 bg-emerald-300/10 text-white font-semibold shadow-sm" }}>
             <n.icon className="h-4 w-4 shrink-0" /><span>{n.label}</span>{n.to === "/app/membros" && current?.role === "admin" && (pendingJoinRequests.data ?? 0) > 0 ? <span className="ml-auto rounded-sm bg-destructive px-2 py-0.5 text-xs font-bold text-destructive-foreground">{pendingJoinRequests.data}</span> : null}
           </Link>
         </div>)}
       </nav>
-      <div className="mt-5 border-t border-sidebar-border pt-4">
+      <div className="mt-5 border-t border-white/10 pt-4">
         <div className="flex min-w-0 items-center gap-3 px-2"><span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-sidebar-accent text-sm font-semibold">{email.slice(0, 1).toUpperCase()}</span><div className="min-w-0"><p className="truncate text-xs">{email}</p><p className="mt-1 text-xs text-sidebar-primary">{ROLE_LABELS[current?.role ?? "morador"] ?? current?.role}</p></div></div>
         <Button variant="ghost" onClick={() => void supabase.auth.signOut()} className="mt-3 w-full justify-start text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"><LogOut /> Sair</Button>
       </div>
     </>;
   }
   return (
-    <div className="flex min-h-screen bg-background">
+    <div className="app-shell flex min-h-screen bg-background">
       <a href="#app-main" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-md focus:bg-card focus:p-3">Ir para o conteúdo</a>
-      <aside className="sticky top-0 hidden h-dvh w-[var(--sidebar-width)] shrink-0 flex-col border-r border-sidebar-border bg-sidebar p-4 text-sidebar-foreground md:flex">{navigationContent()}</aside>
+      <aside className="app-shell-sidebar sticky top-0 hidden h-dvh w-[var(--sidebar-width)] shrink-0 flex-col border-r border-white/10 p-4 text-sidebar-foreground md:flex">{navigationContent()}</aside>
       <div className="min-w-0 flex-1">
         <header className="grid min-h-20 grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b border-border bg-card px-4 sm:px-6 lg:px-10">
           <div className="flex min-w-0 items-center gap-3">
