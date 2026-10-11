@@ -169,9 +169,28 @@ function AssociationSettingsPage() {
       setRemoveLogo(false);
       await queryClient.invalidateQueries({ queryKey: ["association-settings", associationId] });
       await queryClient.invalidateQueries({ queryKey: ["memberships", userId] });
-    } catch {
-      if (uploadedPath) await supabase.storage.from(LOGO_BUCKET).remove([uploadedPath]);
-      toast.error("Não foi possível salvar as configurações. Confira a conexão, o armazenamento e suas permissões.");
+    } catch (cause) {
+      if (uploadedPath) {
+        const { error: cleanupError } = await supabase.storage.from(LOGO_BUCKET).remove([uploadedPath]);
+        if (cleanupError) console.error("[configuracoes] Falha ao limpar logo temporária:", cleanupError);
+      }
+
+      // Preserve the original Supabase error in the console so the failure can be diagnosed.
+      console.error("[configuracoes] Falha ao salvar dados da associação:", cause);
+      const failure = cause as { code?: string; message?: string; statusCode?: string | number };
+      const code = failure?.code ?? failure?.statusCode;
+
+      if (code === "42501" || code === "403") {
+        toast.error("Permissão negada pelo banco ou pelo armazenamento. Confirme se sua conta é administradora ou presidente desta associação.");
+      } else if (code === "PGRST301" || code === "401") {
+        toast.error("Sua sessão pode ter expirado. Entre novamente e tente salvar.");
+      } else if (code === "BucketNotFound") {
+        toast.error("O armazenamento de logos não está configurado no Supabase (bucket association-logos).");
+      } else if (failure?.message?.toLowerCase().includes("fetch")) {
+        toast.error("Falha de conexão com o Supabase. Verifique a internet e tente novamente.");
+      } else {
+        toast.error("Não foi possível salvar. Abra o console do navegador (F12) para consultar o erro técnico registrado.");
+      }
     } finally {
       setSaving(false);
     }
