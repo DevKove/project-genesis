@@ -9,6 +9,8 @@ export function safeInternalPath(path?: string): string {
     path.startsWith("//") ||
     path.startsWith("/\\") ||
     path.includes("\\") ||
+    // Reject control characters to prevent redirect and header injection.
+    // eslint-disable-next-line no-control-regex
     /[\u0000-\u001f\u007f]/.test(path)
   ) {
     return "/app";
