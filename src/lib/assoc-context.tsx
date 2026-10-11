@@ -81,9 +81,26 @@ export function AssocProvider({ userId, children }: { userId: string; children: 
     : (membershipsQuery.data ?? EMPTY_MEMBERSHIPS);
   const current = useMemo(() => {
     if (!selectionLoaded) return null;
-    if (currentId) return memberships.find((m) => m.association_id === currentId) ?? null;
+    if (currentId) {
+      const selected = memberships.find((m) => m.association_id === currentId);
+      // A platform administrator may have a stale association ID saved from an
+      // earlier session. Recover to a valid tenant instead of trapping them
+      // on the limited administration hub.
+      if (selected) return selected;
+      if (!isPlatformAdmin) return null;
+    }
     return memberships[0] ?? null;
-  }, [memberships, currentId, selectionLoaded]);
+  }, [memberships, currentId, selectionLoaded, isPlatformAdmin]);
+
+  useEffect(() => {
+    if (!selectionLoaded || !isPlatformAdmin || memberships.length === 0) return;
+    const selectedExists = currentId && memberships.some((m) => m.association_id === currentId);
+    if (!selectedExists) {
+      const fallbackId = memberships[0].association_id;
+      try { localStorage.setItem(KEY, fallbackId); } catch { /* In-memory fallback remains available. */ }
+      setCurrentIdState(fallbackId);
+    }
+  }, [selectionLoaded, isPlatformAdmin, memberships, currentId]);
   const loading = platformRole.isLoading || membershipsQuery.isLoading ||
     (isPlatformAdmin && associationsQuery.isLoading) || !selectionLoaded;
   const error = platformRole.isError || membershipsQuery.isError ||
