@@ -71,10 +71,7 @@ function AccountApprovalsPage() {
     queryKey: ["admin-account-requests"],
     enabled: isPlatformAdmin === true,
     queryFn: async () => {
-      const { data, error } = await db.from("account_access_requests")
-        .select("id,user_id,email,full_name,requested_association_id,status,requested_at")
-        .eq("status", "pending")
-        .order("requested_at", { ascending: true });
+      const { data, error } = await db.rpc("list_pending_account_access");
       if (error) throw error;
       return (data ?? []) as RequestRow[];
     },
