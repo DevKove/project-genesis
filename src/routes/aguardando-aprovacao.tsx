@@ -1,5 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
+import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Clock3, ShieldCheck, ShieldX } from "lucide-react";
@@ -12,6 +13,7 @@ export const Route = createFileRoute("/aguardando-aprovacao")({
 function PendingApprovalPage() {
   const navigate = useNavigate();
   const [status, setStatus] = useState<"loading" | "pending" | "approved" | "rejected" | "unavailable">("loading");
+  const [requestingAgain, setRequestingAgain] = useState(false);
 
   const checkStatus = useCallback(async () => {
     setStatus("loading");
@@ -37,6 +39,23 @@ function PendingApprovalPage() {
 
   useEffect(() => { void checkStatus(); }, [checkStatus]);
 
+  async function requestAgain() {
+    setRequestingAgain(true);
+    try {
+      const { error } = await supabase.rpc("request_account_reapproval");
+      if (error) {
+        toast.error("Não foi possível reenviar a solicitação. Tente novamente ou entre em contato com o suporte.");
+        return;
+      }
+      setStatus("pending");
+      toast.success("Solicitação reenviada. O administrador poderá analisar seu cadastro novamente.");
+    } catch {
+      toast.error("Não foi possível reenviar a solicitação. Verifique sua conexão e tente novamente.");
+    } finally {
+      setRequestingAgain(false);
+    }
+  }
+
   async function signOut() {
     await supabase.auth.signOut();
     void navigate({ to: "/auth" });
@@ -58,8 +77,9 @@ function PendingApprovalPage() {
         <h1 className="text-2xl font-semibold">{content.title}</h1>
         <p className="mt-3 text-sm leading-6 text-muted-foreground">{content.message}</p>
         <div className="mt-6 flex flex-wrap justify-center gap-3">
-          <Button variant="outline" onClick={() => void checkStatus()} disabled={status === "loading"}>Verificar novamente</Button>
-          <Button onClick={() => void signOut()}>Sair</Button>
+          {status === "rejected" && <Button onClick={() => void requestAgain()} disabled={requestingAgain}>{requestingAgain ? "Enviando solicitação…" : "Solicitar nova autorização"}</Button>}
+          <Button variant="outline" onClick={() => void checkStatus()} disabled={status === "loading" || requestingAgain}>Verificar novamente</Button>
+          <Button variant={status === "rejected" ? "ghost" : "default"} onClick={() => void signOut()}>Sair</Button>
         </div>
       </section>
     </main>
