@@ -61,7 +61,12 @@ function AuthPage() {
         }
         callbackAssociationId = codeMatches[0].id;
       }
-      const requestedAssociationId = callbackAssociationId || pendingAssociationId.current;
+      let storedAssociationId = "";
+      try {
+        storedAssociationId = sessionStorage.getItem("morada360.pendingAssociationId") || "";
+      } catch { /* Session storage may be unavailable; the in-memory value remains usable. */ }
+      const requestedAssociationId = callbackAssociationId || pendingAssociationId.current || storedAssociationId;
+      try { sessionStorage.removeItem("morada360.pendingAssociationId"); } catch { /* Ignore unavailable session storage. */ }
       let accountApproved = false;
       let isPlatformAdmin = false;
       try {
@@ -155,8 +160,10 @@ function AuthPage() {
       const { data: matches, error: lookupError } = await supabase.rpc("lookup_association_by_code", { _code: code });
       if (lookupError || !matches?.length) { toast.error("Código não encontrado. Confira os 6 dígitos com a administração."); return; }
       pendingAssociationId.current = matches[0].id;
+      try { sessionStorage.setItem("morada360.pendingAssociationId", matches[0].id); } catch { /* Keep the in-memory value when storage is unavailable. */ }
     } else {
       pendingAssociationId.current = "";
+      try { sessionStorage.removeItem("morada360.pendingAssociationId"); } catch { /* Ignore unavailable session storage. */ }
       adminAccessRef.current = true;
     }
     setLoading(true);
@@ -165,7 +172,11 @@ function AuthPage() {
         email: String(f.get("email")).trim(),
         password: String(f.get("password")),
       });
-      if (error) toast.error("E-mail ou senha inválidos");
+      if (error) {
+        try { sessionStorage.removeItem("morada360.pendingAssociationId"); } catch { /* Ignore unavailable session storage. */ }
+        pendingAssociationId.current = "";
+        toast.error("E-mail ou senha inválidos");
+      }
     } catch {
       toast.error("Não foi possível entrar agora. Verifique sua conexão e tente novamente.");
     } finally {
