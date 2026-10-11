@@ -23,7 +23,7 @@ export const Route = createFileRoute("/_authenticated")({
           throw redirect({ to: "/aguardando-aprovacao" });
         }
         if (profile.account_status !== "approved") {
-          throw redirect({ to: "/auth" });
+          throw redirect({ to: "/aguardando-aprovacao" });
         }
         return { user: data.user };
       }
