@@ -18,7 +18,7 @@ Foram revisados os módulos principais do front-end, as migrações, as polític
 4. **Central de notificações:** criada a tabela `user_notifications`, com RLS por destinatário, índices e gatilhos para notificar administradores de novas solicitações e usuários sobre decisões. Os gatilhos foram testados transacionalmente.
 5. **Políticas RLS e desempenho:** consolidadas políticas permissivas duplicadas de leitura de solicitações e atualização de perfis; adicionados índices de chaves estrangeiras de solicitações e notificações.
 6. **Função administrativa temporária:** removida a função de transferência de administrador de uso único após verificar que a transferência já havia sido concluída. O registro da migração foi saneado para retirar a função temporária e seus identificadores fixos.
-7. **Tipos TypeScript:** regenerados a partir do schema Supabase conectado, incluindo tabelas e RPCs que faltavam no arquivo de tipos.
+7. **Tipos TypeScript e fotos de perfil:** tipos regenerados a partir do schema Supabase conectado; a edição de perfis agora confirma que a linha foi atualizada e limpa arquivos de avatar temporários ou antigos quando apropriado.
 8. **Painel inicial:** corrigida a chamada condicional de `useQuery`, que violava as regras de Hooks do React. Os contadores agora usam consultas tipadas e ficam desabilitados enquanto não há associação selecionada.
 9. **Qualidade contínua:** o workflow passou a executar ESLint antes dos testes e do build. As regras de formatação Prettier ficam separadas do lint de correção; o script de formatação permanece disponível para execução explícita.
 
