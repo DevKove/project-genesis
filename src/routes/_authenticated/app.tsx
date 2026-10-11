@@ -78,6 +78,19 @@ function Shell({ email, userId }: { email: string; userId: string }) {
 
   if (!current) {
     if (platformAdmin.data) {
+      // The association shell must not swallow nested platform-admin routes.
+      // Render the child route directly when the platform administrator has no association.
+      if (pathname.startsWith("/app/admin-aprovacoes") || pathname.startsWith("/app/admin-perfis")) {
+        return (
+          <div className="min-h-screen bg-background">
+            <header className="flex min-h-16 items-center justify-between border-b px-4 sm:px-8">
+              <Link to="/app" className="flex items-center gap-2 font-semibold"><Building2 className="h-5 w-5 text-primary" /> Morada360 <span className="text-muted-foreground">/ Administração principal</span></Link>
+              <Button variant="outline" onClick={() => void supabase.auth.signOut()}><LogOut className="mr-2 h-4 w-4" /> Sair</Button>
+            </header>
+            <main className="mx-auto max-w-[1200px] p-4 sm:p-8"><Outlet /></main>
+          </div>
+        );
+      }
       return (
         <div className="flex min-h-screen items-center justify-center bg-background p-6">
           <section className="w-full max-w-xl rounded-2xl border bg-card p-8 shadow-soft">
