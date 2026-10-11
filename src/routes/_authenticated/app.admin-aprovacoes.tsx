@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Check, Clock3, ShieldCheck, ShieldX, UserRound } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import type { Database } from "@/integrations/supabase/types";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/app/PageHeader";
 
@@ -35,10 +36,9 @@ const roleOptions = [
 function AccountApprovalsPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const db = supabase as any;
   const [isPlatformAdmin, setIsPlatformAdmin] = useState<boolean | null>(null);
   const [associationByUser, setAssociationByUser] = useState<Record<string, string>>({});
-  const [roleByUser, setRoleByUser] = useState<Record<string, string>>({});
+  const [roleByUser, setRoleByUser] = useState<Record<string, Database["public"]["Enums"]["assoc_role"]>>({});
   const [busyUser, setBusyUser] = useState<string | null>(null);
 
   useEffect(() => {
@@ -49,7 +49,7 @@ function AccountApprovalsPage() {
         if (alive) void navigate({ to: "/auth" });
         return;
       }
-      const { data, error } = await (supabase as any).from("user_roles").select("role").eq("user_id", authData.user.id).eq("role", "platform_admin").maybeSingle();
+      const { data, error } = await supabase.from("user_roles").select("role").eq("user_id", authData.user.id).eq("role", "platform_admin").maybeSingle();
       if (!alive) return;
       if (error || !data) setIsPlatformAdmin(false);
       else setIsPlatformAdmin(true);
@@ -61,7 +61,7 @@ function AccountApprovalsPage() {
     queryKey: ["admin-approval-associations"],
     enabled: isPlatformAdmin === true,
     queryFn: async () => {
-      const { data, error } = await db.from("associations").select("id,name").order("name");
+      const { data, error } = await supabase.from("associations").select("id,name").order("name");
       if (error) throw error;
       return (data ?? []) as { id: string; name: string }[];
     },
@@ -71,7 +71,7 @@ function AccountApprovalsPage() {
     queryKey: ["admin-account-requests"],
     enabled: isPlatformAdmin === true,
     queryFn: async () => {
-      const { data, error } = await db.rpc("list_pending_account_access");
+      const { data, error } = await supabase.rpc("list_pending_account_access");
       if (error) throw error;
       return (data ?? []) as RequestRow[];
     },
@@ -82,7 +82,7 @@ function AccountApprovalsPage() {
     try {
       const associationId = associationByUser[row.user_id] ?? row.requested_association_id ?? "";
       const role = roleByUser[row.user_id] ?? "morador";
-      const { error } = await db.rpc("review_account_access", {
+      const { error } = await supabase.rpc("review_account_access", {
         _user_id: row.user_id,
         _decision: decision,
         _association_id: decision === "approved" && associationId ? associationId : null,
@@ -121,7 +121,7 @@ function AccountApprovalsPage() {
             </div>
             <div className="mt-5 grid gap-4 sm:grid-cols-2">
               <label className="space-y-1 text-sm"><span className="font-medium">Associação (opcional)</span><select className="w-full rounded-md border bg-background px-3 py-2" value={selectedAssociation} onChange={(e) => setAssociationByUser((old) => ({ ...old, [row.user_id]: e.target.value }))}><option value="">Sem vínculo por enquanto</option>{(associations.data ?? []).map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}</select></label>
-              <label className="space-y-1 text-sm"><span className="font-medium">Perfil a conceder</span><select className="w-full rounded-md border bg-background px-3 py-2" value={selectedRole} onChange={(e) => setRoleByUser((old) => ({ ...old, [row.user_id]: e.target.value }))}>{roleOptions.map(([value,label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+              <label className="space-y-1 text-sm"><span className="font-medium">Perfil a conceder</span><select className="w-full rounded-md border bg-background px-3 py-2" value={selectedRole} onChange={(e) => setRoleByUser((old) => ({ ...old, [row.user_id]: e.target.value as Database["public"]["Enums"]["assoc_role"] }))}>{roleOptions.map(([value,label]) => <option key={value} value={value}>{label}</option>)}</select></label>
             </div>
             <div className="mt-5 flex flex-wrap justify-end gap-2"><Button variant="outline" disabled={busyUser === row.user_id} onClick={() => void review(row, "rejected")}><ShieldX className="mr-2 h-4 w-4" /> Recusar</Button><Button disabled={busyUser === row.user_id} onClick={() => void review(row, "approved")}>{busyUser === row.user_id ? "Processando…" : <><Check className="mr-2 h-4 w-4" /> Aprovar cadastro</>}</Button></div>
           </section>;
