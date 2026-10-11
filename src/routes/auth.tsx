@@ -54,6 +54,7 @@ function AuthPage() {
         const { data: codeMatches, error: codeError } = await supabase.rpc("lookup_association_by_code", { _code: association_code });
         if (codeError || !codeMatches?.length) {
           toast.error("O código da associação não pôde ser validado. Entre novamente e informe o código correto.");
+          handledSession.current = null;
           await supabase.auth.signOut();
           if (active) void navigate({ to: "/auth", search: { redirect: target } });
           return;
@@ -69,16 +70,19 @@ function AuthPage() {
         isPlatformAdmin = Boolean(role);
       } catch {
         toast.error("Não foi possível verificar as permissões administrativas.");
+        handledSession.current = null;
         return;
       }
       if (!isPlatformAdmin && !requestedAssociationId) {
         toast.error("Informe o código de 6 dígitos fornecido pela administração da sua associação.");
+        handledSession.current = null;
         await supabase.auth.signOut();
         if (active) void navigate({ to: "/auth", search: { redirect: target, association_required: "1" } });
         return;
       }
       if (adminAccessRef.current && !isPlatformAdmin) {
         toast.error("Este acesso é exclusivo do administrador principal. Informe o código da sua associação.");
+        handledSession.current = null;
         await supabase.auth.signOut();
         if (active) void navigate({ to: "/auth", search: { redirect: target, association_required: "1" } });
         return;
@@ -93,7 +97,10 @@ function AuthPage() {
 
         // Do not create a membership request or trigger any association workflow
         // until the administrator has approved the account itself.
-        if (!accountApproved) return;
+        if (!accountApproved) {
+          if (active) void navigate({ to: "/aguardando-aprovacao" });
+          return;
+        }
 
         if (requestedAssociationId && !isPlatformAdmin) {
           try { localStorage.setItem("morada360.assoc", requestedAssociationId); } catch { /* Selection remains session-local if storage is unavailable. */ }
