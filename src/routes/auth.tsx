@@ -215,12 +215,9 @@ function AuthPage() {
   }
 
   async function google() {
-    let requestedAssociationId = "";
     let requestedAssociationCode = "";
     if (adminAccess) {
       adminAccessRef.current = true;
-    } else if (authTab === "signup") {
-      requestedAssociationId = "__new__";
     }
     if (!adminAccess && (authTab === "login" || (authTab === "signup" && !createNewAssociation))) {
       const code = associationCode.trim();
@@ -233,7 +230,6 @@ function AuthPage() {
         toast.error("Código não encontrado. Confira os 6 dígitos com a administração da associação.");
         return;
       }
-      requestedAssociationId = matches[0].id;
       requestedAssociationCode = code;
     }
     setLoading(true);
