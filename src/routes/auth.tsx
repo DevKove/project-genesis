@@ -52,9 +52,17 @@ function AuthPage() {
       // Existing Google logins must not be forced into a new membership request based on editable metadata.
       let callbackAssociationId = "";
       let pendingAssociationCode = association_code || "";
+      // Read the raw callback URL too: router search state may not yet reflect OAuth callback parameters.
       try {
-        pendingAssociationCode = pendingAssociationCode || localStorage.getItem("morada360.pendingAssociationCode") || "";
-      } catch { /* Storage may be unavailable; continue with the route parameter. */ }
+        const callbackUrl = new URL(window.location.href);
+        pendingAssociationCode = pendingAssociationCode || callbackUrl.searchParams.get("association_code") || "";
+      } catch { /* Continue with router state and stored values. */ }
+      try {
+        pendingAssociationCode = pendingAssociationCode
+          || sessionStorage.getItem("morada360.pendingAssociationCode")
+          || localStorage.getItem("morada360.pendingAssociationCode")
+          || "";
+      } catch { /* Storage may be unavailable; continue with the callback URL. */ }
       if (pendingAssociationCode && /^\d{6}$/.test(pendingAssociationCode)) {
         const { data: codeMatches, error: codeError } = await supabase.rpc("lookup_association_by_code", { _code: pendingAssociationCode });
         if (codeError || !codeMatches?.length) {
@@ -259,7 +267,10 @@ function AuthPage() {
         return;
       }
       requestedAssociationCode = code;
-      try { localStorage.setItem("morada360.pendingAssociationCode", code); } catch { /* The callback URL still carries the code if storage is unavailable. */ }
+      try {
+        sessionStorage.setItem("morada360.pendingAssociationCode", code);
+        localStorage.setItem("morada360.pendingAssociationCode", code);
+      } catch { /* The callback URL still carries the code if storage is unavailable. */ }
     }
     setLoading(true);
     try {
