@@ -1,10 +1,26 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": Deno.env.get("APP_URL") ?? "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-};
+const allowedAppOrigin = (() => {
+  const configuredUrl = Deno.env.get("APP_URL");
+  if (!configuredUrl) return null;
+  try {
+    return new URL(configuredUrl).origin;
+  } catch {
+    return null;
+  }
+})();
+
+function corsHeaders(req: Request): Record<string, string> {
+  const requestOrigin = req.headers.get("Origin");
+  return {
+    ...(requestOrigin && allowedAppOrigin && requestOrigin === allowedAppOrigin
+      ? { "Access-Control-Allow-Origin": allowedAppOrigin }
+      : {}),
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Vary": "Origin",
+  };
+}
 
 type RequestRow = {
   id: string;
@@ -25,8 +41,8 @@ function htmlEscape(value: string) {
 }
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
-  if (req.method !== "POST") return new Response("Method not allowed", { status: 405, headers: corsHeaders });
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders(req) });
+  if (req.method !== "POST") return new Response("Method not allowed", { status: 405, headers: corsHeaders(req) });
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
   const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
@@ -37,30 +53,30 @@ Deno.serve(async (req) => {
 
   if (!supabaseUrl || !anonKey || !serviceRoleKey || !resendApiKey || !fromEmail || !appUrl) {
     return new Response(JSON.stringify({ error: "Email provider is not configured." }), {
-      status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 503, headers: { ...corsHeaders(req), "Content-Type": "application/json" },
     });
   }
 
   const authorization = req.headers.get("Authorization");
   const token = authorization?.replace(/^Bearer\s+/i, "");
   if (!token) return new Response(JSON.stringify({ error: "Authentication required." }), {
-    status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    status: 401, headers: { ...corsHeaders(req), "Content-Type": "application/json" },
   });
 
   const authClient = createClient(supabaseUrl, anonKey, { global: { headers: { Authorization: `Bearer ${token}` } } });
   const { data: authData, error: authError } = await authClient.auth.getUser(token);
   if (authError || !authData.user) return new Response(JSON.stringify({ error: "Invalid session." }), {
-    status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    status: 401, headers: { ...corsHeaders(req), "Content-Type": "application/json" },
   });
 
   const adminClient = createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession: false, autoRefreshToken: false } });
   let payload: { request_id?: string; event?: string };
   try { payload = await req.json(); } catch {
-    return new Response(JSON.stringify({ error: "Invalid JSON." }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    return new Response(JSON.stringify({ error: "Invalid JSON." }), { status: 400, headers: { ...corsHeaders(req), "Content-Type": "application/json" } });
   }
 
   if (!payload.request_id || !["requested", "reviewed"].includes(payload.event ?? "")) {
-    return new Response(JSON.stringify({ error: "Invalid request." }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    return new Response(JSON.stringify({ error: "Invalid request." }), { status: 400, headers: { ...corsHeaders(req), "Content-Type": "application/json" } });
   }
 
   const { data: request, error: requestError } = await adminClient
@@ -69,7 +85,7 @@ Deno.serve(async (req) => {
     .eq("id", payload.request_id)
     .maybeSingle();
   if (requestError || !request) return new Response(JSON.stringify({ error: "Request not found." }), {
-    status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    status: 404, headers: { ...corsHeaders(req), "Content-Type": "application/json" },
   });
   const joinRequest = request as RequestRow;
 
@@ -83,12 +99,12 @@ Deno.serve(async (req) => {
   if (payload.event === "requested") {
     if (joinRequest.user_id !== authData.user.id || joinRequest.status !== "pendente") {
       return new Response(JSON.stringify({ error: "Not authorized for this notification." }), {
-        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 403, headers: { ...corsHeaders(req), "Content-Type": "application/json" },
       });
     }
   } else if (!callerIsAdmin || !["aprovado", "rejeitado"].includes(joinRequest.status)) {
     return new Response(JSON.stringify({ error: "Not authorized for this notification." }), {
-      status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 403, headers: { ...corsHeaders(req), "Content-Type": "application/json" },
     });
   }
 
@@ -103,7 +119,7 @@ Deno.serve(async (req) => {
       .eq("association_id", joinRequest.association_id)
       .eq("role", "admin");
     if (adminsError) return new Response(JSON.stringify({ error: "Could not load association administrators." }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 500, headers: { ...corsHeaders(req), "Content-Type": "application/json" },
     });
     for (const admin of admins ?? []) {
       const { data: adminUser } = await adminClient.auth.admin.getUserById(admin.user_id);
@@ -143,9 +159,9 @@ Deno.serve(async (req) => {
 
   const failed = results.filter((result) => !result.ok).length;
   if (failed) return new Response(JSON.stringify({ sent: results.length - failed, failed }), {
-    status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    status: 502, headers: { ...corsHeaders(req), "Content-Type": "application/json" },
   });
   return new Response(JSON.stringify({ sent: results.length }), {
-    status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    status: 200, headers: { ...corsHeaders(req), "Content-Type": "application/json" },
   });
 });
