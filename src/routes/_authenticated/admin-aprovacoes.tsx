@@ -49,7 +49,7 @@ function AccountApprovalsPage() {
         if (alive) void navigate({ to: "/auth" });
         return;
       }
-      const { data, error } = await db.from("user_roles").select("role").eq("user_id", authData.user.id).eq("role", "platform_admin").maybeSingle();
+      const { data, error } = await (supabase as any).from("user_roles").select("role").eq("user_id", authData.user.id).eq("role", "platform_admin").maybeSingle();
       if (!alive) return;
       if (error || !data) setIsPlatformAdmin(false);
       else setIsPlatformAdmin(true);
