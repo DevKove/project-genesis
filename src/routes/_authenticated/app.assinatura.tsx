@@ -51,6 +51,7 @@ function SubscriptionPage() {
   const [cpf, setCpf] = useState("");
   const [billingEmail, setBillingEmail] = useState("");
   const [saving, setSaving] = useState(false);
+  const [testingAsaas, setTestingAsaas] = useState(false);
 
   const plans = useQuery({
     queryKey: ["subscription-plans"],
@@ -139,6 +140,22 @@ function SubscriptionPage() {
       toast.error(error instanceof Error ? error.message : "Não foi possível alterar o plano.");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function testAsaasConnection() {
+    setTestingAsaas(true);
+    try {
+      // The Edge Function keeps the Asaas credential server-side and only returns sanitized status.
+      const { data, error } = await supabase.functions.invoke("asaas-test-connection", { body: {} });
+      if (error) throw error;
+      if (!data?.ok) throw new Error(data?.error || "O Asaas não confirmou a conexão.");
+      const environment = data.environment === "sandbox" ? "Sandbox" : "Produção";
+      toast.success(`Conexão com Asaas ${environment} validada. Nenhuma cobrança foi criada.`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Não foi possível testar a conexão com o Asaas.");
+    } finally {
+      setTestingAsaas(false);
     }
   }
 
@@ -232,6 +249,16 @@ function SubscriptionPage() {
   return (
     <div className="space-y-6">
       <PageHeader title="Planos e assinatura" description="Painel administrativo global: atribua e acompanhe o plano de cada associação. O valor estimado considera moradores ativos cadastrados." />
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-card p-4">
+        <div>
+          <p className="font-medium">Integração de pagamentos — Asaas</p>
+          <p className="mt-1 text-sm text-muted-foreground">Teste seguro da credencial configurada no Supabase. Esta ação não cria cobranças.</p>
+        </div>
+        <Button variant="outline" onClick={() => void testAsaasConnection()} disabled={testingAsaas}>
+          {testingAsaas ? <LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> : <CreditCard className="mr-2 h-4 w-4" />}
+          {testingAsaas ? "Testando conexão…" : "Testar conexão Asaas"}
+        </Button>
+      </div>
       <section className="grid gap-4 md:grid-cols-3">
         <div className="rounded-xl border bg-card p-5">
           <div className="flex items-center gap-2 text-sm text-muted-foreground"><Users className="h-4 w-4" /> Moradores faturáveis</div>
