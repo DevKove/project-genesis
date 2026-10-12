@@ -30,8 +30,58 @@ export function AssociationChat({ associationId, userId, associationName }: {
   const [loading, setLoading] = useState(false);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
+  const [unreadMessages, setUnreadMessages] = useState(0);
   const endRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  // Mantém o indicador do chat atualizado mesmo quando a janela está fechada.
+  useEffect(() => {
+    let active = true;
+    const chatTypes = ["chat_general", "chat_private"];
+    const refreshUnread = async () => {
+      const { count, error: countError } = await supabase
+        .from("user_notifications")
+        .select("id", { count: "exact", head: true })
+        .eq("recipient_id", userId)
+        .eq("association_id", associationId)
+        .is("read_at", null)
+        .in("notification_type", chatTypes);
+      if (!countError && active) setUnreadMessages(count ?? 0);
+    };
+    void refreshUnread();
+    const channel = supabase
+      .channel(`chat-alerts:${associationId}:${userId}`)
+      .on("postgres_changes", {
+        event: "INSERT", schema: "public", table: "user_notifications",
+        filter: `recipient_id=eq.${userId}`,
+      }, (payload) => {
+        const item = payload.new as { association_id?: string | null; notification_type?: string; read_at?: string | null };
+        if (item.association_id !== associationId || !chatTypes.includes(item.notification_type ?? "")) return;
+        if (open) {
+          void supabase.from("user_notifications").update({ read_at: new Date().toISOString() })
+            .eq("recipient_id", userId).eq("association_id", associationId)
+            .in("notification_type", chatTypes).is("read_at", null);
+        } else {
+          setUnreadMessages((current) => current + 1);
+        }
+      })
+      .subscribe();
+    return () => {
+      active = false;
+      void supabase.removeChannel(channel);
+    };
+  }, [associationId, open, userId]);
+
+  useEffect(() => {
+    if (!open) return;
+    void supabase.from("user_notifications").update({ read_at: new Date().toISOString() })
+      .eq("recipient_id", userId).eq("association_id", associationId)
+      .in("notification_type", ["chat_general", "chat_private"]).is("read_at", null)
+      .then(({ error: markError }) => {
+        if (markError) console.debug("Não foi possível atualizar a leitura dos alertas do chat.", markError);
+        else setUnreadMessages(0);
+      });
+  }, [associationId, open, userId]);
 
   const loadMessages = useCallback(async (showLoading = false) => {
     if (showLoading) setLoading(true);
@@ -229,8 +279,9 @@ export function AssociationChat({ associationId, userId, associationName }: {
           </form>
         </section>
       )}
-      <Button type="button" onClick={() => setOpen((value) => !value)} aria-label={open ? "Fechar chat interno" : unreadLabel} title={unreadLabel} className="fixed bottom-5 right-5 z-[81] h-14 w-14 rounded-full shadow-xl transition-transform hover:scale-105 sm:bottom-6 sm:right-6">
+      <Button type="button" onClick={() => setOpen((value) => !value)} aria-label={open ? "Fechar chat interno" : unreadMessages ? `Chat interno, ${unreadMessages} mensagens não lidas` : unreadLabel} title={unreadMessages ? `${unreadMessages} mensagens não lidas` : unreadLabel} className="fixed bottom-5 right-5 z-[81] h-14 w-14 rounded-full shadow-xl transition-transform hover:scale-105 sm:bottom-6 sm:right-6">
         {open ? <X className="h-6 w-6" /> : <MessageCircle className="h-6 w-6" />}
+        {!open && unreadMessages > 0 && <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold text-destructive-foreground">{unreadMessages > 99 ? "99+" : unreadMessages}</span>}
         <span className="sr-only">{open ? "Fechar chat" : "Chat interno"}</span>
       </Button>
     </>
