@@ -278,6 +278,7 @@ function SubscriptionPage() {
         <div>
           <p className="font-medium">Integração de pagamentos — Asaas</p>
           <p className="mt-1 text-sm text-muted-foreground">Teste seguro da credencial configurada no Supabase. Esta ação não cria cobranças.</p>
+          <p className="mt-2 text-xs text-muted-foreground">Métodos habilitados nesta etapa: Pix e boleto. Cartão de crédito ainda não está disponível. A emissão de cobranças permanece restrita ao ambiente Sandbox.</p>
         </div>
         <Button variant="outline" onClick={() => void testAsaasConnection()} disabled={testingAsaas}>
           {testingAsaas ? <LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> : <CreditCard className="mr-2 h-4 w-4" />}
@@ -319,7 +320,7 @@ function SubscriptionPage() {
             <div className="rounded-lg border bg-background p-4"><p className="text-xs text-muted-foreground">Início do teste</p><p className="mt-1 font-semibold">{dateTime(subscription.data.trial_started_at)}</p></div>
             <div className="rounded-lg border bg-background p-4"><p className="text-xs text-muted-foreground">Fim do teste</p><p className="mt-1 font-semibold">{dateTime(subscription.data.trial_ends_at)}</p></div>
           </div>
-          <p className="mt-4 text-sm text-muted-foreground">{trialExpired ? "O período de teste terminou. Para ativar cobranças automáticas, ainda é necessário configurar o provedor de pagamento da plataforma." : "A avaliação é concedida uma única vez por associação e não pode ser reiniciada."}</p>
+          <p className="mt-4 text-sm text-muted-foreground">{trialExpired ? "O período de teste terminou. Para iniciar o faturamento, é necessário gerar a cobrança e confirmar o pagamento pelo fluxo integrado. A cobrança recorrente automática ainda não está habilitada." : "A avaliação é concedida uma única vez por associação e não pode ser reiniciada."}</p>
         </section>
       )}
 
@@ -327,7 +328,7 @@ function SubscriptionPage() {
         <section className="space-y-4 rounded-2xl border border-primary/30 bg-card p-5 sm:p-6">
           <div>
             <h2 className="text-lg font-semibold">Cobrança de teste — Asaas Sandbox</h2>
-            <p className="mt-1 text-sm text-muted-foreground">Gera uma cobrança de teste para a competência atual, calculada no servidor pelo plano e pela quantidade de moradores ativos. Não use dados fictícios de terceiros e não há cobrança em Produção.</p>
+            <p className="mt-1 text-sm text-muted-foreground">Gera uma cobrança avulsa de teste para a competência atual. O servidor recalcula o valor usando o plano vigente e a quantidade de moradores ativos; o valor exibido na tela é apenas uma estimativa. Não use dados de terceiros e nenhuma cobrança é enviada à Produção.</p>
           </div>
           <div className="grid gap-4 sm:grid-cols-3">
             <div className="space-y-2">
@@ -336,6 +337,7 @@ function SubscriptionPage() {
                 <option value="PIX">Pix</option>
                 <option value="BOLETO">Boleto</option>
               </select>
+              <p className="text-xs text-muted-foreground">Cartão de crédito não está habilitado; não informe dados de cartão nesta etapa.</p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="sandbox-due-date">Vencimento</Label>
@@ -376,7 +378,7 @@ function SubscriptionPage() {
               <div className="flex items-center justify-between gap-2"><h3 className="text-lg font-bold">{plan.name}</h3>{plan.code === "premium" ? <Crown className="h-5 w-5 text-amber-500" /> : <Check className="h-5 w-5 text-primary" />}</div>
               <p className="mt-1 min-h-10 text-sm text-muted-foreground">{plan.tagline}</p>
               <p className="mt-4"><span className="text-3xl font-bold tracking-tight">{brl(plan.price_per_member_monthly)}</span><span className="text-xs text-muted-foreground"> / morador / mês</span></p>
-              <p className="mt-1 text-xs text-muted-foreground">Estimativa atual: {brl(plan.price_per_member_monthly * activeCount)}/mês</p>
+              <p className="mt-1 text-xs text-muted-foreground">Estimativa para {activeCount} morador(es) ativo(s): {brl(plan.price_per_member_monthly * activeCount)}/mês</p>
               <ul className="my-5 flex-1 space-y-2.5">{(Array.isArray(plan.features) ? plan.features : []).map((feature) => <li key={feature} className="flex gap-2 text-sm"><Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" /><span>{feature}</span></li>)}</ul>
               {subscription.data ? <Button variant={subscription.data.plan_code === plan.code ? "default" : active ? "secondary" : "outline"} disabled={subscription.data.plan_code === plan.code} className="w-full" onClick={() => setSelectedPlan(plan.code)}>{subscription.data.plan_code === plan.code ? "Plano atual" : active ? "Selecionado para alteração" : "Selecionar plano"}</Button> : <Button variant={active ? "default" : "outline"} className="w-full" onClick={() => setSelectedPlan(plan.code)}>{active ? "Plano selecionado" : "Escolher plano"}</Button>}
             </section>;
@@ -401,7 +403,7 @@ function SubscriptionPage() {
             <div className="sm:col-span-2 rounded-lg bg-muted/50 p-4 text-sm"><p className="font-medium">Resumo do plano {selected?.name ?? ""}</p><p className="mt-1 text-muted-foreground">{activeCount} moradores ativos × {brl(selected?.price_per_member_monthly ?? 0)} = <strong className="text-foreground">{brl(monthlyEstimate)}/mês</strong> após o teste. Nenhuma cobrança será iniciada por esta tela.</p></div>
             <Button type="submit" className="sm:col-span-2" disabled={saving || !selected || !account.data?.emailConfirmed || subscription.isLoading || !residents.data && residents.isLoading}>{saving ? <><LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> Ativando teste…</> : "Começar teste gratuito de 10 dias"}</Button>
           </form>
-          <p className="mt-4 text-xs text-muted-foreground">Importante: a seleção do plano e o período de teste estão disponíveis. A cobrança automática ainda depende da integração com um gateway de pagamento e suas credenciais seguras.</p>
+          <p className="mt-4 text-xs text-muted-foreground">Importante: o teste gratuito não gera cobrança. Após o teste, a cobrança avulsa pode ser emitida no Asaas Sandbox por Pix ou boleto; cobrança recorrente automática e cartão de crédito ainda não estão habilitados.</p>
         </section>
       )}
     </div>
