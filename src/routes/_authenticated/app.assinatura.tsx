@@ -1,0 +1,232 @@
+import { useMemo, useState } from "react";
+import { createFileRoute } from "@tanstack/react-router";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { BadgeCheck, CalendarClock, Check, CreditCard, Crown, LoaderCircle, MailCheck, ShieldCheck, Users } from "lucide-react";
+import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+import { useAssoc } from "@/lib/assoc-context";
+import { isValidCPF, maskCPF } from "@/lib/roles";
+import { PageHeader } from "@/components/app/PageHeader";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+
+export const Route = createFileRoute("/_authenticated/app/assinatura")({
+  head: () => ({ meta: [{ title: "Planos e assinatura — Morada360" }] }),
+  component: SubscriptionPage,
+});
+
+type Plan = {
+  code: string;
+  name: string;
+  tagline: string;
+  price_per_member_monthly: number;
+  display_order: number;
+  features: string[];
+  highlighted: boolean;
+};
+
+type Subscription = {
+  id: string;
+  association_id: string;
+  plan_code: string;
+  responsible_cpf: string;
+  billing_email: string;
+  status: string;
+  trial_started_at: string;
+  trial_ends_at: string;
+  member_count_at_last_billing: number;
+  unit_price_at_last_billing: number;
+};
+
+const brl = (amount: number) => amount.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+const dateTime = (value: string) => new Date(value).toLocaleString("pt-BR", { dateStyle: "medium", timeStyle: "short" });
+
+function SubscriptionPage() {
+  const { current, userId } = useAssoc();
+  const queryClient = useQueryClient();
+  const associationId = current?.association_id ?? "";
+  const canManage = current?.role === "admin" || current?.role === "presidente";
+  const [selectedPlan, setSelectedPlan] = useState("gestao");
+  const [cpf, setCpf] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const plans = useQuery({
+    queryKey: ["subscription-plans"],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any).from("subscription_plans")
+        .select("code,name,tagline,price_per_member_monthly,display_order,features,highlighted")
+        .eq("active", true).order("display_order");
+      if (error) throw error;
+      return (data ?? []) as Plan[];
+    },
+  });
+
+  const subscription = useQuery({
+    queryKey: ["association-subscription", associationId],
+    enabled: Boolean(associationId && canManage),
+    queryFn: async () => {
+      const { data, error } = await (supabase as any).from("association_subscriptions")
+        .select("id,association_id,plan_code,responsible_cpf,billing_email,status,trial_started_at,trial_ends_at,member_count_at_last_billing,unit_price_at_last_billing")
+        .eq("association_id", associationId).maybeSingle();
+      if (error) throw error;
+      return data as Subscription | null;
+    },
+  });
+
+  const residents = useQuery({
+    queryKey: ["billable-active-residents", associationId],
+    enabled: Boolean(associationId && canManage),
+    queryFn: async () => {
+      const { count, error } = await supabase.from("residents").select("id", { count: "exact", head: true })
+        .eq("association_id", associationId).eq("is_active", true);
+      if (error) throw error;
+      return count ?? 0;
+    },
+  });
+
+  const account = useQuery({
+    queryKey: ["billing-verified-account", userId],
+    enabled: Boolean(userId && canManage),
+    queryFn: async () => {
+      const { data, error } = await supabase.auth.getUser();
+      if (error) throw error;
+      return { email: data.user?.email ?? "", emailConfirmed: Boolean(data.user?.email_confirmed_at) };
+    },
+  });
+
+  const selected = useMemo(() => plans.data?.find((p) => p.code === selectedPlan) ?? plans.data?.[1] ?? plans.data?.[0], [plans.data, selectedPlan]);
+  const activeCount = residents.data ?? 0;
+  const monthlyEstimate = (selected?.price_per_member_monthly ?? 0) * activeCount;
+  const trialExpired = Boolean(subscription.data && new Date(subscription.data.trial_ends_at).getTime() <= Date.now() && subscription.data.status === "trialing");
+  const currentPlan = plans.data?.find((p) => p.code === subscription.data?.plan_code);
+
+  async function startTrial(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!associationId || !canManage || !selected) return;
+    if (!isValidCPF(cpf)) {
+      toast.error("Informe um CPF válido do responsável financeiro.");
+      return;
+    }
+    if (!account.data?.emailConfirmed || !account.data.email) {
+      toast.error("Confirme o e-mail da sua conta antes de iniciar o teste gratuito.");
+      return;
+    }
+    setSaving(true);
+    try {
+      const { error } = await (supabase as any).rpc("start_association_trial", {
+        _association_id: associationId,
+        _plan_code: selected.code,
+        _responsible_cpf: cpf.replace(/\D/g, ""),
+        _billing_email: account.data.email,
+      });
+      if (error) {
+        const msg = String(error.message ?? "");
+        if (msg.includes("já está vinculado") || msg.includes("já possui")) toast.error(msg);
+        else if (msg.includes("Confirme o e-mail")) toast.error(msg);
+        else if (msg.includes("CPF")) toast.error("O CPF informado é inválido ou já está vinculado a outra assinatura.");
+        else toast.error(msg || "Não foi possível iniciar o teste. Confira seus dados e permissões.");
+        return;
+      }
+      toast.success("Teste gratuito iniciado! Você tem 10 dias para conhecer o Morada360.");
+      setCpf("");
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["association-subscription", associationId] }),
+        queryClient.invalidateQueries({ queryKey: ["subscription-plans"] }),
+      ]);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Não foi possível iniciar o teste.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (!current) return null;
+  if (!canManage) {
+    return <section className="rounded-xl border bg-card p-6"><ShieldCheck className="mb-3 h-8 w-8 text-primary" /><h1 className="text-xl font-semibold">Acesso restrito</h1><p className="mt-2 text-sm text-muted-foreground">Somente o administrador ou presidente da associação pode gerenciar o plano e o faturamento.</p></section>;
+  }
+
+  return (
+    <div className="space-y-6">
+      <PageHeader title="Planos e assinatura" description="Escolha o plano da associação. O valor mensal é calculado pela quantidade de moradores ativos cadastrados." />
+      <section className="grid gap-4 md:grid-cols-3">
+        <div className="rounded-xl border bg-card p-5">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground"><Users className="h-4 w-4" /> Moradores faturáveis</div>
+          <p className="mt-2 text-3xl font-bold tabular-nums">{residents.isLoading ? "…" : residents.isError ? "—" : activeCount}</p>
+          <p className="mt-1 text-xs text-muted-foreground">Somente moradores ativos</p>
+        </div>
+        <div className="rounded-xl border bg-card p-5">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground"><CreditCard className="h-4 w-4" /> Estimativa mensal</div>
+          <p className="mt-2 text-3xl font-bold tabular-nums">{brl(monthlyEstimate)}</p>
+          <p className="mt-1 text-xs text-muted-foreground">{brl(selected?.price_per_member_monthly ?? 0)} por morador ativo/mês no plano selecionado</p>
+        </div>
+        <div className="rounded-xl border bg-card p-5">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground"><CalendarClock className="h-4 w-4" /> Período de avaliação</div>
+          <p className="mt-2 text-3xl font-bold">10 dias</p>
+          <p className="mt-1 text-xs text-muted-foreground">Sem cobrança durante o teste gratuito</p>
+        </div>
+      </section>
+
+      {subscription.isError && <div role="alert" className="rounded-lg border border-destructive/40 p-4 text-sm">Não foi possível consultar a assinatura. Verifique as permissões e tente novamente. <Button variant="link" onClick={() => void subscription.refetch()}>Tentar novamente</Button></div>}
+      {subscription.data && (
+        <section className="rounded-xl border border-primary/30 bg-primary/5 p-5 sm:p-6">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <div className="flex items-center gap-2"><BadgeCheck className="h-5 w-5 text-primary" /><h2 className="text-lg font-semibold">Assinatura da associação</h2></div>
+              <p className="mt-1 text-sm text-muted-foreground">{currentPlan?.name ?? subscription.data.plan_code} · responsável CPF {maskCPF(subscription.data.responsible_cpf)}</p>
+              <p className="mt-1 text-sm text-muted-foreground">E-mail de faturamento: {subscription.data.billing_email}</p>
+            </div>
+            <span className="w-fit rounded-full border bg-background px-3 py-1 text-xs font-semibold">
+              {trialExpired ? "Teste encerrado — pagamento necessário" : subscription.data.status === "trialing" ? "Teste gratuito em andamento" : subscription.data.status === "active" ? "Ativa" : subscription.data.status}
+            </span>
+          </div>
+          <div className="mt-5 grid gap-3 sm:grid-cols-2">
+            <div className="rounded-lg border bg-background p-4"><p className="text-xs text-muted-foreground">Início do teste</p><p className="mt-1 font-semibold">{dateTime(subscription.data.trial_started_at)}</p></div>
+            <div className="rounded-lg border bg-background p-4"><p className="text-xs text-muted-foreground">Fim do teste</p><p className="mt-1 font-semibold">{dateTime(subscription.data.trial_ends_at)}</p></div>
+          </div>
+          <p className="mt-4 text-sm text-muted-foreground">{trialExpired ? "O período de teste terminou. Para ativar cobranças automáticas, ainda é necessário configurar o provedor de pagamento da plataforma." : "O teste é concedido uma única vez por associação e não é reiniciado ao trocar de usuário ou atualizar a página."}</p>
+        </section>
+      )}
+
+      <div className="flex items-end justify-between gap-3"><div><h2 className="text-xl font-semibold">Compare os planos</h2><p className="mt-1 text-sm text-muted-foreground">Preços por morador ativo, cobrados mensalmente por associação.</p></div></div>
+      {plans.isLoading ? <div className="flex items-center gap-2 py-10 text-sm text-muted-foreground"><LoaderCircle className="h-4 w-4 animate-spin" /> Carregando planos…</div> : plans.isError ? <div role="alert" className="rounded-lg border p-4 text-sm">Não foi possível carregar os planos. <Button variant="link" onClick={() => void plans.refetch()}>Tentar novamente</Button></div> : (
+        <div className="grid items-stretch gap-4 md:grid-cols-2 xl:grid-cols-4">
+          {plans.data?.map((plan) => {
+            const active = selectedPlan === plan.code;
+            return <section key={plan.code} className={`relative flex flex-col rounded-2xl border bg-card p-5 shadow-soft transition-all ${plan.highlighted ? "border-primary ring-1 ring-primary/25" : ""} ${active ? "ring-2 ring-primary" : ""}`}>
+              {plan.highlighted && <span className="absolute -top-3 left-4 rounded-full bg-primary px-3 py-1 text-xs font-semibold text-primary-foreground">Mais escolhido</span>}
+              <div className="flex items-center justify-between gap-2"><h3 className="text-lg font-bold">{plan.name}</h3>{plan.code === "premium" ? <Crown className="h-5 w-5 text-amber-500" /> : <Check className="h-5 w-5 text-primary" />}</div>
+              <p className="mt-1 min-h-10 text-sm text-muted-foreground">{plan.tagline}</p>
+              <p className="mt-4"><span className="text-3xl font-bold tracking-tight">{brl(plan.price_per_member_monthly)}</span><span className="text-xs text-muted-foreground"> / morador / mês</span></p>
+              <p className="mt-1 text-xs text-muted-foreground">Estimativa atual: {brl(plan.price_per_member_monthly * activeCount)}/mês</p>
+              <ul className="my-5 flex-1 space-y-2.5">{(Array.isArray(plan.features) ? plan.features : []).map((feature) => <li key={feature} className="flex gap-2 text-sm"><Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" /><span>{feature}</span></li>)}</ul>
+              {subscription.data ? <Button variant={subscription.data.plan_code === plan.code ? "default" : "outline"} disabled className="w-full">{subscription.data.plan_code === plan.code ? "Plano atual" : "Alteração de plano indisponível"}</Button> : <Button variant={active ? "default" : "outline"} className="w-full" onClick={() => setSelectedPlan(plan.code)}>{active ? "Plano selecionado" : "Escolher plano"}</Button>}
+            </section>;
+          })}
+        </div>
+      )}
+
+      {!subscription.data && (
+        <section className="rounded-2xl border bg-card p-5 sm:p-7">
+          <div className="mb-5 flex items-start gap-3"><span className="rounded-xl bg-primary/10 p-3 text-primary"><MailCheck className="h-5 w-5" /></span><div><h2 className="text-lg font-semibold">Ative seus 10 dias gratuitos</h2><p className="mt-1 text-sm text-muted-foreground">Um teste por associação. O CPF do responsável e o e-mail confirmado são usados para reduzir cadastros duplicados.</p></div></div>
+          {!account.data?.emailConfirmed && <p role="alert" className="mb-4 rounded-lg border border-amber-500/40 bg-amber-500/5 p-3 text-sm">Antes de continuar, confirme o e-mail da sua conta. O sistema só aceita um endereço confirmado pelo processo de autenticação.</p>}
+          <form onSubmit={startTrial} className="grid gap-4 sm:grid-cols-2">
+            <div><Label htmlFor="billing-cpf">CPF do responsável financeiro</Label><Input id="billing-cpf" autoComplete="off" inputMode="numeric" placeholder="000.000.000-00" value={cpf} onChange={(event) => setCpf(maskInputCPF(event.target.value))} required maxLength={14} /><p className="mt-1 text-xs text-muted-foreground">Validado pelo sistema antes de registrar o teste.</p></div>
+            <div><Label htmlFor="billing-email">E-mail de faturamento confirmado</Label><Input id="billing-email" type="email" value={account.data?.email ?? ""} readOnly required /><p className="mt-1 text-xs text-muted-foreground">Vinculado à conta autenticada; não pode ser substituído por um e-mail não verificado.</p></div>
+            <div className="sm:col-span-2 rounded-lg bg-muted/50 p-4 text-sm"><p className="font-medium">Resumo do plano {selected?.name ?? ""}</p><p className="mt-1 text-muted-foreground">{activeCount} moradores ativos × {brl(selected?.price_per_member_monthly ?? 0)} = <strong className="text-foreground">{brl(monthlyEstimate)}/mês</strong> após o teste. Nenhuma cobrança será iniciada por esta tela.</p></div>
+            <Button type="submit" className="sm:col-span-2" disabled={saving || !selected || !account.data?.emailConfirmed || subscription.isLoading || !residents.data && residents.isLoading}>{saving ? <><LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> Ativando teste…</> : "Começar teste gratuito de 10 dias"}</Button>
+          </form>
+          <p className="mt-4 text-xs text-muted-foreground">Importante: a seleção do plano e o período de teste estão disponíveis. A cobrança automática ainda depende da integração com um gateway de pagamento e suas credenciais seguras.</p>
+        </section>
+      )}
+    </div>
+  );
+}
+
+function maskInputCPF(value: string) {
+  const d = value.replace(/\D/g, "").slice(0, 11);
+  if (d.length <= 3) return d;
+  if (d.length <= 6) return d.replace(/^(\d{3})(\d+)/, "$1.$2");
+  if (d.length <= 9) return d.replace(/^(\d{3})(\d{3})(\d+)/, "$1.$2.$3");
+  return d.replace(/^(\d{3})(\d{3})(\d{3})(\d{1,2}).*/, "$1.$2.$3-$4");
+}
