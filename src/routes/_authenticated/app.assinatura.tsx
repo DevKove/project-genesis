@@ -104,10 +104,8 @@ function SubscriptionPage() {
   const currentPlan = plans.data?.find((p) => p.code === subscription.data?.plan_code);
 
   useEffect(() => {
-    if (subscription.data?.plan_code && selectedPlan === "gestao" && subscription.data.plan_code !== "gestao") {
-      setSelectedPlan(subscription.data.plan_code);
-    }
-  }, [subscription.data?.plan_code, selectedPlan]);
+    if (subscription.data?.plan_code) setSelectedPlan(subscription.data.plan_code);
+  }, [subscription.data?.plan_code]);
 
   async function changePlan() {
     if (!associationId || !isPlatformAdmin || !selected || !subscription.data || selected.code === subscription.data.plan_code) return;
