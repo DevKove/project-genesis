@@ -28,13 +28,12 @@ export function AssociationChat({ associationId, userId, associationName }: {
   const [error, setError] = useState("");
   const endRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
-  const messageTable = (supabase as any).from("association_chat_messages");
 
   const loadMessages = useCallback(async (showLoading = false) => {
     if (showLoading) setLoading(true);
     setError("");
     try {
-      const { data, error: queryError } = await messageTable
+      const { data, error: queryError } = await (supabase as any).from("association_chat_messages")
         .select("id,association_id,sender_id,body,created_at")
         .eq("association_id", associationId)
         .order("created_at", { ascending: true })
@@ -59,7 +58,7 @@ export function AssociationChat({ associationId, userId, associationName }: {
     } finally {
       if (showLoading) setLoading(false);
     }
-  }, [associationId, messageTable]);
+  }, [associationId]);
 
   useEffect(() => {
     if (!open) return;
@@ -89,7 +88,7 @@ export function AssociationChat({ associationId, userId, associationName }: {
     const body = draft.trim();
     if (!body || sending) return;
     setSending(true);
-    const { error: insertError } = await messageTable.insert({
+    const { error: insertError } = await (supabase as any).from("association_chat_messages").insert({
       association_id: associationId,
       sender_id: userId,
       body,
@@ -107,7 +106,7 @@ export function AssociationChat({ associationId, userId, associationName }: {
 
   async function deleteMessage(message: ChatMessage) {
     if (message.sender_id !== userId) return;
-    const { error: deleteError } = await messageTable.delete().eq("id", message.id)
+    const { error: deleteError } = await (supabase as any).from("association_chat_messages").delete().eq("id", message.id)
       .eq("association_id", associationId).eq("sender_id", userId);
     if (deleteError) {
       toast.error("Não foi possível excluir a mensagem.");
