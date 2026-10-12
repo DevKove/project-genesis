@@ -64,6 +64,20 @@ function SubscriptionPage() {
     },
   });
 
+  const memberPlan = useQuery({
+    queryKey: ["member-association-plan", associationId],
+    enabled: Boolean(associationId && !canManage),
+    queryFn: async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await (supabase as any).rpc("get_my_association_plan", {
+        _association_id: associationId,
+      });
+      if (error) throw error;
+      return (Array.isArray(data) ? data[0] : data) as { plan_code: string; status: string; trial_ends_at: string | null } | null;
+    },
+    refetchInterval: 60000,
+  });
+
   const subscription = useQuery({
     queryKey: ["association-subscription", associationId],
     enabled: Boolean(associationId && canManage),
@@ -176,7 +190,43 @@ function SubscriptionPage() {
 
   if (!current) return null;
   if (!canManage) {
-    return <section className="rounded-xl border bg-card p-6"><ShieldCheck className="mb-3 h-8 w-8 text-primary" /><h1 className="text-xl font-semibold">Acesso restrito</h1><p className="mt-2 text-sm text-muted-foreground">Somente o administrador do sistema pode gerenciar planos, assinaturas e faturamento.</p></section>;
+    const memberCurrentPlan = plans.data?.find((plan) => plan.code === memberPlan.data?.plan_code);
+    const higherPlans = plans.data?.filter((plan) => plan.display_order > (memberCurrentPlan?.display_order ?? 0)) ?? [];
+    const upgradeMessage = `Olá! Gostaria de solicitar uma avaliação de upgrade do plano da associação ${current.associations?.name ?? ""}. Nosso plano atual é ${memberCurrentPlan?.name ?? "não identificado"} e temos interesse em conhecer os benefícios dos planos superiores do Morada360.`;
+    return (
+      <div className="space-y-6">
+        <PageHeader title="Meu plano e benefícios" description="Consulte o plano da sua associação, compare os benefícios e veja como solicitar uma melhoria." />
+        {memberPlan.isError && <div role="alert" className="rounded-lg border border-destructive/40 p-4 text-sm">Não foi possível consultar o plano atual. Tente novamente. <Button variant="link" onClick={() => void memberPlan.refetch()}>Tentar novamente</Button></div>}
+        <section className="rounded-2xl border border-primary/30 bg-primary/5 p-5 sm:p-6">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm text-muted-foreground">Plano contratado pela associação</p>
+              <h2 className="mt-1 text-2xl font-bold">{memberPlan.isLoading || plans.isLoading ? "Consultando plano…" : memberCurrentPlan?.name ?? "Nenhum plano identificado"}</h2>
+              <p className="mt-1 text-sm text-muted-foreground">{memberCurrentPlan ? `${brl(memberCurrentPlan.price_per_member_monthly)} por morador ativo/mês` : "Peça ao administrador do sistema para verificar a assinatura da associação."}</p>
+            </div>
+            <span className="w-fit rounded-full border bg-background px-3 py-1.5 text-sm font-semibold">
+              {memberPlan.data?.status === "active" ? "Assinatura ativa" : memberPlan.data?.status === "trialing" && memberPlan.data.trial_ends_at && new Date(memberPlan.data.trial_ends_at).getTime() > Date.now() ? "Em período de avaliação" : memberPlan.data?.status === "trialing" ? "Avaliação encerrada" : memberPlan.data?.status ?? "Status indisponível"}
+            </span>
+          </div>
+          {memberCurrentPlan && <div className="mt-5"><h3 className="font-semibold">Benefícios incluídos no seu plano</h3><ul className="mt-2 grid gap-2 sm:grid-cols-2">{memberCurrentPlan.features.map((feature) => <li key={feature} className="flex items-start gap-2 text-sm"><Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" /><span>{feature}</span></li>)}</ul></div>}
+        </section>
+        <section className="space-y-3">
+          <div><h2 className="text-xl font-semibold">Conheça os planos superiores</h2><p className="mt-1 text-sm text-muted-foreground">Veja o que sua associação pode desbloquear com um upgrade. A mudança precisa ser aprovada pelo administrador do sistema.</p></div>
+          {plans.isLoading ? <div className="rounded-xl border p-5 text-sm text-muted-foreground">Carregando planos…</div> : higherPlans.length ? <div className="grid gap-4 lg:grid-cols-2">{higherPlans.map((plan) => <article key={plan.code} className={`rounded-2xl border bg-card p-5 ${plan.highlighted ? "border-primary shadow-soft" : ""}`}>
+            <div className="flex items-start justify-between gap-3"><div><h3 className="text-lg font-bold">{plan.name}</h3><p className="mt-1 text-sm text-muted-foreground">{plan.tagline}</p></div>{plan.highlighted && <span className="rounded-full bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary">Recomendado</span>}</div>
+            <p className="mt-4 text-2xl font-bold">{brl(plan.price_per_member_monthly)}<span className="text-sm font-normal text-muted-foreground"> / morador ativo/mês</span></p>
+            <ul className="mt-4 space-y-2">{plan.features.map((feature) => <li key={feature} className="flex items-start gap-2 text-sm"><Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" /><span>{feature}</span></li>)}</ul>
+            <p className="mt-4 rounded-lg bg-muted/50 p-3 text-xs text-muted-foreground">Valor mensal estimado = preço por morador ativo × quantidade de moradores ativos cadastrados.</p>
+          </article>)}</div> : <div className="rounded-xl border bg-card p-5 text-sm text-muted-foreground">Sua associação já está no plano mais completo disponível. Consulte o administrador para conhecer futuras opções.</div>}
+        </section>
+        <section className="rounded-2xl border bg-card p-5 sm:p-6">
+          <div className="flex items-start gap-3"><ShieldCheck className="mt-1 h-6 w-6 shrink-0 text-primary" /><div><h2 className="font-semibold">Como solicitar um upgrade</h2><p className="mt-1 text-sm text-muted-foreground">Copie a mensagem abaixo e encaminhe ao administrador do sistema ou ao responsável pela sua associação. Somente o administrador da plataforma pode efetivar a alteração do plano.</p>
+          <div className="mt-4 rounded-lg border bg-muted/30 p-3 text-sm">{upgradeMessage}</div>
+          <Button className="mt-3" onClick={async () => { try { await navigator.clipboard.writeText(upgradeMessage); toast.success("Mensagem de solicitação copiada."); } catch { toast.error("Não foi possível copiar automaticamente. Selecione e copie a mensagem acima."); } }}><CreditCard className="mr-2 h-4 w-4" /> Copiar solicitação de upgrade</Button>
+          </div></div>
+        </section>
+      </div>
+    );
   }
 
   return (
