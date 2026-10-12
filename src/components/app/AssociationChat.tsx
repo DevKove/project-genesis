@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
-import { MessageCircle, Send, X, LoaderCircle, Trash2, Users, UserRound } from "lucide-react";
+import { MessageCircle, Send, X, LoaderCircle, Trash2, Users, UserRound, ImagePlus } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,7 @@ type ChatMessage = {
   sender_id: string;
   recipient_id: string | null;
   body: string;
+  attachment_path: string | null;
   created_at: string;
 };
 type ChatProfile = { id: string; full_name: string | null; avatar_url?: string | null };
@@ -25,6 +26,10 @@ export function AssociationChat({ associationId, userId, associationName }: {
   const [profiles, setProfiles] = useState<Record<string, ChatProfile>>({});
   const [members, setMembers] = useState<ChatProfile[]>([]);
   const [draft, setDraft] = useState("");
+  const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [imageUrls, setImageUrls] = useState<Record<string, string>>({});
+  const imageInputRef = useRef<HTMLInputElement>(null);
   const [mode, setMode] = useState<"general" | "private">("general");
   const [recipientId, setRecipientId] = useState("");
   const [loading, setLoading] = useState(false);
@@ -90,13 +95,20 @@ export function AssociationChat({ associationId, userId, associationName }: {
       // The generated Supabase schema types are refreshed separately from this migration.
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data, error: queryError } = await (supabase as any).from("association_chat_messages")
-        .select("id,association_id,sender_id,recipient_id,body,created_at")
+        .select("id,association_id,sender_id,recipient_id,body,attachment_path,created_at")
         .eq("association_id", associationId)
         .order("created_at", { ascending: true })
         .limit(500);
       if (queryError) throw queryError;
       const rows = (data ?? []) as ChatMessage[];
       setMessages(rows);
+      const imageRows = rows.filter((item) => item.attachment_path);
+      const signedEntries = await Promise.all(imageRows.map(async (item) => {
+        const { data: signed, error: signedError } = await supabase.storage
+          .from("chat-images").createSignedUrl(item.attachment_path!, 60 * 60);
+        return !signedError && signed?.signedUrl ? [item.id, signed.signedUrl] as const : null;
+      }));
+      setImageUrls((current) => ({ ...current, ...Object.fromEntries(signedEntries.filter((entry): entry is readonly [string, string] => entry !== null)) }));
       const ids = [...new Set(rows.flatMap((item) => [item.sender_id, ...(item.recipient_id ? [item.recipient_id] : [])]))];
       if (ids.length) {
         const { data: people, error: peopleError } = await supabase
@@ -166,24 +178,62 @@ export function AssociationChat({ associationId, userId, associationName }: {
     if (open) endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [visibleMessages, open]);
 
+  useEffect(() => {
+    if (!selectedImage) {
+      setImagePreview(null);
+      return;
+    }
+    const previewUrl = URL.createObjectURL(selectedImage);
+    setImagePreview(previewUrl);
+    return () => URL.revokeObjectURL(previewUrl);
+  }, [selectedImage]);
+
+  function chooseImage(file?: File) {
+    if (!file) return;
+    if (!["image/jpeg", "image/png", "image/webp", "image/gif"].includes(file.type)) {
+      toast.error("Formato não suportado. Use JPG, PNG, WEBP ou GIF.");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("A imagem deve ter no máximo 5 MB.");
+      return;
+    }
+    setSelectedImage(file);
+  }
+
   async function sendMessage(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const body = draft.trim();
-    if (!body || sending) return;
+    if ((!body && !selectedImage) || sending) return;
     if (mode === "private" && !recipientId) {
       toast.error("Selecione um usuário para a mensagem privada.");
       return;
     }
     setSending(true);
+    let attachmentPath: string | null = null;
+    if (selectedImage) {
+      const safeName = selectedImage.name.replace(/[^a-zA-Z0-9._-]/g, "_").slice(-100) || "imagem";
+      attachmentPath = `${associationId}/${userId}/${crypto.randomUUID()}-${safeName}`;
+      const { error: uploadError } = await supabase.storage.from("chat-images")
+        .upload(attachmentPath, selectedImage, { contentType: selectedImage.type, cacheControl: "3600", upsert: false });
+      if (uploadError) {
+        setSending(false);
+        console.error("Falha ao enviar imagem do chat", uploadError);
+        toast.error("Não foi possível enviar a imagem. Verifique sua conexão e suas permissões.");
+        return;
+      }
+    }
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { error: insertError } = await (supabase as any).from("association_chat_messages").insert({
       association_id: associationId,
       sender_id: userId,
       recipient_id: mode === "private" ? recipientId : null,
-      body,
+      body: body || (selectedImage ? "Enviou uma imagem" : ""),
+      attachment_path: attachmentPath,
     });
     setSending(false);
     if (insertError) {
+      if (attachmentPath) await supabase.storage.from("chat-images").remove([attachmentPath]);
       console.error("Falha ao enviar mensagem no chat", {
         code: insertError.code,
         message: insertError.message,
@@ -204,6 +254,8 @@ export function AssociationChat({ associationId, userId, associationName }: {
       return;
     }
     setDraft("");
+    setSelectedImage(null);
+    if (imageInputRef.current) imageInputRef.current.value = "";
     await loadMessages();
     inputRef.current?.focus();
   }
@@ -261,7 +313,13 @@ export function AssociationChat({ associationId, userId, associationName }: {
                   <div key={message.id} className={`group flex ${mine ? "justify-end" : "justify-start"}`}>
                     <div className={`max-w-[88%] rounded-2xl px-3.5 py-2.5 shadow-sm ${mine ? "rounded-br-md bg-primary text-primary-foreground" : "rounded-bl-md border bg-card"}`}>
                       <div className="mb-1 flex items-center gap-3"><span className={`text-xs font-semibold ${mine ? "text-primary-foreground/80" : "text-muted-foreground"}`}>{name}</span>{mode === "private" && otherId && <span className={`text-[10px] ${mine ? "text-primary-foreground/70" : "text-muted-foreground"}`}>{mine ? `para ${profiles[otherId]?.full_name?.trim() || recipientName}` : "privada"}</span>}{mine && <button type="button" onClick={() => void deleteMessage(message)} aria-label="Excluir sua mensagem" title="Excluir mensagem" className="opacity-0 transition-opacity hover:opacity-100 group-hover:opacity-100"><Trash2 className="h-3 w-3" /></button>}</div>
-                      <p className="whitespace-pre-wrap break-words text-sm leading-relaxed">{message.body}</p>
+                      {message.body && message.body !== "Enviou uma imagem" && <p className="whitespace-pre-wrap break-words text-sm leading-relaxed">{message.body}</p>}
+                      {message.attachment_path && imageUrls[message.id] && (
+                        <a href={imageUrls[message.id]} target="_blank" rel="noreferrer" className="mt-2 block overflow-hidden rounded-lg">
+                          <img src={imageUrls[message.id]} alt={`Imagem enviada por ${name}`} loading="lazy" className="max-h-64 max-w-full rounded-lg object-contain" />
+                        </a>
+                      )}
+                      {message.attachment_path && !imageUrls[message.id] && <p className="mt-1 text-xs opacity-80">Imagem anexada</p>}
                       <time className={`mt-1.5 block text-right text-[10px] ${mine ? "text-primary-foreground/70" : "text-muted-foreground"}`} dateTime={message.created_at}>{new Date(message.created_at).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}</time>
                     </div>
                   </div>
@@ -272,10 +330,20 @@ export function AssociationChat({ associationId, userId, associationName }: {
           <form onSubmit={(event) => void sendMessage(event)} className="border-t bg-card p-3">
             <label htmlFor="association-chat-message" className="sr-only">Escreva uma mensagem</label>
             <div className="flex items-end gap-2">
-              <Textarea id="association-chat-message" ref={inputRef} value={draft} onChange={(event) => setDraft(event.target.value.slice(0, 4000))} placeholder={mode === "general" ? "Mensagem para todos…" : `Mensagem privada para ${recipientName}…`} rows={2} className="max-h-28 min-h-11 resize-none" onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); event.currentTarget.form?.requestSubmit(); } }} />
-              <Button type="submit" size="icon" aria-label="Enviar mensagem" disabled={!draft.trim() || sending || (mode === "private" && (!recipientId || members.length === 0))} className="h-11 w-11 shrink-0 rounded-xl"><Send className="h-4 w-4" /></Button>
+              <input ref={imageInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" className="hidden" aria-label="Selecionar imagem para enviar" onChange={(event) => chooseImage(event.target.files?.[0])} />
+              <div className="flex min-w-0 flex-1 flex-col gap-2">
+                {imagePreview && (
+                  <div className="relative w-fit max-w-full rounded-lg border bg-muted p-1.5">
+                    <img src={imagePreview} alt="Pré-visualização da imagem a enviar" className="max-h-28 max-w-48 rounded-md object-contain" />
+                    <button type="button" onClick={() => { setSelectedImage(null); if (imageInputRef.current) imageInputRef.current.value = ""; }} aria-label="Remover imagem selecionada" className="absolute -right-2 -top-2 rounded-full bg-destructive p-1 text-destructive-foreground"><X className="h-3 w-3" /></button>
+                  </div>
+                )}
+                <Textarea id="association-chat-message" ref={inputRef} value={draft} onChange={(event) => setDraft(event.target.value.slice(0, 4000))} placeholder={mode === "general" ? "Mensagem para todos…" : `Mensagem privada para ${recipientName}…`} rows={2} className="max-h-28 min-h-11 resize-none" onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); event.currentTarget.form?.requestSubmit(); } }} />
+              </div>
+              <Button type="button" variant="outline" size="icon" aria-label="Anexar imagem" title="Anexar imagem (máx. 5 MB)" disabled={sending} onClick={() => imageInputRef.current?.click()} className="h-11 w-11 shrink-0 rounded-xl"><ImagePlus className="h-4 w-4" /></Button>
+              <Button type="submit" size="icon" aria-label="Enviar mensagem" disabled={(!draft.trim() && !selectedImage) || sending || (mode === "private" && (!recipientId || members.length === 0))} className="h-11 w-11 shrink-0 rounded-xl"><Send className="h-4 w-4" /></Button>
             </div>
-            <p className="mt-1.5 text-[10px] text-muted-foreground">{mode === "general" ? "Visível para todos os membros da associação" : "Visível apenas para você e o destinatário"} · Enter envia · Shift+Enter quebra a linha</p>
+            <p className="mt-1.5 text-[10px] text-muted-foreground">{mode === "general" ? "Visível para todos os membros da associação" : "Visível apenas para você e o destinatário"} · JPG, PNG, WEBP ou GIF até 5 MB · Enter envia · Shift+Enter quebra a linha</p>
           </form>
         </section>
       )}
