@@ -52,7 +52,7 @@ Deno.serve(async (req: Request) => {
   }
 
   const { data: localPayment, error: findError } = await db.from("asaas_subscription_payments")
-    .select("id,association_id,subscription_id,billing_period,amount,resident_count,unit_price")
+    .select("id,association_id,subscription_id,billing_period,amount,resident_count,unit_price,status")
     .eq("provider_payment_id", paymentId).maybeSingle();
   if (findError) return Response.json({ ok: false }, { status: 500 });
   if (!localPayment) {
@@ -68,6 +68,19 @@ Deno.serve(async (req: Request) => {
 
   const paid = newStatus === "CONFIRMED" || newStatus === "RECEIVED";
   const now = new Date().toISOString();
+
+  // Webhooks can arrive out of order. Never downgrade a settled payment because
+  // an older PENDING/OVERDUE/CANCELLED event arrived after confirmation.
+  const alreadySettled = ["CONFIRMED", "RECEIVED"].includes(String(localPayment.status).toUpperCase());
+  if (alreadySettled && ["PENDING", "OVERDUE", "CANCELLED", "UNKNOWN"].includes(newStatus)) {
+    const { error: eventError } = await db.from("asaas_webhook_events").upsert({
+      provider_event_id: eventId, event_type: eventType, provider_payment_id: paymentId,
+      provider_status: providerStatus || newStatus, processed: true, processed_at: now,
+      processing_error: "Evento antigo ignorado para preservar pagamento confirmado",
+    }, { onConflict: "provider_event_id" });
+    if (eventError) return Response.json({ ok: false }, { status: 500 });
+    return Response.json({ ok: true, stale_event_ignored: true });
+  }
   const { error: updateError } = await db.from("asaas_subscription_payments").update({
     status: newStatus, provider_status: providerStatus || newStatus,
     last_provider_event: eventType, updated_at: now, ...(paid ? { paid_at: now } : {}),
