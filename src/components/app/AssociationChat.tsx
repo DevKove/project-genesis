@@ -33,7 +33,7 @@ export function AssociationChat({ associationId, userId, associationName }: {
     if (showLoading) setLoading(true);
     setError("");
     try {
-      const { data, error: queryError } = await (supabase as any).from("association_chat_messages")
+      // The generated Supabase schema types are refreshed separately from this migration.\n      // eslint-disable-next-line @typescript-eslint/no-explicit-any\n      const { data, error: queryError } = await (supabase as any).from("association_chat_messages")
         .select("id,association_id,sender_id,body,created_at")
         .eq("association_id", associationId)
         .order("created_at", { ascending: true })
@@ -88,7 +88,7 @@ export function AssociationChat({ associationId, userId, associationName }: {
     const body = draft.trim();
     if (!body || sending) return;
     setSending(true);
-    const { error: insertError } = await (supabase as any).from("association_chat_messages").insert({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any\n    const { error: insertError } = await (supabase as any).from("association_chat_messages").insert({
       association_id: associationId,
       sender_id: userId,
       body,
@@ -106,7 +106,7 @@ export function AssociationChat({ associationId, userId, associationName }: {
 
   async function deleteMessage(message: ChatMessage) {
     if (message.sender_id !== userId) return;
-    const { error: deleteError } = await (supabase as any).from("association_chat_messages").delete().eq("id", message.id)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any\n    const { error: deleteError } = await (supabase as any).from("association_chat_messages").delete().eq("id", message.id)
       .eq("association_id", associationId).eq("sender_id", userId);
     if (deleteError) {
       toast.error("Não foi possível excluir a mensagem.");
