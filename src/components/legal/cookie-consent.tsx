@@ -58,7 +58,7 @@ export function CookieConsent() {
   return (
     <>
       {(!consent || open) ? (
-        <section role="dialog" aria-modal="false" aria-labelledby="cookie-consent-title" className="fixed inset-x-2 bottom-2 z-[100] mx-auto max-h-[calc(100dvh-1rem)] w-auto max-w-4xl overflow-y-auto rounded-xl border bg-background p-4 text-foreground shadow-2xl sm:inset-x-6 sm:bottom-4 sm:p-5">
+        <section role="dialog" aria-modal="false" aria-labelledby="cookie-consent-title" className="fixed bottom-2 left-1/2 z-[100] max-h-[calc(100dvh-1rem)] w-[calc(100vw-1rem)] max-w-4xl -translate-x-1/2 overflow-y-auto rounded-xl border bg-background p-4 text-foreground shadow-2xl sm:bottom-4 sm:p-5">
           <div className="flex min-w-0 items-start gap-3">
             <Cookie className="mt-1 hidden h-6 w-6 shrink-0 text-primary sm:block" />
             <div className="min-w-0 flex-1">
@@ -91,7 +91,7 @@ export function CookieConsent() {
           </div>
         </section>
       ) : (
-        <div className="fixed bottom-2 right-2 z-[90] flex max-w-[calc(100vw-1rem)] items-center gap-1 rounded-full border bg-background/95 p-1.5 shadow-lg sm:bottom-3 sm:right-3 sm:gap-2 sm:p-2">
+        <div className="fixed bottom-2 left-1/2 z-[90] flex max-w-[calc(100vw-1rem)] -translate-x-1/2 items-center gap-1 rounded-full border bg-background/95 p-1.5 shadow-lg sm:bottom-3 sm:gap-2 sm:p-2">
           <Button size="sm" variant="ghost" className="max-w-full text-xs sm:text-sm" onClick={() => setOpen(true)}><Settings2 className="h-4 w-4 shrink-0" /> Preferências de cookies</Button>
           <span className="hidden pr-2 text-xs text-muted-foreground sm:inline"><Link to="/termos-de-uso" className="underline">Termos</Link> · <Link to="/privacidade" className="underline">Privacidade</Link></span>
         </div>
