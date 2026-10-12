@@ -84,7 +84,7 @@ Deno.serve(async (req: Request) => {
 
   const { data: reservation, error: reserveError } = await admin.from("asaas_subscription_payments").insert({
     association_id: associationId, subscription_id: subscription.id, billing_period: billingPeriod,
-    amount, billing_type: billingType, due_date: dueDate, status: "CREATING", created_by: userId,
+    amount, resident_count: residentCount, unit_price: Number(plan.price_per_member_monthly), billing_type: billingType, due_date: dueDate, status: "CREATING", created_by: userId,
   }).select("id").single();
   if (reserveError || !reservation) {
     if (reserveError?.code === "23505") return reply({ ok: false, error: "Outra solicitação está criando a cobrança desta competência. Atualize e confira o histórico." }, 409);
