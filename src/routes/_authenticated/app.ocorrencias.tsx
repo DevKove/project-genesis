@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { AlertTriangle, ChevronLeft, ChevronRight, Plus, Search } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAssoc } from "@/lib/assoc-context";
-import { isManager } from "@/lib/roles";
+import { canManageIncidents } from "@/lib/roles";
 import { PageHeader, EmptyState } from "@/components/app/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -47,7 +47,7 @@ function IncidentsPage() {
   const { current, userId } = useAssoc();
   const queryClient = useQueryClient();
   const associationId = current?.association_id;
-  const manager = isManager(current?.role);
+  const manager = canManageIncidents(current?.role);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [page, setPage] = useState(0);
