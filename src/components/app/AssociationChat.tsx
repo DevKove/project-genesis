@@ -212,8 +212,11 @@ export function AssociationChat({ associationId, userId, associationName }: {
     setSending(true);
     let attachmentPath: string | null = null;
     if (selectedImage) {
-      const safeName = selectedImage.name.replace(/[^a-zA-Z0-9._-]/g, "_").slice(-100) || "imagem";
-      attachmentPath = `${associationId}/${userId}/${crypto.randomUUID()}-${safeName}`;
+      const extensionByType: Record<string, string> = {
+        "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/gif": "gif",
+      };
+      const extension = extensionByType[selectedImage.type];
+      attachmentPath = `${associationId}/${userId}/${crypto.randomUUID()}.${extension}`;
       const { error: uploadError } = await supabase.storage.from("chat-images")
         .upload(attachmentPath, selectedImage, { contentType: selectedImage.type, cacheControl: "3600", upsert: false });
       if (uploadError) {
