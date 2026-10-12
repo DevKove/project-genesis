@@ -81,7 +81,7 @@ function Shell({ email, userId }: { email: string; userId: string }) {
     if (platformAdmin.data) {
       // The association shell must not swallow nested platform-admin routes.
       // Render the child route directly when the platform administrator has no association.
-      if (pathname.includes("/app/admin-aprovacoes") || pathname.includes("/app/admin-perfis") || pathname.includes("/app/nova")) {
+      if (pathname.includes("/app/admin-aprovacoes") || pathname.includes("/app/admin-perfis") || pathname.includes("/app/assinatura") || pathname.includes("/app/nova")) {
         return (
           <div className="min-h-screen bg-background">
             <header className="flex min-h-16 items-center justify-between border-b px-4 sm:px-8">
@@ -132,15 +132,14 @@ function Shell({ email, userId }: { email: string; userId: string }) {
     { to: "/app/auditoria", label: "Auditoria", icon: History, exact: false },
     { to: "/app/prestadores", label: "Prestadores", icon: Building2, exact: false },
     { to: "/app/configuracoes", label: "Configurações", icon: Settings, exact: false },
-    { to: "/app/assinatura", label: "Planos e assinatura", icon: CreditCard, exact: false },
+    ...(platformAdmin.data ? [{ to: "/app/assinatura", label: "Planos e assinatura", icon: CreditCard, exact: false }] : []),
     ...(platformAdmin.data ? [{ to: "/app/admin-aprovacoes", label: "Aprovar cadastros", icon: ShieldCheck, exact: false }, { to: "/app/admin-perfis", label: "Gerenciar perfis", icon: UserCog, exact: false }] : []),
   ] as const;
   const role = current.role;
   const visibleNav = nav.filter((item) => {
-    if (item.to === "/app/admin-aprovacoes" || item.to === "/app/admin-perfis") return Boolean(platformAdmin.data);
+    if (item.to === "/app/admin-aprovacoes" || item.to === "/app/admin-perfis" || item.to === "/app/assinatura") return Boolean(platformAdmin.data);
     if (item.to === "/app/auditoria") return canSeeAudit(role);
     if (item.to === "/app/configuracoes") return role === "admin" || role === "presidente";
-    if (item.to === "/app/assinatura") return role === "admin" || role === "presidente";
     if (item.to === "/app/unidades") return canManageUnits(role);
     if (item.to === "/app/moradores") return canManageResidents(role);
     if (item.to === "/app/comunicados") return true;
