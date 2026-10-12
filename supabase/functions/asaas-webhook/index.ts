@@ -5,9 +5,9 @@ Deno.serve(async (req: Request) => {
   const expected = Deno.env.get("ASAAS_WEBHOOK_TOKEN");
   const received = req.headers.get("asaas-access-token");
   if (!expected || !received || received.length !== expected.length) return Response.json({ ok: false }, { status: 401 });
-  let matches = true;
-  for (let i = 0; i < expected.length; i++) matches = matches && expected.charCodeAt(i) === received.charCodeAt(i);
-  if (!matches) return Response.json({ ok: false }, { status: 401 });
+  let difference = 0;
+  for (let i = 0; i < expected.length; i++) difference |= expected.charCodeAt(i) ^ received.charCodeAt(i);
+  if (difference !== 0) return Response.json({ ok: false }, { status: 401 });
 
   const url = Deno.env.get("SUPABASE_URL");
   const service = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? Deno.env.get("SUPABASE_SECRET_KEY");
