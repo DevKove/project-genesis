@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { AlertTriangle, Building2, ClipboardList, FileText, History, Home, LayoutDashboard, LogOut, Megaphone, Settings, UserCog, Users, ShieldCheck, Menu, ChevronRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { AssocProvider, useAssoc } from "@/lib/assoc-context";
-import { ROLE_LABELS } from "@/lib/roles";
+import { ROLE_LABELS, canManageAnnouncements, canManageIncidents, canManageResidents, canManageServiceRequests, canManageUnits, canManageVendors, canSeeAudit, canInvite } from "@/lib/roles";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle, SheetDescription, SheetTrigger } from "@/components/ui/sheet";
@@ -133,7 +133,21 @@ function Shell({ email, userId }: { email: string; userId: string }) {
     { to: "/app/configuracoes", label: "Configurações", icon: Settings, exact: false },
     ...(platformAdmin.data ? [{ to: "/app/admin-aprovacoes", label: "Aprovar cadastros", icon: ShieldCheck, exact: false }, { to: "/app/admin-perfis", label: "Gerenciar perfis", icon: UserCog, exact: false }] : []),
   ] as const;
-  const visibleNav = nav.filter((item) => (item.to !== "/app/auditoria" && item.to !== "/app/configuracoes") || current.role === "admin" || current.role === "presidente");
+  const role = current.role;
+  const visibleNav = nav.filter((item) => {
+    if (item.to === "/app/admin-aprovacoes" || item.to === "/app/admin-perfis") return Boolean(platformAdmin.data);
+    if (item.to === "/app/auditoria") return canSeeAudit(role);
+    if (item.to === "/app/configuracoes") return role === "admin" || role === "presidente";
+    if (item.to === "/app/unidades") return canManageUnits(role);
+    if (item.to === "/app/moradores") return canManageResidents(role);
+    if (item.to === "/app/comunicados") return true;
+    if (item.to === "/app/documentos") return true;
+    if (item.to === "/app/ocorrencias") return true;
+    if (item.to === "/app/solicitacoes") return true;
+    if (item.to === "/app/membros") return role === "admin" || canInvite(role);
+    if (item.to === "/app/prestadores") return canManageVendors(role);
+    return true;
+  });
   const associationLogo = current.associations?.logo_url;
 
   const activePage = visibleNav.find((item) => item.exact ? pathname.replace(/\/$/, "") === item.to : pathname.startsWith(item.to))?.label ?? "Associação";
