@@ -49,6 +49,7 @@ function SubscriptionPage() {
   const canManage = isPlatformAdmin;
   const [selectedPlan, setSelectedPlan] = useState("gestao");
   const [cpf, setCpf] = useState("");
+  const [billingEmail, setBillingEmail] = useState("");
   const [saving, setSaving] = useState(false);
 
   const plans = useQuery({
@@ -134,6 +135,10 @@ function SubscriptionPage() {
       toast.error("Informe um CPF válido do responsável financeiro.");
       return;
     }
+    if (!billingEmail.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(billingEmail.trim())) {
+      toast.error("Informe um e-mail válido para faturamento da associação.");
+      return;
+    }
     if (!account.data?.emailConfirmed || !account.data.email) {
       toast.error("Confirme o e-mail da sua conta antes de iniciar o teste gratuito.");
       return;
@@ -145,7 +150,7 @@ function SubscriptionPage() {
         _association_id: associationId,
         _plan_code: selected.code,
         _responsible_cpf: cpf.replace(/\D/g, ""),
-        _billing_email: account.data.email,
+        _billing_email: billingEmail.trim().toLowerCase(),
       });
       if (error) {
         const msg = String(error.message ?? "");
@@ -157,6 +162,7 @@ function SubscriptionPage() {
       }
       toast.success("Teste gratuito iniciado! Você tem 10 dias para conhecer o Morada360.");
       setCpf("");
+      setBillingEmail("");
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["association-subscription", associationId] }),
         queryClient.invalidateQueries({ queryKey: ["subscription-plans"] }),
@@ -246,7 +252,7 @@ function SubscriptionPage() {
           {!account.data?.emailConfirmed && <p role="alert" className="mb-4 rounded-lg border border-amber-500/40 bg-amber-500/5 p-3 text-sm">Antes de continuar, confirme o e-mail da sua conta. O sistema só aceita um endereço confirmado pelo processo de autenticação.</p>}
           <form onSubmit={startTrial} className="grid gap-4 sm:grid-cols-2">
             <div><Label htmlFor="billing-cpf">CPF do responsável financeiro</Label><Input id="billing-cpf" autoComplete="off" inputMode="numeric" placeholder="000.000.000-00" value={cpf} onChange={(event) => setCpf(maskInputCPF(event.target.value))} required maxLength={14} /><p className="mt-1 text-xs text-muted-foreground">Validado pelo sistema antes de registrar o teste.</p></div>
-            <div><Label htmlFor="billing-email">E-mail de faturamento confirmado</Label><Input id="billing-email" type="email" value={account.data?.email ?? ""} readOnly required /><p className="mt-1 text-xs text-muted-foreground">Vinculado à conta autenticada; não pode ser substituído por um e-mail não verificado.</p></div>
+            <div><Label htmlFor="billing-email">E-mail de faturamento da associação</Label><Input id="billing-email" type="email" autoComplete="email" placeholder="financeiro@associacao.org.br" value={billingEmail} onChange={(event) => setBillingEmail(event.target.value)} required /><p className="mt-1 text-xs text-muted-foreground">Informe o contato financeiro desta associação. O endereço deve ser único entre as assinaturas.</p></div>
             <div className="sm:col-span-2 rounded-lg bg-muted/50 p-4 text-sm"><p className="font-medium">Resumo do plano {selected?.name ?? ""}</p><p className="mt-1 text-muted-foreground">{activeCount} moradores ativos × {brl(selected?.price_per_member_monthly ?? 0)} = <strong className="text-foreground">{brl(monthlyEstimate)}/mês</strong> após o teste. Nenhuma cobrança será iniciada por esta tela.</p></div>
             <Button type="submit" className="sm:col-span-2" disabled={saving || !selected || !account.data?.emailConfirmed || subscription.isLoading || !residents.data && residents.isLoading}>{saving ? <><LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> Ativando teste…</> : "Começar teste gratuito de 10 dias"}</Button>
           </form>
