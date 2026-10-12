@@ -10,7 +10,18 @@ const cors = {
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { ...cors, "Content-Type": "application/json" } });
 const clean = (value: unknown) => typeof value === "string" ? value.trim() : "";
-const isoDate = (value: string) => /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(Date.parse(value + "T00:00:00Z"));
+const isoDate = (value: string) => {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const parsed = new Date(value + "T00:00:00.000Z");
+  return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
+};
+const todayInBrazil = () => {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Sao_Paulo", year: "numeric", month: "2-digit", day: "2-digit",
+  }).formatToParts(new Date());
+  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return `${values.year}-${values.month}-${values.day}`;
+};
 const digits = (value: string) => value.replace(/\D/g, "");
 
 Deno.serve(async (req: Request) => {
@@ -55,7 +66,7 @@ Deno.serve(async (req: Request) => {
     if (!isoDate(billingPeriod) || !billingPeriod.endsWith("-01")) return json({ ok: false, error: "billing_period deve ser o primeiro dia do mês no formato AAAA-MM-01." }, 400);
     if (!["PIX", "BOLETO", "UNDEFINED"].includes(billingType)) return json({ ok: false, error: "Forma de pagamento inválida. Use PIX, BOLETO ou UNDEFINED." }, 400);
     const dueDate = requestedDueDate || new Date(Date.now() + 5 * 86400000).toISOString().slice(0, 10);
-    if (!isoDate(dueDate) || dueDate < new Date().toISOString().slice(0, 10)) return json({ ok: false, error: "A data de vencimento deve ser hoje ou uma data futura." }, 400);
+    if (!isoDate(dueDate) || dueDate < todayInBrazil()) return json({ ok: false, error: "A data de vencimento deve ser hoje ou uma data futura no horário de Brasília." }, 400);
 
     const { data: subscription, error: subscriptionError } = await admin.from("association_subscriptions")
       .select("id, association_id, plan_code, responsible_cpf, billing_email, status, trial_ends_at, provider_customer_id, created_by")
