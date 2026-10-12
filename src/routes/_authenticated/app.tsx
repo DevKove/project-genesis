@@ -46,6 +46,20 @@ function Shell({ email, userId }: { email: string; userId: string }) {
     },
     refetchInterval: 60000,
   });
+  const chatEntitlement = useQuery({
+    queryKey: ["association-feature", current?.association_id, "chat", userId],
+    enabled: Boolean(current?.association_id),
+    queryFn: async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await (supabase as any).rpc("has_association_feature", {
+        _association_id: current!.association_id,
+        _feature: "chat",
+      });
+      if (error) throw error;
+      return data === true;
+    },
+    refetchInterval: 60000,
+  });
   const pendingJoinRequests = useQuery({
     queryKey: ["association-join-requests-count", current?.association_id],
     enabled: Boolean(current?.association_id && current.role === "admin"),
@@ -201,7 +215,7 @@ function Shell({ email, userId }: { email: string; userId: string }) {
           <NotificationCenter userId={userId} />
         </header>
         <main id="app-main" tabIndex={-1} className="app-content mx-auto max-w-[1440px] px-4 py-6 sm:px-6 sm:py-8 lg:px-10 lg:py-10"><Outlet key={current.association_id} /></main>
-        <AssociationChat key={current.association_id} associationId={current.association_id} userId={userId} associationName={current.associations?.name ?? "Associação"} />
+        {chatEntitlement.data === true && <AssociationChat key={current.association_id} associationId={current.association_id} userId={userId} associationName={current.associations?.name ?? "Associação"} />}
       </div>
     </div>
   );
