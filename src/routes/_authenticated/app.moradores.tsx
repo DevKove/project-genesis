@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { CheckCircle2, ChevronLeft, ChevronRight, FileText, Pencil, Plus, Search, UserRoundX, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAssoc } from "@/lib/assoc-context";
-import { isManager, isValidCPF, maskCPF, RELATION_LABELS, type ResidentRelation } from "@/lib/roles";
+import { canManageResidents, isValidCPF, maskCPF, RELATION_LABELS, type ResidentRelation } from "@/lib/roles";
 import { PageHeader, EmptyState } from "@/components/app/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -53,7 +53,7 @@ function ResidentsPage() {
   const { current } = useAssoc();
   const queryClient = useQueryClient();
   const associationId = current?.association_id;
-  const manager = isManager(current?.role);
+  const manager = canManageResidents(current?.role);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("active");
   const [unitFilter, setUnitFilter] = useState("all");
