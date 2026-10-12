@@ -20,8 +20,36 @@ export const RELATION_LABELS: Record<ResidentRelation, string> = {
   ocupante: "Ocupante",
 };
 
-/** Mirrors public.is_assoc_manager in the database. */
+/** Association-wide operational managers; keep aligned with database policies. */
 export function isManager(role: AssocRole | null | undefined): boolean {
+  return role === "admin" || role === "presidente" || role === "secretario" || role === "tesoureiro";
+}
+
+export function canManageUnits(role: AssocRole | null | undefined): boolean {
+  return role === "admin" || role === "presidente" || role === "secretario";
+}
+
+export function canManageResidents(role: AssocRole | null | undefined): boolean {
+  return role === "admin" || role === "presidente" || role === "secretario";
+}
+
+export function canManageAnnouncements(role: AssocRole | null | undefined): boolean {
+  return role === "admin" || role === "presidente" || role === "secretario";
+}
+
+export function canManageVendors(role: AssocRole | null | undefined): boolean {
+  return role === "admin" || role === "presidente" || role === "tesoureiro";
+}
+
+export function canManageIncidents(role: AssocRole | null | undefined): boolean {
+  return role === "admin" || role === "presidente" || role === "secretario";
+}
+
+export function canManageServiceRequests(role: AssocRole | null | undefined): boolean {
+  return role === "admin" || role === "presidente" || role === "secretario";
+}
+
+export function canManageDocuments(role: AssocRole | null | undefined): boolean {
   return role === "admin" || role === "presidente" || role === "secretario" || role === "tesoureiro";
 }
 
