@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { BadgeCheck, CalendarClock, Check, CreditCard, Crown, LoaderCircle, MailCheck, ShieldCheck, Users } from "lucide-react";
@@ -103,6 +103,32 @@ function SubscriptionPage() {
   const trialExpired = Boolean(subscription.data && new Date(subscription.data.trial_ends_at).getTime() <= Date.now() && subscription.data.status === "trialing");
   const currentPlan = plans.data?.find((p) => p.code === subscription.data?.plan_code);
 
+  useEffect(() => {
+    if (subscription.data?.plan_code && selectedPlan === "gestao" && subscription.data.plan_code !== "gestao") {
+      setSelectedPlan(subscription.data.plan_code);
+    }
+  }, [subscription.data?.plan_code, selectedPlan]);
+
+  async function changePlan() {
+    if (!associationId || !isPlatformAdmin || !selected || !subscription.data || selected.code === subscription.data.plan_code) return;
+    setSaving(true);
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error } = await (supabase as any).rpc("admin_change_association_plan", {
+        _association_id: associationId,
+        _plan_code: selected.code,
+      });
+      if (error) throw error;
+      toast.success(`Plano da associação alterado para ${selected.name}.`);
+      await queryClient.invalidateQueries({ queryKey: ["association-subscription", associationId] });
+      await queryClient.invalidateQueries({ queryKey: ["association-feature", associationId] });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Não foi possível alterar o plano.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
   async function startTrial(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!associationId || !canManage || !selected) return;
@@ -203,10 +229,17 @@ function SubscriptionPage() {
               <p className="mt-4"><span className="text-3xl font-bold tracking-tight">{brl(plan.price_per_member_monthly)}</span><span className="text-xs text-muted-foreground"> / morador / mês</span></p>
               <p className="mt-1 text-xs text-muted-foreground">Estimativa atual: {brl(plan.price_per_member_monthly * activeCount)}/mês</p>
               <ul className="my-5 flex-1 space-y-2.5">{(Array.isArray(plan.features) ? plan.features : []).map((feature) => <li key={feature} className="flex gap-2 text-sm"><Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" /><span>{feature}</span></li>)}</ul>
-              {subscription.data ? <Button variant={subscription.data.plan_code === plan.code ? "default" : "outline"} disabled className="w-full">{subscription.data.plan_code === plan.code ? "Plano atual" : "Alteração de plano indisponível"}</Button> : <Button variant={active ? "default" : "outline"} className="w-full" onClick={() => setSelectedPlan(plan.code)}>{active ? "Plano selecionado" : "Escolher plano"}</Button>}
+              {subscription.data ? <Button variant={subscription.data.plan_code === plan.code ? "default" : active ? "secondary" : "outline"} disabled={subscription.data.plan_code === plan.code} className="w-full" onClick={() => setSelectedPlan(plan.code)}>{subscription.data.plan_code === plan.code ? "Plano atual" : active ? "Selecionado para alteração" : "Selecionar plano"}</Button> : <Button variant={active ? "default" : "outline"} className="w-full" onClick={() => setSelectedPlan(plan.code)}>{active ? "Plano selecionado" : "Escolher plano"}</Button>}
             </section>;
           })}
         </div>
+      )}
+
+      {subscription.data && selected && selected.code !== subscription.data.plan_code && (
+        <section className="flex flex-col gap-3 rounded-xl border border-primary/30 bg-primary/5 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div><p className="font-semibold">Alterar plano da associação</p><p className="mt-1 text-sm text-muted-foreground">Novo plano: {selected.name} · estimativa {brl(monthlyEstimate)}/mês. A alteração de plano não inicia cobranças automaticamente.</p></div>
+          <Button onClick={() => void changePlan()} disabled={saving} className="shrink-0">{saving ? <><LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> Salvando…</> : "Confirmar alteração"}</Button>
+        </section>
       )}
 
       {!subscription.data && (
