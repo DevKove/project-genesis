@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { createFileRoute, Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { AlertTriangle, Building2, ClipboardList, FileText, History, Home, LayoutDashboard, LogOut, Megaphone, Settings, UserCog, Users, ShieldCheck, Menu, ChevronRight } from "lucide-react";
+import { AlertTriangle, Building2, ClipboardList, CreditCard, FileText, History, Home, LayoutDashboard, LogOut, Megaphone, Settings, UserCog, Users, ShieldCheck, Menu, ChevronRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { AssocProvider, useAssoc } from "@/lib/assoc-context";
 import { ROLE_LABELS, canManageResidents, canManageUnits, canManageVendors, canSeeAudit, canInvite } from "@/lib/roles";
@@ -132,6 +132,7 @@ function Shell({ email, userId }: { email: string; userId: string }) {
     { to: "/app/auditoria", label: "Auditoria", icon: History, exact: false },
     { to: "/app/prestadores", label: "Prestadores", icon: Building2, exact: false },
     { to: "/app/configuracoes", label: "Configurações", icon: Settings, exact: false },
+    { to: "/app/assinatura", label: "Planos e assinatura", icon: CreditCard, exact: false },
     ...(platformAdmin.data ? [{ to: "/app/admin-aprovacoes", label: "Aprovar cadastros", icon: ShieldCheck, exact: false }, { to: "/app/admin-perfis", label: "Gerenciar perfis", icon: UserCog, exact: false }] : []),
   ] as const;
   const role = current.role;
@@ -139,6 +140,7 @@ function Shell({ email, userId }: { email: string; userId: string }) {
     if (item.to === "/app/admin-aprovacoes" || item.to === "/app/admin-perfis") return Boolean(platformAdmin.data);
     if (item.to === "/app/auditoria") return canSeeAudit(role);
     if (item.to === "/app/configuracoes") return role === "admin" || role === "presidente";
+    if (item.to === "/app/assinatura") return role === "admin" || role === "presidente";
     if (item.to === "/app/unidades") return canManageUnits(role);
     if (item.to === "/app/moradores") return canManageResidents(role);
     if (item.to === "/app/comunicados") return true;
