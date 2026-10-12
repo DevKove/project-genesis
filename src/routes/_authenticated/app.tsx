@@ -146,12 +146,12 @@ function Shell({ email, userId }: { email: string; userId: string }) {
     { to: "/app/auditoria", label: "Auditoria", icon: History, exact: false },
     { to: "/app/prestadores", label: "Prestadores", icon: Building2, exact: false },
     { to: "/app/configuracoes", label: "Configurações", icon: Settings, exact: false },
-    ...(platformAdmin.data ? [{ to: "/app/assinatura", label: "Planos e assinatura", icon: CreditCard, exact: false }] : []),
+    { to: "/app/assinatura", label: platformAdmin.data ? "Planos e assinatura" : "Meu plano e benefícios", icon: CreditCard, exact: false },
     ...(platformAdmin.data ? [{ to: "/app/admin-aprovacoes", label: "Aprovar cadastros", icon: ShieldCheck, exact: false }, { to: "/app/admin-perfis", label: "Gerenciar perfis", icon: UserCog, exact: false }] : []),
   ] as const;
   const role = current.role;
   const visibleNav = nav.filter((item) => {
-    if (item.to === "/app/admin-aprovacoes" || item.to === "/app/admin-perfis" || item.to === "/app/assinatura") return Boolean(platformAdmin.data);
+    if (item.to === "/app/admin-aprovacoes" || item.to === "/app/admin-perfis") return Boolean(platformAdmin.data);
     if (item.to === "/app/auditoria") return canSeeAudit(role);
     if (item.to === "/app/configuracoes") return role === "admin" || role === "presidente";
     if (item.to === "/app/unidades") return canManageUnits(role);
