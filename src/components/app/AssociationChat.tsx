@@ -134,8 +134,23 @@ export function AssociationChat({ associationId, userId, associationName }: {
     });
     setSending(false);
     if (insertError) {
-      console.error("Falha ao enviar mensagem no chat", insertError);
-      toast.error("Não foi possível enviar. Confira se você ainda pertence a esta associação.");
+      console.error("Falha ao enviar mensagem no chat", {
+        code: insertError.code,
+        message: insertError.message,
+        details: insertError.details,
+        hint: insertError.hint,
+        associationId,
+        senderId: userId,
+        mode,
+      });
+      const message = String(insertError.message ?? "").toLowerCase();
+      if (insertError.code === "42501" || message.includes("row-level security") || message.includes("permission denied")) {
+        toast.error("O banco recusou o envio por permissão. Confirme se sua conta está aprovada e vinculada a esta associação.");
+      } else if (insertError.code === "23503") {
+        toast.error("O destinatário ou a associação não está mais cadastrado. Atualize a página e tente novamente.");
+      } else {
+        toast.error(`Falha ao enviar mensagem: ${insertError.message || "erro inesperado"}`);
+      }
       return;
     }
     setDraft("");
