@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle, SheetDescription, SheetTrigger } from "@/components/ui/sheet";
 import { NoAssociationAccess } from "@/components/app/NoAssociationAccess";
 import { NotificationCenter } from "@/components/app/NotificationCenter";
+import { AssociationChat } from "@/components/app/AssociationChat";
 
 export const Route = createFileRoute("/_authenticated/app")({
   head: () => ({ meta: [{ title: "Painel — Morada360" }, { name: "description", content: "Painel de gestão da associação." }] }),
@@ -199,6 +200,7 @@ function Shell({ email, userId }: { email: string; userId: string }) {
           <NotificationCenter userId={userId} />
         </header>
         <main id="app-main" tabIndex={-1} className="app-content mx-auto max-w-[1440px] px-4 py-6 sm:px-6 sm:py-8 lg:px-10 lg:py-10"><Outlet key={current.association_id} /></main>
+        <AssociationChat key={current.association_id} associationId={current.association_id} userId={userId} associationName={current.associations?.name ?? "Associação"} />
       </div>
     </div>
   );
