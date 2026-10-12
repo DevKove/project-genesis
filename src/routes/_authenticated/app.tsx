@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { AlertTriangle, Building2, ClipboardList, FileText, History, Home, LayoutDashboard, LogOut, Megaphone, Settings, UserCog, Users, ShieldCheck, Menu, ChevronRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { AssocProvider, useAssoc } from "@/lib/assoc-context";
-import { ROLE_LABELS, canManageAnnouncements, canManageIncidents, canManageResidents, canManageServiceRequests, canManageUnits, canManageVendors, canSeeAudit, canInvite } from "@/lib/roles";
+import { ROLE_LABELS, canManageResidents, canManageUnits, canManageVendors, canSeeAudit, canInvite } from "@/lib/roles";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle, SheetDescription, SheetTrigger } from "@/components/ui/sheet";
