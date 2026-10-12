@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { canInvite, canManageMembers, canSeeAudit, isManager, isValidCNPJ, isValidCPF, maskCPF } from "./roles";
+import { canInvite, canManageAnnouncements, canManageIncidents, canManageMembers, canManageResidents, canManageServiceRequests, canManageUnits, canManageVendors, canSeeAudit, isManager, isValidCNPJ, isValidCPF, maskCPF } from "./roles";
 
 describe("permissões", () => {
   it("gestores: admin, presidente, secretário e tesoureiro", () => {
@@ -19,6 +19,16 @@ describe("permissões", () => {
   it("auditoria só para admin e presidente", () => {
     expect(canSeeAudit("presidente")).toBe(true);
     expect(canSeeAudit("secretario")).toBe(false);
+  });
+  it("separa permissões operacionais por função", () => {
+    expect(canManageUnits("secretario")).toBe(true);
+    expect(canManageUnits("tesoureiro")).toBe(false);
+    expect(canManageResidents("morador")).toBe(false);
+    expect(canManageAnnouncements("tesoureiro")).toBe(false);
+    expect(canManageVendors("tesoureiro")).toBe(true);
+    expect(canManageVendors("secretario")).toBe(false);
+    expect(canManageIncidents("funcionario")).toBe(false);
+    expect(canManageServiceRequests("conselheiro")).toBe(false);
   });
 });
 
