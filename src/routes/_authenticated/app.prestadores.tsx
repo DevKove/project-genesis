@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { Building2, ChevronLeft, ChevronRight, FileText, Pencil, Plus, Search, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAssoc } from "@/lib/assoc-context";
-import { isManager } from "@/lib/roles";
+import { canManageVendors } from "@/lib/roles";
 import { PageHeader, EmptyState } from "@/components/app/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -62,7 +62,7 @@ function VendorsPage() {
   const { current, userId } = useAssoc();
   const queryClient = useQueryClient();
   const associationId = current?.association_id;
-  const manager = isManager(current?.role);
+  const manager = canManageVendors(current?.role);
   const [search, setSearch] = useState("");
   const [activeFilter, setActiveFilter] = useState("active");
   const [page, setPage] = useState(0);
