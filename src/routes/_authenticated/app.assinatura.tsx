@@ -54,6 +54,7 @@ function SubscriptionPage() {
   const plans = useQuery({
     queryKey: ["subscription-plans"],
     queryFn: async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data, error } = await (supabase as any).from("subscription_plans")
         .select("code,name,tagline,price_per_member_monthly,display_order,features,highlighted")
         .eq("active", true).order("display_order");
@@ -66,6 +67,7 @@ function SubscriptionPage() {
     queryKey: ["association-subscription", associationId],
     enabled: Boolean(associationId && canManage),
     queryFn: async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data, error } = await (supabase as any).from("association_subscriptions")
         .select("id,association_id,plan_code,responsible_cpf,billing_email,status,trial_started_at,trial_ends_at,member_count_at_last_billing,unit_price_at_last_billing")
         .eq("association_id", associationId).maybeSingle();
@@ -114,6 +116,7 @@ function SubscriptionPage() {
     }
     setSaving(true);
     try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { error } = await (supabase as any).rpc("start_association_trial", {
         _association_id: associationId,
         _plan_code: selected.code,
