@@ -90,7 +90,10 @@ Deno.serve(async (req: Request) => {
       invoice_url: existing.invoice_url, bank_slip_url: existing.bank_slip_url,
       pix_copy_paste: existing.pix_copy_paste, pix_qr_code_image: existing.pix_qr_code_image,
     } });
-    if (existing) return json({ ok: false, error: "Já existe um registro para este mês sem confirmação do Asaas. Por segurança, a emissão foi bloqueada para evitar cobrança duplicada; concilie esse registro antes de tentar novamente.", local_payment_id: existing.id }, 409);
+    if (existing && existing.status === "FAILED") {
+      const { error: cleanupError } = await admin.from("asaas_subscription_payments").delete().eq("id", existing.id).is("provider_payment_id", null);
+      if (cleanupError) return json({ ok: false, error: "A tentativa anterior falhou, mas não foi possível liberar a competência com segurança." }, 409);
+    } else if (existing) return json({ ok: false, error: "Já existe um registro para este mês sem confirmação do Asaas. Por segurança, a emissão foi bloqueada para evitar cobrança duplicada; concilie esse registro antes de tentar novamente.", local_payment_id: existing.id }, 409);
 
     const { data: localPayment, error: insertError } = await admin.from("asaas_subscription_payments").insert({
       association_id: associationId, subscription_id: subscription.id, billing_period: billingPeriod,
