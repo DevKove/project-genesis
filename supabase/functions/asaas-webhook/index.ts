@@ -92,7 +92,7 @@ Deno.serve(async (req: Request) => {
   const { error: eventError } = await db.from("asaas_webhook_events").upsert({
     provider_event_id: eventId, event_type: eventType, provider_payment_id: paymentId,
     provider_status: providerStatus || newStatus, processed: true, processed_at: now, processing_error: null,
-  }, { onConflict: "provider_event_id", ignoreDuplicates: true });
+  }, { onConflict: "provider_event_id" });
   if (eventError) return Response.json({ ok: false }, { status: 500 });
   return Response.json({ ok: true });
 });
