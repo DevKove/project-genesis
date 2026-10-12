@@ -43,10 +43,10 @@ const brl = (amount: number) => amount.toLocaleString("pt-BR", { style: "currenc
 const dateTime = (value: string) => new Date(value).toLocaleString("pt-BR", { dateStyle: "medium", timeStyle: "short" });
 
 function SubscriptionPage() {
-  const { current, userId } = useAssoc();
+  const { current, userId, isPlatformAdmin } = useAssoc();
   const queryClient = useQueryClient();
   const associationId = current?.association_id ?? "";
-  const canManage = current?.role === "admin" || current?.role === "presidente";
+  const canManage = isPlatformAdmin;
   const [selectedPlan, setSelectedPlan] = useState("gestao");
   const [cpf, setCpf] = useState("");
   const [saving, setSaving] = useState(false);
@@ -128,7 +128,7 @@ function SubscriptionPage() {
         if (msg.includes("já está vinculado") || msg.includes("já possui")) toast.error(msg);
         else if (msg.includes("Confirme o e-mail")) toast.error(msg);
         else if (msg.includes("CPF")) toast.error("O CPF informado é inválido ou já está vinculado a outra assinatura.");
-        else toast.error(msg || "Não foi possível iniciar o teste. Confira seus dados e permissões.");
+        else toast.error(msg || "Não foi possível iniciar o teste. Confira os dados e as permissões de administrador do sistema.");
         return;
       }
       toast.success("Teste gratuito iniciado! Você tem 10 dias para conhecer o Morada360.");
@@ -146,12 +146,12 @@ function SubscriptionPage() {
 
   if (!current) return null;
   if (!canManage) {
-    return <section className="rounded-xl border bg-card p-6"><ShieldCheck className="mb-3 h-8 w-8 text-primary" /><h1 className="text-xl font-semibold">Acesso restrito</h1><p className="mt-2 text-sm text-muted-foreground">Somente o administrador ou presidente da associação pode gerenciar o plano e o faturamento.</p></section>;
+    return <section className="rounded-xl border bg-card p-6"><ShieldCheck className="mb-3 h-8 w-8 text-primary" /><h1 className="text-xl font-semibold">Acesso restrito</h1><p className="mt-2 text-sm text-muted-foreground">Somente o administrador do sistema pode gerenciar planos, assinaturas e faturamento.</p></section>;
   }
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Planos e assinatura" description="Escolha o plano da associação. O valor mensal é calculado pela quantidade de moradores ativos cadastrados." />
+      <PageHeader title="Planos e assinatura" description="Painel administrativo global: atribua e acompanhe o plano de cada associação. O valor estimado considera moradores ativos cadastrados." />
       <section className="grid gap-4 md:grid-cols-3">
         <div className="rounded-xl border bg-card p-5">
           <div className="flex items-center gap-2 text-sm text-muted-foreground"><Users className="h-4 w-4" /> Moradores faturáveis</div>
@@ -187,7 +187,7 @@ function SubscriptionPage() {
             <div className="rounded-lg border bg-background p-4"><p className="text-xs text-muted-foreground">Início do teste</p><p className="mt-1 font-semibold">{dateTime(subscription.data.trial_started_at)}</p></div>
             <div className="rounded-lg border bg-background p-4"><p className="text-xs text-muted-foreground">Fim do teste</p><p className="mt-1 font-semibold">{dateTime(subscription.data.trial_ends_at)}</p></div>
           </div>
-          <p className="mt-4 text-sm text-muted-foreground">{trialExpired ? "O período de teste terminou. Para ativar cobranças automáticas, ainda é necessário configurar o provedor de pagamento da plataforma." : "O teste é concedido uma única vez por associação e não é reiniciado ao trocar de usuário ou atualizar a página."}</p>
+          <p className="mt-4 text-sm text-muted-foreground">{trialExpired ? "O período de teste terminou. Para ativar cobranças automáticas, ainda é necessário configurar o provedor de pagamento da plataforma." : "A avaliação é concedida uma única vez por associação e não pode ser reiniciada."}</p>
         </section>
       )}
 
@@ -211,7 +211,7 @@ function SubscriptionPage() {
 
       {!subscription.data && (
         <section className="rounded-2xl border bg-card p-5 sm:p-7">
-          <div className="mb-5 flex items-start gap-3"><span className="rounded-xl bg-primary/10 p-3 text-primary"><MailCheck className="h-5 w-5" /></span><div><h2 className="text-lg font-semibold">Ative seus 10 dias gratuitos</h2><p className="mt-1 text-sm text-muted-foreground">Um teste por associação. O CPF do responsável e o e-mail confirmado são usados para reduzir cadastros duplicados.</p></div></div>
+          <div className="mb-5 flex items-start gap-3"><span className="rounded-xl bg-primary/10 p-3 text-primary"><MailCheck className="h-5 w-5" /></span><div><h2 className="text-lg font-semibold">Inicie os 10 dias de avaliação</h2><p className="mt-1 text-sm text-muted-foreground">A avaliação deve ser iniciada pelo administrador do sistema. Cada associação pode receber somente um período de avaliação.</p></div></div>
           {!account.data?.emailConfirmed && <p role="alert" className="mb-4 rounded-lg border border-amber-500/40 bg-amber-500/5 p-3 text-sm">Antes de continuar, confirme o e-mail da sua conta. O sistema só aceita um endereço confirmado pelo processo de autenticação.</p>}
           <form onSubmit={startTrial} className="grid gap-4 sm:grid-cols-2">
             <div><Label htmlFor="billing-cpf">CPF do responsável financeiro</Label><Input id="billing-cpf" autoComplete="off" inputMode="numeric" placeholder="000.000.000-00" value={cpf} onChange={(event) => setCpf(maskInputCPF(event.target.value))} required maxLength={14} /><p className="mt-1 text-xs text-muted-foreground">Validado pelo sistema antes de registrar o teste.</p></div>
