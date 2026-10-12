@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { ChevronLeft, ChevronRight, Pencil, Plus, Search, Trash2, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAssoc } from "@/lib/assoc-context";
-import { isManager } from "@/lib/roles";
+import { canManageUnits } from "@/lib/roles";
 import { PageHeader, EmptyState } from "@/components/app/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -39,7 +39,7 @@ function UnitsPage() {
   const { current } = useAssoc();
   const queryClient = useQueryClient();
   const associationId = current?.association_id;
-  const manager = isManager(current?.role);
+  const manager = canManageUnits(current?.role);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [page, setPage] = useState(0);
