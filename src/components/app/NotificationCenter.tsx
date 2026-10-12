@@ -22,7 +22,6 @@ const SOUND_KEY = "morada360-alert-sound";
 export function NotificationCenter({ userId }: { userId: string }) {
   const queryClient = useQueryClient();
   const knownIds = useRef<Set<string>>(new Set());
-  const initialized = useRef(false);
   const [soundEnabled, setSoundEnabled] = useState(false);
   const notifications = useQuery({
     queryKey: ["user-notifications", userId],
@@ -103,7 +102,6 @@ export function NotificationCenter({ userId }: { userId: string }) {
   useEffect(() => {
     if (!notifications.data) return;
     for (const item of notifications.data) knownIds.current.add(item.id);
-    initialized.current = true;
   }, [notifications.data]);
 
   async function enableBrowserNotifications() {
