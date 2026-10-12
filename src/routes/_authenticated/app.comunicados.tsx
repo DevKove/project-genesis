@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { Bell, ChevronLeft, ChevronRight, Megaphone, Pencil, Pin, Plus, Search, Trash2, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAssoc } from "@/lib/assoc-context";
-import { isManager } from "@/lib/roles";
+import { canManageAnnouncements } from "@/lib/roles";
 import { PageHeader, EmptyState } from "@/components/app/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,7 +25,7 @@ function AnnouncementsPage() {
   const { current, userId } = useAssoc();
   const queryClient = useQueryClient();
   const associationId = current?.association_id;
-  const manager = isManager(current?.role);
+  const manager = canManageAnnouncements(current?.role);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("all");
   const [page, setPage] = useState(0);
