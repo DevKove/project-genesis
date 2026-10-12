@@ -5,6 +5,8 @@ create table if not exists public.asaas_subscription_payments (
   subscription_id uuid not null references public.association_subscriptions(id) on delete restrict,
   billing_period date not null,
   amount numeric(12,2) not null check (amount > 0),
+  resident_count integer not null default 0 check (resident_count >= 0),
+  unit_price numeric(12,2) not null default 0 check (unit_price >= 0),
   currency text not null default 'BRL' check (currency = 'BRL'),
   billing_type text not null check (billing_type in ('PIX','BOLETO','UNDEFINED')),
   status text not null default 'CREATING' check (status in ('CREATING','PENDING','CONFIRMED','RECEIVED','OVERDUE','REFUNDED','CANCELLED','FAILED','UNKNOWN')),
