@@ -51,6 +51,7 @@ function SubscriptionPage() {
   const [cpf, setCpf] = useState("");
   const [billingEmail, setBillingEmail] = useState("");
   const [saving, setSaving] = useState(false);
+  const [paymentLoading, setPaymentLoading] = useState(false);
 
   const plans = useQuery({
     queryKey: ["subscription-plans"],
@@ -76,6 +77,30 @@ function SubscriptionPage() {
       return (Array.isArray(data) ? data[0] : data) as { plan_code: string; status: string; trial_ends_at: string | null } | null;
     },
     refetchInterval: 60000,
+  });
+
+  const memberBilling = useQuery({
+    queryKey: ["member-association-billing", associationId],
+    enabled: Boolean(associationId && !canManage),
+    queryFn: async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await (supabase as any).rpc("get_my_association_billing_status", {
+        _association_id: associationId,
+      });
+      if (error) throw error;
+      return (Array.isArray(data) ? data[0] : data) as {
+        plan_code: string;
+        subscription_status: string;
+        trial_ends_at: string | null;
+        current_period_end: string | null;
+        latest_payment_status: string | null;
+        latest_payment_url: string | null;
+        latest_payment_period: string | null;
+        latest_payment_amount: number | null;
+        can_pay: boolean;
+      } | null;
+    },
+    refetchInterval: 30000,
   });
 
   const subscription = useQuery({
@@ -139,6 +164,28 @@ function SubscriptionPage() {
       toast.error(error instanceof Error ? error.message : "Não foi possível alterar o plano.");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function startManualPayment() {
+    if (!associationId || paymentLoading) return;
+    setPaymentLoading(true);
+    try {
+      if (memberBilling.data?.latest_payment_status === "PENDING" && memberBilling.data.latest_payment_url) {
+        window.location.assign(memberBilling.data.latest_payment_url);
+        return;
+      }
+      const { data, error } = await supabase.functions.invoke("mercadopago-create-payment", {
+        body: { association_id: associationId },
+      });
+      if (error) throw error;
+      if (!data?.ok || typeof data.checkout_url !== "string") {
+        throw new Error(data?.error || "Não foi possível gerar o link de pagamento.");
+      }
+      window.location.assign(data.checkout_url);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Não foi possível iniciar o pagamento.");
+      setPaymentLoading(false);
     }
   }
 
@@ -209,7 +256,26 @@ function SubscriptionPage() {
             </span>
           </div>
           {memberCurrentPlan && <div className="mt-5"><h3 className="font-semibold">Benefícios incluídos no seu plano</h3><ul className="mt-2 grid gap-2 sm:grid-cols-2">{memberCurrentPlan.features.map((feature) => <li key={feature} className="flex items-start gap-2 text-sm"><Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" /><span>{feature}</span></li>)}</ul></div>}
+          {memberBilling.data && memberBilling.data.can_pay && (() => {
+            const now = Date.now();
+            const trialExpired = memberBilling.data.subscription_status === "trialing" && Boolean(memberBilling.data.trial_ends_at) && new Date(memberBilling.data.trial_ends_at!).getTime() <= now;
+            const periodExpired = memberBilling.data.subscription_status === "active" && Boolean(memberBilling.data.current_period_end) && new Date(memberBilling.data.current_period_end!).getTime() <= now;
+            const needsPayment = trialExpired || periodExpired || ["payment_required", "past_due"].includes(memberBilling.data.subscription_status);
+            const pendingCheckout = memberBilling.data.latest_payment_status === "PENDING" && Boolean(memberBilling.data.latest_payment_url);
+            return (needsPayment || pendingCheckout) ? <div className="mt-5 rounded-xl border border-primary/30 bg-background p-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div><h3 className="font-semibold">{pendingCheckout ? "Pagamento mensal pendente" : "Renovar plano do Morada360"}</h3>
+                  <p className="mt-1 text-sm text-muted-foreground">{pendingCheckout ? "Continue para o Mercado Pago e conclua o pagamento. O plano será atualizado após confirmação segura." : "Seu teste ou período pago terminou. Gere uma cobrança mensal manual pelo Mercado Pago."}</p>
+                  {memberBilling.data.latest_payment_amount != null && pendingCheckout && <p className="mt-1 text-sm font-medium">Valor: {brl(Number(memberBilling.data.latest_payment_amount))}</p>}
+                </div>
+                <Button onClick={() => void startManualPayment()} disabled={paymentLoading} className="shrink-0">
+                  {paymentLoading ? <><LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> Preparando…</> : <><CreditCard className="mr-2 h-4 w-4" /> {pendingCheckout ? "Continuar pagamento" : "Pagar mensalidade"}</>}
+                </Button>
+              </div>
+            </div> : null;
+          })()}
         </section>
+        {memberBilling.isError && <div role="status" className="rounded-lg border p-3 text-xs text-muted-foreground">O status detalhado da cobrança não está disponível no momento.</div>}
         <section className="space-y-3">
           <div><h2 className="text-xl font-semibold">Conheça os planos superiores</h2><p className="mt-1 text-sm text-muted-foreground">Veja o que sua associação pode desbloquear com um upgrade. A mudança precisa ser aprovada pelo administrador do sistema.</p></div>
           {plans.isLoading ? <div className="rounded-xl border p-5 text-sm text-muted-foreground">Carregando planos…</div> : higherPlans.length ? <div className="grid gap-4 lg:grid-cols-2">{higherPlans.map((plan) => <article key={plan.code} className={`rounded-2xl border bg-card p-5 ${plan.highlighted ? "border-primary shadow-soft" : ""}`}>
