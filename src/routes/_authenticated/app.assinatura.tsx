@@ -275,7 +275,6 @@ function SubscriptionPage() {
             </div> : null;
           })()}
         </section>
-        {memberBilling.isError && <div role="status" className="rounded-lg border p-3 text-xs text-muted-foreground">O status detalhado da cobrança não está disponível no momento.</div>}
         <section className="space-y-3">
           <div><h2 className="text-xl font-semibold">Conheça os planos superiores</h2><p className="mt-1 text-sm text-muted-foreground">Veja o que sua associação pode desbloquear com um upgrade. A mudança precisa ser aprovada pelo administrador do sistema.</p></div>
           {plans.isLoading ? <div className="rounded-xl border p-5 text-sm text-muted-foreground">Carregando planos…</div> : higherPlans.length ? <div className="grid gap-4 lg:grid-cols-2">{higherPlans.map((plan) => <article key={plan.code} className={`rounded-2xl border bg-card p-5 ${plan.highlighted ? "border-primary shadow-soft" : ""}`}>
