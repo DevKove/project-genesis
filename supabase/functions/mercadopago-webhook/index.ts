@@ -102,6 +102,12 @@ Deno.serve(async (req: Request) => {
         if (subscriptionUpdateError) return json(500, { ok: false, error: "Não foi possível atualizar a assinatura após o pagamento." });
       }
     }
+    if (["refunded", "charged_back"].includes(providerStatus) && localPayment.status === "APPROVED") {
+      const { error: revokeError } = await admin.from("association_subscriptions").update({
+        status: "payment_required", current_period_end: new Date().toISOString(), updated_at: new Date().toISOString(),
+      }).eq("id", localPayment.subscription_id).eq("status", "active");
+      if (revokeError) return json(500, { ok: false, error: "Não foi possível atualizar a assinatura após o estorno." });
+    }
     await admin.from("mercadopago_webhook_events").update({ processed: true, processed_at: new Date().toISOString() }).eq("provider_event_id", eventKey);
     return json(200, { ok: true });
   } catch (error) {
