@@ -51,17 +51,6 @@ function SubscriptionPage() {
   const [cpf, setCpf] = useState("");
   const [billingEmail, setBillingEmail] = useState("");
   const [saving, setSaving] = useState(false);
-  const [testingAsaas, setTestingAsaas] = useState(false);
-  const [creatingBilling, setCreatingBilling] = useState(false);
-  const [billingType, setBillingType] = useState<"PIX" | "BOLETO">("PIX");
-  const [dueDate, setDueDate] = useState(() => new Date(Date.now() + 5 * 86400000).toISOString().slice(0, 10));
-  const [createdPayment, setCreatedPayment] = useState<{ id?: string; status?: string; amount?: number; due_date?: string; invoice_url?: string | null; bank_slip_url?: string | null; pix_copy_paste?: string | null; pix_qr_code_image?: string | null; provider_payment_id?: string | null } | null>(null);
-  const [productionTestName, setProductionTestName] = useState("");
-  const [productionTestCpf, setProductionTestCpf] = useState("");
-  const [productionTestEmail, setProductionTestEmail] = useState("");
-  const [productionTestPhone, setProductionTestPhone] = useState("");
-  const [creatingProductionTest, setCreatingProductionTest] = useState(false);
-  const [productionTestPayment, setProductionTestPayment] = useState<{ id?: string; status?: string; amount?: number; invoice_url?: string | null; pix_copy_paste?: string | null; pix_qr_code_image?: string | null; provider_payment_id?: string | null } | null>(null);
 
   const plans = useQuery({
     queryKey: ["subscription-plans"],
@@ -125,7 +114,6 @@ function SubscriptionPage() {
 
   const selected = useMemo(() => plans.data?.find((p) => p.code === selectedPlan) ?? plans.data?.[1] ?? plans.data?.[0], [plans.data, selectedPlan]);
   const activeCount = residents.data ?? 0;
-  const sandboxTestAssociation = associationId === "13c2ea32-036d-45c8-84b3-ded24bdd8c54";
   const monthlyEstimate = (selected?.price_per_member_monthly ?? 0) * activeCount;
   const trialExpired = Boolean(subscription.data && new Date(subscription.data.trial_ends_at).getTime() <= Date.now() && subscription.data.status === "trialing");
   const currentPlan = plans.data?.find((p) => p.code === subscription.data?.plan_code);
@@ -151,68 +139,6 @@ function SubscriptionPage() {
       toast.error(error instanceof Error ? error.message : "Não foi possível alterar o plano.");
     } finally {
       setSaving(false);
-    }
-  }
-
-  async function testAsaasConnection() {
-    setTestingAsaas(true);
-    try {
-      // The Edge Function keeps the Asaas credential server-side and only returns sanitized status.
-      const { data, error } = await supabase.functions.invoke("asaas-test-connection", { body: {} });
-      if (error) throw error;
-      if (!data?.ok) throw new Error(data?.error || "O Asaas não confirmou a conexão.");
-      const environment = data.environment === "sandbox" ? "Sandbox" : "Produção";
-      toast.success(`Conexão com Asaas ${environment} validada. Nenhuma cobrança foi criada.`);
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Não foi possível testar a conexão com o Asaas.");
-    } finally {
-      setTestingAsaas(false);
-    }
-  }
-
-  async function createSandboxBilling() {
-    if (!associationId || !subscription.data || !canManage) return;
-    setCreatingBilling(true);
-    setCreatedPayment(null);
-    try {
-      const now = new Date();
-      const billingPeriod = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
-      const { data, error } = await supabase.functions.invoke("asaas-billing-create", {
-        body: { association_id: associationId, billing_period: billingPeriod, billing_type: billingType, due_date: dueDate, test_mode: sandboxTestAssociation },
-      });
-      if (error) throw error;
-      if (!data?.ok) throw new Error(data?.error || "Não foi possível gerar a cobrança no Sandbox.");
-      setCreatedPayment(data.payment ?? null);
-      toast.success(data.reused ? "Cobrança existente recuperada; nenhuma duplicata foi criada." : "Cobrança de teste criada no Asaas Sandbox.");
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Falha ao gerar cobrança no Sandbox.");
-    } finally {
-      setCreatingBilling(false);
-    }
-  }
-
-  async function createProductionPixTest() {
-    if (!canManage || creatingProductionTest) return;
-    if (!productionTestName.trim() || !isValidCPF(productionTestCpf) || !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(productionTestEmail.trim())) {
-      toast.error("Informe nome completo, CPF válido e e-mail para o teste.");
-      return;
-    }
-    const confirmed = window.confirm("ATENÇÃO: isso solicitará uma cobrança Pix REAL de R$ 2,00 no Asaas de Produção. O valor poderá ser pago e movimentará dinheiro real. Confirma que deseja continuar?");
-    if (!confirmed) return;
-    setCreatingProductionTest(true);
-    setProductionTestPayment(null);
-    try {
-      const { data, error } = await supabase.functions.invoke("asaas-production-pix-test", {
-        body: { name: productionTestName.trim(), cpf: productionTestCpf.replace(/\\D/g, ""), email: productionTestEmail.trim().toLowerCase(), phone: productionTestPhone.replace(/\\D/g, "") },
-      });
-      if (error) throw error;
-      if (!data?.ok) throw new Error(data?.error || "Não foi possível preparar a cobrança Pix de Produção.");
-      setProductionTestPayment(data.payment ?? null);
-      toast.success(data.reused ? "Cobrança de teste existente recuperada; nenhuma duplicata foi criada." : "Cobrança real de R$ 2,00 criada no Asaas.");
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Falha no teste Pix de Produção.");
-    } finally {
-      setCreatingProductionTest(false);
     }
   }
 
@@ -306,17 +232,6 @@ function SubscriptionPage() {
   return (
     <div className="space-y-6">
       <PageHeader title="Planos e assinatura" description="Painel administrativo global: atribua e acompanhe o plano de cada associação. O valor estimado considera moradores ativos cadastrados." />
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-card p-4">
-        <div>
-          <p className="font-medium">Integração de pagamentos — Asaas</p>
-          <p className="mt-1 text-sm text-muted-foreground">Teste seguro da credencial configurada no Supabase. Esta ação não cria cobranças.</p>
-          <p className="mt-2 text-xs text-muted-foreground">Métodos habilitados nesta etapa: Pix e boleto. Cartão de crédito ainda não está disponível. A emissão de cobranças permanece restrita ao ambiente Sandbox.</p>
-        </div>
-        <Button variant="outline" onClick={() => void testAsaasConnection()} disabled={testingAsaas}>
-          {testingAsaas ? <LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> : <CreditCard className="mr-2 h-4 w-4" />}
-          {testingAsaas ? "Testando conexão…" : "Testar conexão Asaas"}
-        </Button>
-      </div>
       <section className="grid gap-4 md:grid-cols-3">
         <div className="rounded-xl border bg-card p-5">
           <div className="flex items-center gap-2 text-sm text-muted-foreground"><Users className="h-4 w-4" /> Moradores faturáveis</div>
@@ -352,81 +267,7 @@ function SubscriptionPage() {
             <div className="rounded-lg border bg-background p-4"><p className="text-xs text-muted-foreground">Início do teste</p><p className="mt-1 font-semibold">{dateTime(subscription.data.trial_started_at)}</p></div>
             <div className="rounded-lg border bg-background p-4"><p className="text-xs text-muted-foreground">Fim do teste</p><p className="mt-1 font-semibold">{dateTime(subscription.data.trial_ends_at)}</p></div>
           </div>
-          <p className="mt-4 text-sm text-muted-foreground">{trialExpired ? "O período de teste terminou. Para iniciar o faturamento, é necessário gerar a cobrança e confirmar o pagamento pelo fluxo integrado. A cobrança recorrente automática ainda não está habilitada." : "A avaliação é concedida uma única vez por associação e não pode ser reiniciada."}</p>
-        </section>
-      )}
-
-      {subscription.data && (
-        <section className="space-y-4 rounded-2xl border border-primary/30 bg-card p-5 sm:p-6">
-          <div>
-            <h2 className="text-lg font-semibold">Cobrança de teste — Asaas Sandbox</h2>
-            <p className="mt-1 text-xs font-medium text-primary">Administradores podem testar Pix e boleto durante o período gratuito. Isso não encerra o teste e não gera cobrança em produção.</p>
-            <p className="mt-1 text-sm text-muted-foreground">Gera uma cobrança avulsa somente no Asaas Sandbox. Na associação de testes AMBRAS, o sistema usa um cliente e um morador sintéticos, sem exigir CNPJ ou cadastro fictício de moradores no banco. Nas demais associações, valem os requisitos normais de faturamento. Nenhuma cobrança é enviada à Produção.</p>
-          </div>
-          <div className="grid gap-4 sm:grid-cols-3">
-            <div className="space-y-2">
-              <Label htmlFor="sandbox-billing-type">Forma de pagamento</Label>
-              <select id="sandbox-billing-type" className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm" value={billingType} onChange={(event) => setBillingType(event.target.value as "PIX" | "BOLETO")}>
-                <option value="PIX">Pix</option>
-                <option value="BOLETO">Boleto</option>
-              </select>
-              <p className="text-xs text-muted-foreground">Cartão de crédito não está habilitado; não informe dados de cartão nesta etapa.</p>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="sandbox-due-date">Vencimento</Label>
-              <Input id="sandbox-due-date" type="date" min={new Date().toISOString().slice(0, 10)} value={dueDate} onChange={(event) => setDueDate(event.target.value)} required />
-            </div>
-            <div className="flex items-end">
-              <Button className="w-full" onClick={() => void createSandboxBilling()} disabled={creatingBilling || !dueDate || !subscription.data || (activeCount < 1 && !sandboxTestAssociation)}>
-                {creatingBilling ? <><LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> Gerando cobrança…</> : <><CreditCard className="mr-2 h-4 w-4" /> Gerar cobrança Sandbox</>}
-              </Button>
-            </div>
-          </div>
-          <p className="text-xs text-muted-foreground">{sandboxTestAssociation ? "Modo de teste AMBRAS: usa CNPJ sintético e 1 morador sintético apenas no Asaas Sandbox; não altera os cadastros da associação nem encerra a avaliação." : "Requisitos: CNPJ válido cadastrado na associação, e-mail de faturamento e ao menos um morador ativo. A cobrança é criada somente no Asaas Sandbox; cada associação terá no máximo uma cobrança por competência."} {activeCount < 1 && !sandboxTestAssociation && "Cadastre pelo menos um morador ativo para habilitar a cobrança."}</p>
-          {createdPayment && (
-            <div className="space-y-3 rounded-xl border bg-muted/30 p-4">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <h3 className="font-semibold">Cobrança registrada</h3>
-                <span className="rounded-full border bg-background px-3 py-1 text-xs font-semibold">{createdPayment.status ?? "PENDING"}</span>
-              </div>
-              <p className="text-sm">Valor: <strong>{brl(Number(createdPayment.amount ?? 0))}</strong>{createdPayment.due_date ? ` · Vencimento: ${new Date(createdPayment.due_date + "T00:00:00").toLocaleDateString("pt-BR")}` : ""}</p>
-              <div className="flex flex-wrap gap-3">
-                {createdPayment.invoice_url && <a className="text-sm font-medium text-primary underline underline-offset-4" href={createdPayment.invoice_url} target="_blank" rel="noreferrer">Abrir fatura Asaas</a>}
-                {createdPayment.bank_slip_url && <a className="text-sm font-medium text-primary underline underline-offset-4" href={createdPayment.bank_slip_url} target="_blank" rel="noreferrer">Abrir boleto</a>}
-              </div>
-              {createdPayment.pix_copy_paste && <div className="space-y-2"><Label htmlFor="sandbox-pix-copy">Pix copia e cola</Label><textarea id="sandbox-pix-copy" className="min-h-24 w-full rounded-md border bg-background p-3 text-xs" readOnly value={createdPayment.pix_copy_paste} /><Button variant="outline" onClick={async () => { try { await navigator.clipboard.writeText(createdPayment.pix_copy_paste ?? ""); toast.success("Código Pix copiado."); } catch { toast.error("Não foi possível copiar automaticamente."); } }}>Copiar código Pix</Button></div>}
-              {createdPayment.pix_qr_code_image && <img className="max-h-56 rounded-lg border bg-white p-2" alt="QR Code Pix da cobrança Sandbox" src={`data:image/png;base64,${createdPayment.pix_qr_code_image}`} />}
-            </div>
-          )}
-        </section>
-      )}
-
-      {canManage && (
-        <section className="space-y-4 rounded-2xl border border-amber-500/40 bg-card p-5 sm:p-6">
-          <div>
-            <h2 className="text-lg font-semibold">Teste Pix real — Asaas Produção</h2>
-            <p className="mt-1 text-sm text-muted-foreground">Fluxo separado do Sandbox e do faturamento das associações. Valor fixo de R$ 2,00, destinado a testar o recebimento na sua própria conta.</p>
-            <p className="mt-2 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-sm">A cobrança movimenta dinheiro real. Nunca informe sua chave de API aqui. O nome, CPF e e-mail abaixo serão enviados ao Asaas para identificar você como pagador.</p>
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2"><Label htmlFor="prod-test-name">Nome completo</Label><Input id="prod-test-name" autoComplete="name" value={productionTestName} onChange={(e) => setProductionTestName(e.target.value)} maxLength={100} required /></div>
-            <div className="space-y-2"><Label htmlFor="prod-test-cpf">Seu CPF</Label><Input id="prod-test-cpf" autoComplete="off" inputMode="numeric" value={productionTestCpf} onChange={(e) => setProductionTestCpf(e.target.value)} placeholder="Somente para identificar o pagador" maxLength={14} required /></div>
-            <div className="space-y-2"><Label htmlFor="prod-test-email">E-mail</Label><Input id="prod-test-email" type="email" autoComplete="email" value={productionTestEmail} onChange={(e) => setProductionTestEmail(e.target.value)} maxLength={254} required /></div>
-            <div className="space-y-2"><Label htmlFor="prod-test-phone">Celular (opcional)</Label><Input id="prod-test-phone" type="tel" autoComplete="tel" value={productionTestPhone} onChange={(e) => setProductionTestPhone(e.target.value)} placeholder="DDD + número" maxLength={20} /></div>
-          </div>
-          <Button className="w-full sm:w-auto" variant="outline" onClick={() => void createProductionPixTest()} disabled={creatingProductionTest || !productionTestName.trim() || !productionTestCpf.trim() || !productionTestEmail.trim()}>
-            {creatingProductionTest ? <><LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> Preparando cobrança…</> : <><CreditCard className="mr-2 h-4 w-4" /> Gerar cobrança real de R$ 2,00</>}
-          </Button>
-          <p className="text-xs text-muted-foreground">A emissão permanece bloqueada no servidor até a função de Produção ser implantada, os segredos serem configurados e a chave de ativação ser habilitada. A tela pede confirmação adicional antes de enviar a solicitação.</p>
-          {productionTestPayment && (
-            <div className="space-y-3 rounded-xl border bg-muted/30 p-4">
-              <div className="flex flex-wrap items-center justify-between gap-2"><h3 className="font-semibold">Cobrança Pix de Produção</h3><span className="rounded-full border bg-background px-3 py-1 text-xs font-semibold">{productionTestPayment.status ?? "PENDING"}</span></div>
-              <p className="text-sm">Valor: <strong>{brl(Number(productionTestPayment.amount ?? 2))}</strong></p>
-              {productionTestPayment.invoice_url && <a className="text-sm font-medium text-primary underline underline-offset-4" href={productionTestPayment.invoice_url} target="_blank" rel="noreferrer">Abrir fatura Asaas</a>}
-              {productionTestPayment.pix_copy_paste && <div className="space-y-2"><Label htmlFor="prod-test-pix-copy">Pix copia e cola</Label><textarea id="prod-test-pix-copy" className="min-h-24 w-full rounded-md border bg-background p-3 text-xs" readOnly value={productionTestPayment.pix_copy_paste} /><Button variant="outline" onClick={async () => { try { await navigator.clipboard.writeText(productionTestPayment.pix_copy_paste ?? ""); toast.success("Código Pix copiado."); } catch { toast.error("Não foi possível copiar automaticamente."); } }}>Copiar código Pix</Button></div>}
-              {productionTestPayment.pix_qr_code_image && <img className="max-h-56 rounded-lg border bg-white p-2" alt="QR Code Pix de Produção" src={`data:image/png;base64,${productionTestPayment.pix_qr_code_image}`} />}
-            </div>
-          )}
+          <p className="mt-4 text-sm text-muted-foreground">{trialExpired ? "O período de teste terminou. A integração de pagamentos será configurada em uma etapa separada." : "A avaliação é concedida uma única vez por associação e não pode ser reiniciada."}</p>
         </section>
       )}
 
@@ -465,7 +306,7 @@ function SubscriptionPage() {
             <div className="sm:col-span-2 rounded-lg bg-muted/50 p-4 text-sm"><p className="font-medium">Resumo do plano {selected?.name ?? ""}</p><p className="mt-1 text-muted-foreground">{activeCount} moradores ativos × {brl(selected?.price_per_member_monthly ?? 0)} = <strong className="text-foreground">{brl(monthlyEstimate)}/mês</strong> após o teste. Nenhuma cobrança será iniciada por esta tela.</p></div>
             <Button type="submit" className="sm:col-span-2" disabled={saving || !selected || !account.data?.emailConfirmed || subscription.isLoading || !residents.data && residents.isLoading}>{saving ? <><LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> Ativando teste…</> : "Começar teste gratuito de 10 dias"}</Button>
           </form>
-          <p className="mt-4 text-xs text-muted-foreground">Importante: o teste gratuito não gera cobrança. Após o teste, a cobrança avulsa pode ser emitida no Asaas Sandbox por Pix ou boleto; cobrança recorrente automática e cartão de crédito ainda não estão habilitados.</p>
+          <p className="mt-4 text-xs text-muted-foreground">Importante: o teste gratuito não gera cobrança. A integração com o novo provedor de pagamentos será configurada separadamente.</p>
         </section>
       )}
     </div>
