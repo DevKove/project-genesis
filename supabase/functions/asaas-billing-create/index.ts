@@ -74,7 +74,8 @@ Deno.serve(async (req: Request) => {
     if (subscriptionError) return json({ ok: false, error: "Falha ao consultar a assinatura." }, 500);
     if (!subscription) return json({ ok: false, error: "A associação ainda não possui assinatura cadastrada. Nenhuma cobrança foi criada." }, 409);
     if (["cancelled", "canceled", "suspended"].includes(clean(subscription.status).toLowerCase())) return json({ ok: false, error: "A assinatura está cancelada ou suspensa." }, 409);
-    if (clean(subscription.status).toLowerCase() === "trialing" && subscription.trial_ends_at && new Date(subscription.trial_ends_at).getTime() > Date.now()) return json({ ok: false, error: "O período de teste gratuito ainda está ativo. Nenhuma cobrança foi criada." }, 409);
+    // This endpoint is hard-restricted to Asaas Sandbox above. Platform admins may
+    // create a Sandbox test payment during trial without changing the trial status.
 
     const [{ data: association, error: associationError }, { data: plan, error: planError }, { count: residentCount, error: residentsError }] = await Promise.all([
       admin.from("associations").select("id,name,cnpj,email,phone").eq("id", associationId).maybeSingle(),

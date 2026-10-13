@@ -324,10 +324,11 @@ function SubscriptionPage() {
         </section>
       )}
 
-      {subscription.data && (subscription.data.status !== "trialing" || trialExpired) && (
+      {subscription.data && (
         <section className="space-y-4 rounded-2xl border border-primary/30 bg-card p-5 sm:p-6">
           <div>
             <h2 className="text-lg font-semibold">Cobrança de teste — Asaas Sandbox</h2>
+            <p className="mt-1 text-xs font-medium text-primary">Administradores podem testar Pix e boleto durante o período gratuito. Isso não encerra o teste e não gera cobrança em produção.</p>
             <p className="mt-1 text-sm text-muted-foreground">Gera uma cobrança avulsa de teste para a competência atual. O servidor recalcula o valor usando o plano vigente e a quantidade de moradores ativos; o valor exibido na tela é apenas uma estimativa. Não use dados de terceiros e nenhuma cobrança é enviada à Produção.</p>
           </div>
           <div className="grid gap-4 sm:grid-cols-3">
@@ -344,12 +345,12 @@ function SubscriptionPage() {
               <Input id="sandbox-due-date" type="date" min={new Date().toISOString().slice(0, 10)} value={dueDate} onChange={(event) => setDueDate(event.target.value)} required />
             </div>
             <div className="flex items-end">
-              <Button className="w-full" onClick={() => void createSandboxBilling()} disabled={creatingBilling || !dueDate || !subscription.data || (subscription.data.status === "trialing" && !trialExpired)}>
+              <Button className="w-full" onClick={() => void createSandboxBilling()} disabled={creatingBilling || !dueDate || !subscription.data || activeCount < 1}>
                 {creatingBilling ? <><LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> Gerando cobrança…</> : <><CreditCard className="mr-2 h-4 w-4" /> Gerar cobrança Sandbox</>}
               </Button>
             </div>
           </div>
-          <p className="text-xs text-muted-foreground">Requisitos: CNPJ válido cadastrado na associação, e-mail de faturamento e ao menos um morador ativo. Durante os 10 dias gratuitos, a emissão permanece bloqueada. Cada associação terá no máximo uma cobrança por competência.</p>
+          <p className="text-xs text-muted-foreground">Requisitos: CNPJ válido cadastrado na associação, e-mail de faturamento e ao menos um morador ativo. A cobrança é criada somente no Asaas Sandbox, inclusive durante a avaliação gratuita; cada associação terá no máximo uma cobrança por competência. {activeCount < 1 && "Cadastre pelo menos um morador ativo para habilitar o teste."}</p>
           {createdPayment && (
             <div className="space-y-3 rounded-xl border bg-muted/30 p-4">
               <div className="flex flex-wrap items-center justify-between gap-2">
