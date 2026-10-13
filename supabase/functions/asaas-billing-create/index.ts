@@ -62,6 +62,9 @@ Deno.serve(async (req: Request) => {
     const billingPeriod = clean(input.billing_period);
     const billingType = clean(input.billing_type).toUpperCase();
     const requestedDueDate = clean(input.due_date);
+    const testMode = input.test_mode === true;
+    const testAssociationId = "13c2ea32-036d-45c8-84b3-ded24bdd8c54";
+    if (testMode && associationId !== testAssociationId) return json({ ok: false, error: "O modo de teste sem cadastro real está autorizado somente para a associação de testes AMBRAS." }, 403);
     if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(associationId)) return json({ ok: false, error: "association_id inválido." }, 400);
     if (!isoDate(billingPeriod) || !billingPeriod.endsWith("-01")) return json({ ok: false, error: "billing_period deve ser o primeiro dia do mês no formato AAAA-MM-01." }, 400);
     if (!["PIX", "BOLETO", "UNDEFINED"].includes(billingType)) return json({ ok: false, error: "Forma de pagamento inválida. Use PIX, BOLETO ou UNDEFINED." }, 400);
@@ -84,12 +87,22 @@ Deno.serve(async (req: Request) => {
     ]);
     if (associationError || planError || residentsError) return json({ ok: false, error: "Falha ao consultar os dados de cobrança." }, 500);
     if (!association || !plan || !plan.active) return json({ ok: false, error: "Associação ou plano ativo não encontrado." }, 409);
-    if (!association.cnpj) return json({ ok: false, error: "A associação precisa ter CNPJ cadastrado para gerar a cobrança com segurança. Nenhuma cobrança foi criada." }, 422);
-    const cpfCnpj = digits(association.cnpj);
-    if (cpfCnpj.length !== 14) return json({ ok: false, error: "O CNPJ cadastrado não é válido para emissão de cobrança." }, 422);
     if (!clean(subscription.billing_email) || !clean(association.name)) return json({ ok: false, error: "Nome da associação e e-mail de cobrança são obrigatórios." }, 422);
-    const count = residentCount ?? 0;
-    if (count < 1) return json({ ok: false, error: "Não há moradores ativos cadastrados para calcular a mensalidade. Nenhuma cobrança foi criada." }, 422);
+    // A fixed synthetic CNPJ and one synthetic billable member are allowed only for
+    // the hard-coded AMBRAS test association and only while the endpoint is Sandbox-only.
+    // This path must never be enabled for another association or production endpoint.
+    let cpfCnpj: string;
+    let count: number;
+    if (testMode) {
+      cpfCnpj = "11222333000181"; // synthetic, checksum-valid Sandbox test identifier
+      count = 1;
+    } else {
+      if (!association.cnpj) return json({ ok: false, error: "A associação precisa ter CNPJ cadastrado para gerar a cobrança. Nenhuma cobrança foi criada." }, 422);
+      cpfCnpj = digits(association.cnpj);
+      if (cpfCnpj.length !== 14) return json({ ok: false, error: "O CNPJ cadastrado não é válido para emissão de cobrança." }, 422);
+      count = residentCount ?? 0;
+      if (count < 1) return json({ ok: false, error: "Não há moradores ativos cadastrados para calcular a mensalidade. Nenhuma cobrança foi criada." }, 422);
+    }
     const unitPrice = Number(plan.price_per_member_monthly);
     const amount = Math.round(count * unitPrice * 100) / 100;
     if (!Number.isFinite(amount) || amount <= 0) return json({ ok: false, error: "Valor de cobrança calculado inválido." }, 422);
@@ -133,7 +146,7 @@ Deno.serve(async (req: Request) => {
       return body;
     };
 
-    let customerId = clean(subscription.provider_customer_id) || clean(association.provider_customer_id);
+    let customerId = testMode ? "" : clean(subscription.provider_customer_id) || clean(association.provider_customer_id);
     try {
       if (!customerId) {
         const lookup = await asaasFetch("/customers?cpfCnpj=" + encodeURIComponent(cpfCnpj) + "&limit=10");
@@ -142,19 +155,19 @@ Deno.serve(async (req: Request) => {
       }
       if (!customerId) {
         const customer = await asaasFetch("/customers", { method: "POST", body: JSON.stringify({
-          name: clean(association.name), cpfCnpj, email: clean(subscription.billing_email),
+          name: testMode ? "Morada360 AMBRAS - CLIENTE DE TESTE" : clean(association.name), cpfCnpj, email: clean(subscription.billing_email),
           phone: digits(clean(association.phone)) || undefined,
           externalReference: "morada360-association-" + associationId,
         }) });
         customerId = clean(customer.id);
         if (!customerId) throw new Error("O Asaas não retornou o identificador do cliente.");
       }
-      await admin.from("association_subscriptions").update({ provider_customer_id: customerId, payment_provider: "asaas", updated_at: new Date().toISOString() }).eq("id", subscription.id);
+      if (!testMode) await admin.from("association_subscriptions").update({ provider_customer_id: customerId, payment_provider: "asaas", updated_at: new Date().toISOString() }).eq("id", subscription.id);
 
       const externalReference = "morada360-" + localPayment.id;
       const payment = await asaasFetch("/payments", { method: "POST", body: JSON.stringify({
         customer: customerId, billingType, value: amount, dueDate,
-        description: "Morada360 - " + clean(plan.name) + " - competência " + billingPeriod.slice(0, 7),
+        description: (testMode ? "TESTE SANDBOX Morada360 - " : "Morada360 - ") + clean(plan.name) + " - competência " + billingPeriod.slice(0, 7),
         externalReference,
       }) });
       if (!clean(payment.id)) throw new Error("O Asaas não retornou o identificador da cobrança.");
@@ -176,7 +189,7 @@ Deno.serve(async (req: Request) => {
       };
       const { data: saved, error: saveError } = await admin.from("asaas_subscription_payments").update(update).eq("id", localPayment.id).select("id,status,amount,due_date,invoice_url,bank_slip_url,pix_copy_paste,pix_qr_code_image,provider_payment_id").single();
       if (saveError || !saved) return json({ ok: false, error: "A cobrança foi criada no Asaas, mas não foi possível confirmar o salvamento local. Não tente emitir novamente; verifique o Asaas pelo identificador externo " + externalReference + ".", external_reference: externalReference }, 502);
-      return json({ ok: true, sandbox: true, payment: saved });
+      return json({ ok: true, sandbox: true, test_mode: testMode, payment: saved });
     } catch (error) {
       const message = error instanceof Error ? error.message : "Falha inesperada na integração.";
       // Keep CREATING for uncertain provider outcomes to prevent duplicate charges.
