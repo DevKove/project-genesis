@@ -48,7 +48,8 @@ returns table (
   latest_payment_status text,
   latest_payment_url text,
   latest_payment_period date,
-  latest_payment_amount numeric
+  latest_payment_amount numeric,
+  can_pay boolean
 )
 language plpgsql
 stable
@@ -73,7 +74,18 @@ begin
 
   return query
   select s.plan_code, s.status, s.trial_ends_at, s.current_period_end,
-         p.status, p.checkout_url, p.billing_period, p.amount
+         p.status, p.checkout_url, p.billing_period, p.amount,
+         (
+           exists (
+             select 1 from public.association_members m
+             where m.association_id = s.association_id and m.user_id = auth.uid()
+               and m.role in ('admin','presidente','tesoureiro')
+           )
+           or exists (
+             select 1 from public.user_roles ur
+             where ur.user_id = auth.uid() and ur.role = 'platform_admin'
+           )
+         )
   from public.association_subscriptions s
   left join lateral (
     select mp.status, mp.checkout_url, mp.billing_period, mp.amount
