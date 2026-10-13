@@ -119,6 +119,7 @@ function SubscriptionPage() {
 
   const selected = useMemo(() => plans.data?.find((p) => p.code === selectedPlan) ?? plans.data?.[1] ?? plans.data?.[0], [plans.data, selectedPlan]);
   const activeCount = residents.data ?? 0;
+  const sandboxTestAssociation = associationId === "13c2ea32-036d-45c8-84b3-ded24bdd8c54";
   const monthlyEstimate = (selected?.price_per_member_monthly ?? 0) * activeCount;
   const trialExpired = Boolean(subscription.data && new Date(subscription.data.trial_ends_at).getTime() <= Date.now() && subscription.data.status === "trialing");
   const currentPlan = plans.data?.find((p) => p.code === subscription.data?.plan_code);
@@ -171,7 +172,7 @@ function SubscriptionPage() {
       const now = new Date();
       const billingPeriod = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
       const { data, error } = await supabase.functions.invoke("asaas-billing-create", {
-        body: { association_id: associationId, billing_period: billingPeriod, billing_type: billingType, due_date: dueDate },
+        body: { association_id: associationId, billing_period: billingPeriod, billing_type: billingType, due_date: dueDate, test_mode: sandboxTestAssociation },
       });
       if (error) throw error;
       if (!data?.ok) throw new Error(data?.error || "Não foi possível gerar a cobrança no Sandbox.");
@@ -329,7 +330,7 @@ function SubscriptionPage() {
           <div>
             <h2 className="text-lg font-semibold">Cobrança de teste — Asaas Sandbox</h2>
             <p className="mt-1 text-xs font-medium text-primary">Administradores podem testar Pix e boleto durante o período gratuito. Isso não encerra o teste e não gera cobrança em produção.</p>
-            <p className="mt-1 text-sm text-muted-foreground">Gera uma cobrança avulsa de teste para a competência atual. O servidor recalcula o valor usando o plano vigente e a quantidade de moradores ativos; o valor exibido na tela é apenas uma estimativa. Não use dados de terceiros e nenhuma cobrança é enviada à Produção.</p>
+            <p className="mt-1 text-sm text-muted-foreground">Gera uma cobrança avulsa somente no Asaas Sandbox. Na associação de testes AMBRAS, o sistema usa um cliente e um morador sintéticos, sem exigir CNPJ ou cadastro fictício de moradores no banco. Nas demais associações, valem os requisitos normais de faturamento. Nenhuma cobrança é enviada à Produção.</p>
           </div>
           <div className="grid gap-4 sm:grid-cols-3">
             <div className="space-y-2">
@@ -345,12 +346,12 @@ function SubscriptionPage() {
               <Input id="sandbox-due-date" type="date" min={new Date().toISOString().slice(0, 10)} value={dueDate} onChange={(event) => setDueDate(event.target.value)} required />
             </div>
             <div className="flex items-end">
-              <Button className="w-full" onClick={() => void createSandboxBilling()} disabled={creatingBilling || !dueDate || !subscription.data || activeCount < 1}>
+              <Button className="w-full" onClick={() => void createSandboxBilling()} disabled={creatingBilling || !dueDate || !subscription.data || (activeCount < 1 && !sandboxTestAssociation)}>
                 {creatingBilling ? <><LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> Gerando cobrança…</> : <><CreditCard className="mr-2 h-4 w-4" /> Gerar cobrança Sandbox</>}
               </Button>
             </div>
           </div>
-          <p className="text-xs text-muted-foreground">Requisitos: CNPJ válido cadastrado na associação, e-mail de faturamento e ao menos um morador ativo. A cobrança é criada somente no Asaas Sandbox, inclusive durante a avaliação gratuita; cada associação terá no máximo uma cobrança por competência. {activeCount < 1 && "Cadastre pelo menos um morador ativo para habilitar o teste."}</p>
+          <p className="text-xs text-muted-foreground">{sandboxTestAssociation ? "Modo de teste AMBRAS: usa CNPJ sintético e 1 morador sintético apenas no Asaas Sandbox; não altera os cadastros da associação nem encerra a avaliação." : "Requisitos: CNPJ válido cadastrado na associação, e-mail de faturamento e ao menos um morador ativo. A cobrança é criada somente no Asaas Sandbox; cada associação terá no máximo uma cobrança por competência."} {activeCount < 1 && !sandboxTestAssociation && "Cadastre pelo menos um morador ativo para habilitar a cobrança."}</p>
           {createdPayment && (
             <div className="space-y-3 rounded-xl border bg-muted/30 p-4">
               <div className="flex flex-wrap items-center justify-between gap-2">
