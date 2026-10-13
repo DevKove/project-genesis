@@ -74,39 +74,19 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    const mapStatus: Record<string, string> = { approved: "APPROVED", pending: "PENDING", in_process: "PENDING", rejected: "REJECTED", cancelled: "CANCELLED", refunded: "REFUNDED", charged_back: "REFUNDED" };
-    const localStatus = mapStatus[providerStatus] || "PENDING";
     const paidAt = providerStatus === "approved" ? (mpPayment.date_approved || new Date().toISOString()) : null;
-    const { error: updatePaymentError } = await admin.from("mercadopago_subscription_payments").update({
-      provider_payment_id: String(mpPayment.id), provider_status: providerStatus, status: localStatus,
-      paid_at: paidAt, updated_at: new Date().toISOString(),
-    }).eq("id", localPayment.id);
-    if (updatePaymentError) return json(500, { ok: false, error: "Não foi possível atualizar o pagamento." });
-
-    if (providerStatus === "approved" && localPayment.status !== "APPROVED") {
-      const { data: subscription } = await admin.from("association_subscriptions").select("id,status,current_period_end")
-        .eq("id", localPayment.subscription_id).maybeSingle();
-      if (subscription && !["cancelled", "suspended"].includes(subscription.status)) {
-        const now = new Date();
-        const priorEnd = subscription.current_period_end ? new Date(subscription.current_period_end) : null;
-        const start = priorEnd && priorEnd > now ? priorEnd : now;
-        const end = new Date(start);
-        end.setUTCMonth(end.getUTCMonth() + 1);
-        const { error: subscriptionUpdateError } = await admin.from("association_subscriptions").update({
-          status: "active", payment_provider: "mercadopago",
-          current_period_start: start.toISOString(), current_period_end: end.toISOString(),
-          member_count_at_last_billing: localPayment.resident_count,
-          unit_price_at_last_billing: localPayment.unit_price,
-          updated_at: now.toISOString(),
-        }).eq("id", localPayment.subscription_id);
-        if (subscriptionUpdateError) return json(500, { ok: false, error: "Não foi possível atualizar a assinatura após o pagamento." });
-      }
-    }
-    if (["refunded", "charged_back"].includes(providerStatus) && localPayment.status === "APPROVED") {
-      const { error: revokeError } = await admin.from("association_subscriptions").update({
-        status: "payment_required", current_period_end: new Date().toISOString(), updated_at: new Date().toISOString(),
-      }).eq("id", localPayment.subscription_id).eq("status", "active");
-      if (revokeError) return json(500, { ok: false, error: "Não foi possível atualizar a assinatura após o estorno." });
+    const { data: applied, error: applyError } = await admin.rpc("apply_mercadopago_payment_event", {
+      _payment_id: localPayment.id,
+      _provider_payment_id: String(mpPayment.id),
+      _provider_status: providerStatus,
+      _paid_at: paidAt,
+    });
+    if (applyError || !applied?.ok) {
+      console.error("mercadopago-webhook apply error", applyError?.message || "atomic application failed");
+      await admin.from("mercadopago_webhook_events")
+        .update({ processing_error: "Falha ao aplicar evento de pagamento." })
+        .eq("provider_event_id", eventKey);
+      return json(500, { ok: false, error: "Não foi possível aplicar o evento de pagamento." });
     }
     await admin.from("mercadopago_webhook_events").update({ processed: true, processed_at: new Date().toISOString() }).eq("provider_event_id", eventKey);
     return json(200, { ok: true });
