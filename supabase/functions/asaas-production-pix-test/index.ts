@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { createClient } from "npm:@supabase/supabase-js@2";
 const cors = {"Access-Control-Allow-Origin":"https://devkove.github.io","Access-Control-Allow-Headers":"authorization, apikey, content-type, x-client-info, x-supabase-api-version","Access-Control-Allow-Methods":"POST, OPTIONS","Access-Control-Max-Age":"86400","Vary":"Origin"};
 const json=(body:unknown,status=200)=>new Response(JSON.stringify(body),{status,headers:{...cors,"Content-Type":"application/json"}});
@@ -19,7 +20,7 @@ Deno.serve(async(req:Request)=>{
   const [{data:profile,error:pe},{data:roles,error:re}]=await Promise.all([admin.from("profiles").select("account_status").eq("id",uid).maybeSingle(),admin.from("user_roles").select("role").eq("user_id",uid)]);
   if(pe||re)return json({ok:false,error:"Não foi possível validar as permissões."},500);
   if(profile?.account_status!=="approved"||!roles?.some((r:{role:string})=>r.role==="platform_admin"))return json({ok:false,error:"Apenas administradores aprovados da plataforma podem executar este teste."},403);
-  let input:Record<string,unknown>;try{input=await req.json();}catch{return json({ok:false,error:"JSON inválido."},400);}
+  let input:Record<string,unknown>;try{input=await req.json();}catch(parseError){console.warn("Invalid JSON request", parseError instanceof Error ? parseError.message : "unknown");return json({ok:false,error:"JSON inválido."},400);}
   const name=clean(input.name),cpf=digits(clean(input.cpf)),email=clean(input.email).toLowerCase(),phone=digits(clean(input.phone));
   if(name.length<3||name.length>100)return json({ok:false,error:"Informe seu nome completo."},422);
   if(!validCpf(cpf))return json({ok:false,error:"CPF inválido."},422);
@@ -30,13 +31,13 @@ Deno.serve(async(req:Request)=>{
   if(priorErr)return json({ok:false,error:"Falha ao consultar o registro de idempotência."},500);
   if(prior?.provider_payment_id){
    let row=prior;
-   if(!clean(row.pix_copy_paste)||!clean(row.pix_qr_code_image)){try{const r=await fetch("https://api.asaas.com/v3/payments/"+encodeURIComponent(row.provider_payment_id)+"/pixQrCode",{headers:{"access_token":key},signal:AbortSignal.timeout(20000)});const p=await r.json().catch(()=>({}));if(r.ok&&(clean(p.payload)||clean(p.encodedImage))){const {data:saved,error}=await admin.from("asaas_production_test_charges").update({pix_copy_paste:clean(p.payload)||null,pix_qr_code_image:clean(p.encodedImage)||null,updated_at:new Date().toISOString()}).eq("id",row.id).select("*").single();if(!error&&saved)row=saved;}}catch{}}
+   if(!clean(row.pix_copy_paste)||!clean(row.pix_qr_code_image)){try{const r=await fetch("https://api.asaas.com/v3/payments/"+encodeURIComponent(row.provider_payment_id)+"/pixQrCode",{headers:{"access_token":key},signal:AbortSignal.timeout(20000)});const p=await r.json().catch(()=>({}));if(r.ok&&(clean(p.payload)||clean(p.encodedImage))){const {data:saved,error}=await admin.from("asaas_production_test_charges").update({pix_copy_paste:clean(p.payload)||null,pix_qr_code_image:clean(p.encodedImage)||null,updated_at:new Date().toISOString()}).eq("id",row.id).select("*").single();if(!error&&saved)row=saved;}}catch(recoveryError){console.warn("PIX payload recovery failed", recoveryError instanceof Error ? recoveryError.message : "unknown");}}
    return json({ok:true,reused:true,payment:{id:row.id,status:row.status,amount:2,invoice_url:row.invoice_url,pix_copy_paste:row.pix_copy_paste,pix_qr_code_image:row.pix_qr_code_image,provider_payment_id:row.provider_payment_id}});
   }
   if(prior)return json({ok:false,error:"Existe uma tentativa sem confirmação. Nova cobrança bloqueada; concilie no Asaas antes de continuar."},409);
   const {data:reservation,error:reserveErr}=await admin.from("asaas_production_test_charges").insert({created_by:uid,test_key:testKey,amount:2,status:"CREATING"}).select("*").single();
   if(reserveErr||!reservation)return json({ok:false,error:"Não foi possível reservar o teste com segurança."},409);
-  const api=async(path:string,body?:unknown)=>{const r=await fetch("https://api.asaas.com/v3"+path,{method:body===undefined?"GET":"POST",headers:{"access_token":key,"Content-Type":"application/json"},...(body===undefined?{}:{body:JSON.stringify(body)}),signal:AbortSignal.timeout(20000)});const raw=await r.text();let data:any={};try{data=raw?JSON.parse(raw):{};}catch{}if(!r.ok){const detail=Array.isArray(data.errors)?data.errors.map((e:any)=>clean(e.description)||clean(e.code)).filter(Boolean).join("; "):"";throw new Error(detail||"O Asaas recusou a operação.");}return data;};
+  const api=async(path:string,body?:unknown)=>{const r=await fetch("https://api.asaas.com/v3"+path,{method:body===undefined?"GET":"POST",headers:{"access_token":key,"Content-Type":"application/json"},...(body===undefined?{}:{body:JSON.stringify(body)}),signal:AbortSignal.timeout(20000)});const raw=await r.text();let data:any={};try{data=raw?JSON.parse(raw):{};}catch(parseError){console.warn("Asaas returned invalid JSON", parseError instanceof Error ? parseError.message : "unknown");}if(!r.ok){const detail=Array.isArray(data.errors)?data.errors.map((e:any)=>clean(e.description)||clean(e.code)).filter(Boolean).join("; "):"";throw new Error(detail||"O Asaas recusou a operação.");}return data;};
   try{
    const lookup=await api("/customers?cpfCnpj="+encodeURIComponent(cpf)+"&limit=10");let customer=Array.isArray(lookup.data)?lookup.data.find((c:any)=>digits(clean(c.cpfCnpj))===cpf):null;
    if(!customer?.id)customer=await api("/customers",{name,cpfCnpj:cpf,email,...(phone?{mobilePhone:phone}:{})});
