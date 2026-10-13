@@ -75,6 +75,13 @@ Deno.serve(async (req: Request) => {
       });
     }
 
+    // Fail closed: never allow an unknown credential format to create checkout.
+    const isTestEnvironment = accessToken.startsWith("TEST-");
+    const isProductionEnvironment = accessToken.startsWith("APP_USR-");
+    if (!isTestEnvironment && !isProductionEnvironment) {
+      return response(503, { ok: false, error: "Ambiente da credencial do Mercado Pago não identificado. Checkout bloqueado por segurança." });
+    }
+
     const { data: subscription, error: subError } = await admin.from("association_subscriptions")
       .select("id,association_id,plan_code,status,trial_ends_at,current_period_end,billing_email")
       .eq("association_id", associationId).maybeSingle();
@@ -145,11 +152,22 @@ Deno.serve(async (req: Request) => {
       body: JSON.stringify(preferencePayload),
     });
     const mpData = await mpResponse.json().catch(() => ({}));
-    if (!mpResponse.ok || !mpData.id || !(mpData.init_point || mpData.sandbox_init_point)) {
-      await admin.from("mercadopago_subscription_payments").update({ status: "FAILED", provider_status: `preference_error_${mpResponse.status}`, updated_at: new Date().toISOString() }).eq("id", paymentId);
-      return response(502, { ok: false, error: "O Mercado Pago não conseguiu gerar o checkout. Nenhuma cobrança foi confirmada." });
+    // Test credentials must use sandbox_init_point exclusively; production credentials
+    // must use init_point exclusively. Never fall back across environments.
+    const checkoutUrl = isTestEnvironment ? mpData.sandbox_init_point : mpData.init_point;
+    if (!mpResponse.ok || !mpData.id || typeof checkoutUrl !== "string" || !checkoutUrl.startsWith("https://")) {
+      await admin.from("mercadopago_subscription_payments").update({
+        status: "FAILED",
+        provider_status: `preference_error_${mpResponse.status || "invalid_checkout_url"}`,
+        updated_at: new Date().toISOString(),
+      }).eq("id", paymentId);
+      return response(502, {
+        ok: false,
+        error: isTestEnvironment
+          ? "O Mercado Pago não retornou um checkout de teste válido. Nenhuma cobrança foi confirmada."
+          : "O Mercado Pago não conseguiu gerar o checkout. Nenhuma cobrança foi confirmada.",
+      });
     }
-    const checkoutUrl = accessToken.startsWith("TEST-") ? (mpData.sandbox_init_point || mpData.init_point) : mpData.init_point;
     await admin.from("mercadopago_subscription_payments").update({
       provider_preference_id: String(mpData.id), checkout_url: checkoutUrl, status: "PENDING",
       provider_status: "preference_created", updated_at: new Date().toISOString(),
