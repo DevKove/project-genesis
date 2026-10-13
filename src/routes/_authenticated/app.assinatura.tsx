@@ -52,6 +52,8 @@ function SubscriptionPage() {
   const [billingEmail, setBillingEmail] = useState("");
   const [saving, setSaving] = useState(false);
   const [paymentLoading, setPaymentLoading] = useState(false);
+  const [diagnosticLoading, setDiagnosticLoading] = useState(false);
+  const [diagnosticResult, setDiagnosticResult] = useState<{ ok: boolean; message: string; account_id?: string; country_id?: string | null; site_id?: string | null; credential_environment?: string } | null>(null);
 
   const plans = useQuery({
     queryKey: ["subscription-plans"],
@@ -164,6 +166,38 @@ function SubscriptionPage() {
       toast.error(error instanceof Error ? error.message : "Não foi possível alterar o plano.");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function runPaymentDiagnostic() {
+    if (!associationId || diagnosticLoading) return;
+    setDiagnosticLoading(true);
+    setDiagnosticResult(null);
+    try {
+      const { data, error } = await supabase.functions.invoke("mercadopago-create-payment", {
+        body: { association_id: associationId, action: "diagnostic" },
+      });
+      if (error) throw error;
+      if (!data?.diagnostic) throw new Error(data?.error || "O servidor não retornou um diagnóstico válido.");
+      if (!data.ok) {
+        setDiagnosticResult({ ok: false, message: data.error || "A validação da integração falhou." });
+        return;
+      }
+      setDiagnosticResult({
+        ok: true,
+        message: data.message || "Credencial aceita pelo Mercado Pago.",
+        account_id: data.account_id,
+        country_id: data.country_id,
+        site_id: data.site_id,
+        credential_environment: data.credential_environment,
+      });
+    } catch (error) {
+      setDiagnosticResult({
+        ok: false,
+        message: error instanceof Error ? error.message : "Não foi possível executar o diagnóstico. Confira a implantação da função.",
+      });
+    } finally {
+      setDiagnosticLoading(false);
     }
   }
 
@@ -332,9 +366,34 @@ function SubscriptionPage() {
             <div className="rounded-lg border bg-background p-4"><p className="text-xs text-muted-foreground">Início do teste</p><p className="mt-1 font-semibold">{dateTime(subscription.data.trial_started_at)}</p></div>
             <div className="rounded-lg border bg-background p-4"><p className="text-xs text-muted-foreground">Fim do teste</p><p className="mt-1 font-semibold">{dateTime(subscription.data.trial_ends_at)}</p></div>
           </div>
-          <p className="mt-4 text-sm text-muted-foreground">{trialExpired ? "O período de teste terminou. A integração de pagamentos será configurada em uma etapa separada." : "A avaliação é concedida uma única vez por associação e não pode ser reiniciada."}</p>
+          <p className="mt-4 text-sm text-muted-foreground">{trialExpired ? "O período de avaliação terminou. Verifique a integração abaixo antes de liberar o fluxo de pagamento. Nenhuma cobrança é criada por este diagnóstico." : "A avaliação é concedida uma única vez por associação e não pode ser reiniciada."}</p>
         </section>
       )}
+
+      <section className="rounded-xl border bg-card p-5 sm:p-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex items-start gap-3">
+            <ShieldCheck className="mt-1 h-5 w-5 shrink-0 text-primary" />
+            <div>
+              <h2 className="font-semibold">Diagnóstico do Mercado Pago</h2>
+              <p className="mt-1 max-w-2xl text-sm text-muted-foreground">Valida a credencial configurada no servidor e consulta os dados básicos da conta. Este teste não cria cobranças, preferências de checkout nem registros financeiros.</p>
+            </div>
+          </div>
+          <Button type="button" variant="outline" onClick={() => void runPaymentDiagnostic()} disabled={diagnosticLoading || !associationId} className="shrink-0">
+            {diagnosticLoading ? <><LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> Verificando…</> : "Verificar integração"}
+          </Button>
+        </div>
+        {diagnosticResult && <div role="status" aria-live="polite" className={`mt-4 rounded-lg border p-4 text-sm ${diagnosticResult.ok ? "border-emerald-500/40 bg-emerald-500/5" : "border-destructive/40 bg-destructive/5"}`}>
+          <p className="font-semibold">{diagnosticResult.ok ? "Credencial validada" : "Não foi possível validar a integração"}</p>
+          <p className="mt-1">{diagnosticResult.message}</p>
+          {diagnosticResult.ok && <dl className="mt-3 grid gap-2 sm:grid-cols-2">
+            <div><dt className="text-muted-foreground">ID da conta</dt><dd className="font-medium">{diagnosticResult.account_id ?? "Não informado"}</dd></div>
+            <div><dt className="text-muted-foreground">Ambiente identificado pelo prefixo</dt><dd className="font-medium">{diagnosticResult.credential_environment ?? "Não identificado"}</dd></div>
+            <div><dt className="text-muted-foreground">País</dt><dd className="font-medium">{diagnosticResult.country_id ?? "Não informado"}</dd></div>
+            <div><dt className="text-muted-foreground">Site do Mercado Pago</dt><dd className="font-medium">{diagnosticResult.site_id ?? "Não informado"}</dd></div>
+          </dl>}
+        </div>}
+      </section>
 
       <div className="flex items-end justify-between gap-3"><div><h2 className="text-xl font-semibold">Compare os planos</h2><p className="mt-1 text-sm text-muted-foreground">Preços por morador ativo, cobrados mensalmente por associação.</p></div></div>
       {plans.isLoading ? <div className="flex items-center gap-2 py-10 text-sm text-muted-foreground"><LoaderCircle className="h-4 w-4 animate-spin" /> Carregando planos…</div> : plans.isError ? <div role="alert" className="rounded-lg border p-4 text-sm">Não foi possível carregar os planos. <Button variant="link" onClick={() => void plans.refetch()}>Tentar novamente</Button></div> : (
@@ -371,7 +430,7 @@ function SubscriptionPage() {
             <div className="sm:col-span-2 rounded-lg bg-muted/50 p-4 text-sm"><p className="font-medium">Resumo do plano {selected?.name ?? ""}</p><p className="mt-1 text-muted-foreground">{activeCount} moradores ativos × {brl(selected?.price_per_member_monthly ?? 0)} = <strong className="text-foreground">{brl(monthlyEstimate)}/mês</strong> após o teste. Nenhuma cobrança será iniciada por esta tela.</p></div>
             <Button type="submit" className="sm:col-span-2" disabled={saving || !selected || !account.data?.emailConfirmed || subscription.isLoading || !residents.data && residents.isLoading}>{saving ? <><LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> Ativando teste…</> : "Começar teste gratuito de 10 dias"}</Button>
           </form>
-          <p className="mt-4 text-xs text-muted-foreground">Importante: o teste gratuito não gera cobrança. A integração com o novo provedor de pagamentos será configurada separadamente.</p>
+          <p className="mt-4 text-xs text-muted-foreground">Importante: o teste gratuito não gera cobrança. A verificação de integração está disponível no painel administrativo e não cria pagamentos.</p>
         </section>
       )}
     </div>

@@ -42,7 +42,38 @@ Deno.serve(async (req: Request) => {
       .in("role", ["admin", "presidente", "tesoureiro"]).maybeSingle();
     const { data: platformAdmin } = await admin.from("user_roles").select("user_id")
       .eq("user_id", userData.user.id).eq("role", "platform_admin").maybeSingle();
-    if (!membership && !platformAdmin) return response(403, { ok: false, error: "Somente um responsável autorizado pode gerar a cobrança." });
+    if (!membership && !platformAdmin) return response(403, { ok: false, error: "Somente um responsável autorizado pode consultar a integração." });
+
+    // Diagnóstico sem efeitos financeiros: valida o token consultando /users/me.
+    // Este caminho não cria preferência, cobrança ou registro financeiro.
+    if (body.action === "diagnostic") {
+      const mpResponse = await fetch("https://api.mercadopago.com/users/me", {
+        method: "GET",
+        headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+      });
+      const mpData = await mpResponse.json().catch(() => ({}));
+      if (!mpResponse.ok || !mpData.id) {
+        console.error("Mercado Pago diagnostic failed", { status: mpResponse.status, cause: mpData?.message ?? mpData?.error ?? "unknown" });
+        return response(502, {
+          ok: false,
+          diagnostic: true,
+          provider_status: mpResponse.status,
+          error: mpResponse.status === 401 || mpResponse.status === 403
+            ? "O Mercado Pago recusou a credencial configurada. Revise a credencial no servidor."
+            : "Não foi possível validar a conta no Mercado Pago. Verifique a disponibilidade do provedor.",
+        });
+      }
+      return response(200, {
+        ok: true,
+        diagnostic: true,
+        provider: "Mercado Pago",
+        account_id: String(mpData.id),
+        country_id: typeof mpData.country_id === "string" ? mpData.country_id : null,
+        site_id: typeof mpData.site_id === "string" ? mpData.site_id : null,
+        credential_environment: accessToken.startsWith("TEST-") ? "teste" : accessToken.startsWith("APP_USR-") ? "produção" : "não identificado",
+        message: "Credencial aceita pelo Mercado Pago. Nenhuma cobrança ou preferência foi criada.",
+      });
+    }
 
     const { data: subscription, error: subError } = await admin.from("association_subscriptions")
       .select("id,association_id,plan_code,status,trial_ends_at,current_period_end,billing_email")
