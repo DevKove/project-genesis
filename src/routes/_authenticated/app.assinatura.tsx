@@ -56,6 +56,12 @@ function SubscriptionPage() {
   const [billingType, setBillingType] = useState<"PIX" | "BOLETO">("PIX");
   const [dueDate, setDueDate] = useState(() => new Date(Date.now() + 5 * 86400000).toISOString().slice(0, 10));
   const [createdPayment, setCreatedPayment] = useState<{ id?: string; status?: string; amount?: number; due_date?: string; invoice_url?: string | null; bank_slip_url?: string | null; pix_copy_paste?: string | null; pix_qr_code_image?: string | null; provider_payment_id?: string | null } | null>(null);
+  const [productionTestName, setProductionTestName] = useState("");
+  const [productionTestCpf, setProductionTestCpf] = useState("");
+  const [productionTestEmail, setProductionTestEmail] = useState("");
+  const [productionTestPhone, setProductionTestPhone] = useState("");
+  const [creatingProductionTest, setCreatingProductionTest] = useState(false);
+  const [productionTestPayment, setProductionTestPayment] = useState<{ id?: string; status?: string; amount?: number; invoice_url?: string | null; pix_copy_paste?: string | null; pix_qr_code_image?: string | null; provider_payment_id?: string | null } | null>(null);
 
   const plans = useQuery({
     queryKey: ["subscription-plans"],
@@ -182,6 +188,31 @@ function SubscriptionPage() {
       toast.error(error instanceof Error ? error.message : "Falha ao gerar cobrança no Sandbox.");
     } finally {
       setCreatingBilling(false);
+    }
+  }
+
+  async function createProductionPixTest() {
+    if (!canManage || creatingProductionTest) return;
+    if (!productionTestName.trim() || !isValidCPF(productionTestCpf) || !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(productionTestEmail.trim())) {
+      toast.error("Informe nome completo, CPF válido e e-mail para o teste.");
+      return;
+    }
+    const confirmed = window.confirm("ATENÇÃO: isso solicitará uma cobrança Pix REAL de R$ 2,00 no Asaas de Produção. O valor poderá ser pago e movimentará dinheiro real. Confirma que deseja continuar?");
+    if (!confirmed) return;
+    setCreatingProductionTest(true);
+    setProductionTestPayment(null);
+    try {
+      const { data, error } = await supabase.functions.invoke("asaas-production-pix-test", {
+        body: { name: productionTestName.trim(), cpf: productionTestCpf.replace(/\\D/g, ""), email: productionTestEmail.trim().toLowerCase(), phone: productionTestPhone.replace(/\\D/g, "") },
+      });
+      if (error) throw error;
+      if (!data?.ok) throw new Error(data?.error || "Não foi possível preparar a cobrança Pix de Produção.");
+      setProductionTestPayment(data.payment ?? null);
+      toast.success(data.reused ? "Cobrança de teste existente recuperada; nenhuma duplicata foi criada." : "Cobrança real de R$ 2,00 criada no Asaas.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Falha no teste Pix de Produção.");
+    } finally {
+      setCreatingProductionTest(false);
     }
   }
 
@@ -365,6 +396,35 @@ function SubscriptionPage() {
               </div>
               {createdPayment.pix_copy_paste && <div className="space-y-2"><Label htmlFor="sandbox-pix-copy">Pix copia e cola</Label><textarea id="sandbox-pix-copy" className="min-h-24 w-full rounded-md border bg-background p-3 text-xs" readOnly value={createdPayment.pix_copy_paste} /><Button variant="outline" onClick={async () => { try { await navigator.clipboard.writeText(createdPayment.pix_copy_paste ?? ""); toast.success("Código Pix copiado."); } catch { toast.error("Não foi possível copiar automaticamente."); } }}>Copiar código Pix</Button></div>}
               {createdPayment.pix_qr_code_image && <img className="max-h-56 rounded-lg border bg-white p-2" alt="QR Code Pix da cobrança Sandbox" src={`data:image/png;base64,${createdPayment.pix_qr_code_image}`} />}
+            </div>
+          )}
+        </section>
+      )}
+
+      {canManage && (
+        <section className="space-y-4 rounded-2xl border border-amber-500/40 bg-card p-5 sm:p-6">
+          <div>
+            <h2 className="text-lg font-semibold">Teste Pix real — Asaas Produção</h2>
+            <p className="mt-1 text-sm text-muted-foreground">Fluxo separado do Sandbox e do faturamento das associações. Valor fixo de R$ 2,00, destinado a testar o recebimento na sua própria conta.</p>
+            <p className="mt-2 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-sm">A cobrança movimenta dinheiro real. Nunca informe sua chave de API aqui. O nome, CPF e e-mail abaixo serão enviados ao Asaas para identificar você como pagador.</p>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2"><Label htmlFor="prod-test-name">Nome completo</Label><Input id="prod-test-name" autoComplete="name" value={productionTestName} onChange={(e) => setProductionTestName(e.target.value)} maxLength={100} required /></div>
+            <div className="space-y-2"><Label htmlFor="prod-test-cpf">Seu CPF</Label><Input id="prod-test-cpf" autoComplete="off" inputMode="numeric" value={productionTestCpf} onChange={(e) => setProductionTestCpf(e.target.value)} placeholder="Somente para identificar o pagador" maxLength={14} required /></div>
+            <div className="space-y-2"><Label htmlFor="prod-test-email">E-mail</Label><Input id="prod-test-email" type="email" autoComplete="email" value={productionTestEmail} onChange={(e) => setProductionTestEmail(e.target.value)} maxLength={254} required /></div>
+            <div className="space-y-2"><Label htmlFor="prod-test-phone">Celular (opcional)</Label><Input id="prod-test-phone" type="tel" autoComplete="tel" value={productionTestPhone} onChange={(e) => setProductionTestPhone(e.target.value)} placeholder="DDD + número" maxLength={20} /></div>
+          </div>
+          <Button className="w-full sm:w-auto" variant="outline" onClick={() => void createProductionPixTest()} disabled={creatingProductionTest || !productionTestName.trim() || !productionTestCpf.trim() || !productionTestEmail.trim()}>
+            {creatingProductionTest ? <><LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> Preparando cobrança…</> : <><CreditCard className="mr-2 h-4 w-4" /> Gerar cobrança real de R$ 2,00</>}
+          </Button>
+          <p className="text-xs text-muted-foreground">A emissão permanece bloqueada no servidor até a função de Produção ser implantada, os segredos serem configurados e a chave de ativação ser habilitada. A tela pede confirmação adicional antes de enviar a solicitação.</p>
+          {productionTestPayment && (
+            <div className="space-y-3 rounded-xl border bg-muted/30 p-4">
+              <div className="flex flex-wrap items-center justify-between gap-2"><h3 className="font-semibold">Cobrança Pix de Produção</h3><span className="rounded-full border bg-background px-3 py-1 text-xs font-semibold">{productionTestPayment.status ?? "PENDING"}</span></div>
+              <p className="text-sm">Valor: <strong>{brl(Number(productionTestPayment.amount ?? 2))}</strong></p>
+              {productionTestPayment.invoice_url && <a className="text-sm font-medium text-primary underline underline-offset-4" href={productionTestPayment.invoice_url} target="_blank" rel="noreferrer">Abrir fatura Asaas</a>}
+              {productionTestPayment.pix_copy_paste && <div className="space-y-2"><Label htmlFor="prod-test-pix-copy">Pix copia e cola</Label><textarea id="prod-test-pix-copy" className="min-h-24 w-full rounded-md border bg-background p-3 text-xs" readOnly value={productionTestPayment.pix_copy_paste} /><Button variant="outline" onClick={async () => { try { await navigator.clipboard.writeText(productionTestPayment.pix_copy_paste ?? ""); toast.success("Código Pix copiado."); } catch { toast.error("Não foi possível copiar automaticamente."); } }}>Copiar código Pix</Button></div>}
+              {productionTestPayment.pix_qr_code_image && <img className="max-h-56 rounded-lg border bg-white p-2" alt="QR Code Pix de Produção" src={`data:image/png;base64,${productionTestPayment.pix_qr_code_image}`} />}
             </div>
           )}
         </section>
