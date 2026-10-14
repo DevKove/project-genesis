@@ -83,10 +83,10 @@ Deno.serve(async (req: Request) => {
     // nothing to the database, so no subscription or payment row is ever changed.
     if (body.action === "sandbox_checkout") {
       if (!platformAdmin) return response(403, { ok: false, sandbox: true, error: "Somente administradores da plataforma podem testar o checkout." });
-      if (!testAccessToken || !testAccessToken.startsWith("TEST-")) {
+      if (!testAccessToken) {
         return response(409, {
           ok: false, sandbox: true, requires_test_credential: true,
-          error: "A credencial configurada no servidor não é de teste (prefixo TEST-). Por segurança, nenhum checkout foi criado. Configure uma credencial de teste do Mercado Pago no servidor para usar este teste.",
+          error: "A credencial de teste do Mercado Pago não está configurada no servidor. Configure o Access Token de teste em MERCADOPAGO_TEST_ACCESS_TOKEN. Não use nem substitua a credencial de produção.",
         });
       }
       const testRef = `sandbox-${crypto.randomUUID()}`;
