@@ -60,6 +60,35 @@ function Shell({ email, userId }: { email: string; userId: string }) {
     },
     refetchInterval: 60000,
   });
+  const planEntitlements = useQuery({
+    queryKey: ["association-plan-entitlements", current?.association_id, userId],
+    enabled: Boolean(current?.association_id),
+    queryFn: async () => {
+      const features = ["documents", "vendors", "audit", "settings", "notifications"] as const;
+      const entries = await Promise.all(features.map(async (feature) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data, error } = await (supabase as any).rpc("has_association_feature", {
+          _association_id: current!.association_id,
+          _feature: feature,
+        });
+        if (error) throw error;
+        return [feature, data === true] as const;
+      }));
+      return Object.fromEntries(entries) as Record<(typeof features)[number], boolean>;
+    },
+    refetchInterval: 60000,
+  });
+  const requiredFeature: "documents" | "vendors" | "audit" | "settings" | null =
+    pathname.startsWith("/app/documentos") ? "documents"
+    : pathname.startsWith("/app/prestadores") ? "vendors"
+    : pathname.startsWith("/app/auditoria") ? "audit"
+    : pathname.startsWith("/app/configuracoes") ? "settings"
+    : null;
+  const featureBlocked = Boolean(requiredFeature && (
+    planEntitlements.isError ||
+    (planEntitlements.isSuccess && planEntitlements.data?.[requiredFeature] !== true)
+  ));
+
   const pendingJoinRequests = useQuery({
     queryKey: ["association-join-requests-count", current?.association_id],
     enabled: Boolean(current?.association_id && current.role === "admin"),
@@ -152,16 +181,16 @@ function Shell({ email, userId }: { email: string; userId: string }) {
   const role = current.role;
   const visibleNav = nav.filter((item) => {
     if (item.to === "/app/admin-aprovacoes" || item.to === "/app/admin-perfis") return Boolean(platformAdmin.data);
-    if (item.to === "/app/auditoria") return canSeeAudit(role);
-    if (item.to === "/app/configuracoes") return role === "admin" || role === "presidente";
+    if (item.to === "/app/auditoria") return canSeeAudit(role) && planEntitlements.data?.audit === true;
+    if (item.to === "/app/configuracoes") return (role === "admin" || role === "presidente") && planEntitlements.data?.settings === true;
     if (item.to === "/app/unidades") return canManageUnits(role);
     if (item.to === "/app/moradores") return canManageResidents(role);
     if (item.to === "/app/comunicados") return true;
-    if (item.to === "/app/documentos") return true;
+    if (item.to === "/app/documentos") return planEntitlements.data?.documents === true;
     if (item.to === "/app/ocorrencias") return true;
     if (item.to === "/app/solicitacoes") return true;
     if (item.to === "/app/membros") return role === "admin" || canInvite(role);
-    if (item.to === "/app/prestadores") return canManageVendors(role);
+    if (item.to === "/app/prestadores") return canManageVendors(role) && planEntitlements.data?.vendors === true;
     return true;
   });
   const associationLogo = current.associations?.logo_url;
@@ -212,9 +241,23 @@ function Shell({ email, userId }: { email: string; userId: string }) {
             </Sheet>
             <div className="min-w-0"><div className="flex items-center gap-2 text-xs text-muted-foreground">{platformAdmin.data && <span className="rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 font-medium text-primary">Administração global</span>}<span className="hidden sm:inline">Associação</span><ChevronRight className="hidden h-3 w-3 sm:block" /><span className="truncate">{current.associations?.name ?? "Morada360"}</span></div><p className="mt-1 truncate text-sm font-semibold">{activePage}</p></div>
           </div>
-          <NotificationCenter userId={userId} />
+          {planEntitlements.data?.notifications === true && <NotificationCenter userId={userId} />}
         </header>
-        <main id="app-main" tabIndex={-1} className="app-content mx-auto max-w-[1440px] px-4 py-6 sm:px-6 sm:py-8 lg:px-10 lg:py-10"><Outlet key={current.association_id} /></main>
+        <main id="app-main" tabIndex={-1} className="app-content mx-auto max-w-[1440px] px-4 py-6 sm:px-6 sm:py-8 lg:px-10 lg:py-10">
+          {requiredFeature && planEntitlements.isLoading ? (
+            <div className="rounded-xl border bg-card p-6 text-sm text-muted-foreground">Verificando recursos disponíveis no plano…</div>
+          ) : featureBlocked ? (
+            <section className="mx-auto max-w-2xl rounded-2xl border bg-card p-6 sm:p-8">
+              <ShieldCheck className="mb-4 h-9 w-9 text-primary" />
+              <h1 className="text-xl font-semibold">{planEntitlements.isError ? "Não foi possível verificar seu plano" : "Recurso não incluído no plano atual"}</h1>
+              <p className="mt-2 text-sm leading-6 text-muted-foreground">{planEntitlements.isError ? "O acesso a este módulo foi bloqueado por segurança porque não foi possível confirmar as permissões. Tente novamente." : "Este módulo exige um plano que inclua esse recurso e uma assinatura ativa. Seus dados foram preservados; consulte os planos disponíveis para solicitar uma mudança."}</p>
+              <div className="mt-5 flex flex-wrap gap-3">
+                {planEntitlements.isError && <Button variant="outline" onClick={() => void planEntitlements.refetch()}>Tentar novamente</Button>}
+                <Button asChild><Link to="/app/assinatura">Consultar planos e assinatura</Link></Button>
+              </div>
+            </section>
+          ) : <Outlet key={current.association_id} />}
+        </main>
         {chatEntitlement.data === true && <AssociationChat key={current.association_id} associationId={current.association_id} userId={userId} associationName={current.associations?.name ?? "Associação"} />}
       </div>
     </div>
