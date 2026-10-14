@@ -212,7 +212,7 @@ function SubscriptionPage() {
     }
   }
 
-  async function startTrial(event: React.FormEvent<HTMLFormElement>) {
+  async function initializeSubscription(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!associationId || !canManage || !selected) return;
     if (!isValidCPF(cpf)) {
@@ -224,13 +224,13 @@ function SubscriptionPage() {
       return;
     }
     if (!account.data?.emailConfirmed || !account.data.email) {
-      toast.error("Confirme o e-mail da sua conta antes de iniciar o teste gratuito.");
+      toast.error("Confirme o e-mail da sua conta antes de configurar a cobrança.");
       return;
     }
     setSaving(true);
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error } = await (supabase as any).rpc("start_association_trial", {
+      const { error } = await (supabase as any).rpc("initialize_association_subscription", {
         _association_id: associationId,
         _plan_code: selected.code,
         _responsible_cpf: cpf.replace(/\D/g, ""),
@@ -241,10 +241,10 @@ function SubscriptionPage() {
         if (msg.includes("já está vinculado") || msg.includes("já possui")) toast.error(msg);
         else if (msg.includes("Confirme o e-mail")) toast.error(msg);
         else if (msg.includes("CPF")) toast.error("O CPF informado é inválido ou já está vinculado a outra assinatura.");
-        else toast.error(msg || "Não foi possível iniciar o teste. Confira os dados e as permissões de administrador do sistema.");
+        else toast.error(msg || "Não foi possível configurar a assinatura. Confira os dados e as permissões de administrador do sistema.");
         return;
       }
-      toast.success("Teste gratuito iniciado! Você tem 10 dias para conhecer o Morada360.");
+      toast.success("Plano configurado. A associação já pode iniciar a primeira cobrança.");
       setCpf("");
       setBillingEmail("");
       await Promise.all([
@@ -252,7 +252,7 @@ function SubscriptionPage() {
         queryClient.invalidateQueries({ queryKey: ["subscription-plans"] }),
       ]);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Não foi possível iniciar o teste.");
+      toast.error(error instanceof Error ? error.message : "Não foi possível configurar a assinatura.");
     } finally {
       setSaving(false);
     }
@@ -467,15 +467,15 @@ function SubscriptionPage() {
 
       {!subscription.data && (
         <section className="rounded-2xl border bg-card p-5 sm:p-7">
-          <div className="mb-5 flex items-start gap-3"><span className="rounded-xl bg-primary/10 p-3 text-primary"><MailCheck className="h-5 w-5" /></span><div><h2 className="text-lg font-semibold">Inicie os 10 dias de avaliação</h2><p className="mt-1 text-sm text-muted-foreground">A avaliação deve ser iniciada pelo administrador do sistema. Cada associação pode receber somente um período de avaliação.</p></div></div>
+          <div className="mb-5 flex items-start gap-3"><span className="rounded-xl bg-primary/10 p-3 text-primary"><MailCheck className="h-5 w-5" /></span><div><h2 className="text-lg font-semibold">Configurar primeira assinatura</h2><p className="mt-1 text-sm text-muted-foreground">O teste gratuito está desativado. Configure o plano e os dados de faturamento para liberar a primeira cobrança da associação.</p></div></div>
           {!account.data?.emailConfirmed && <p role="alert" className="mb-4 rounded-lg border border-amber-500/40 bg-amber-500/5 p-3 text-sm">Antes de continuar, confirme o e-mail da sua conta. O sistema só aceita um endereço confirmado pelo processo de autenticação.</p>}
-          <form onSubmit={startTrial} className="grid gap-4 sm:grid-cols-2">
-            <div><Label htmlFor="billing-cpf">CPF do responsável financeiro</Label><Input id="billing-cpf" autoComplete="off" inputMode="numeric" placeholder="000.000.000-00" value={cpf} onChange={(event) => setCpf(maskInputCPF(event.target.value))} required maxLength={14} /><p className="mt-1 text-xs text-muted-foreground">Validado pelo sistema antes de registrar o teste.</p></div>
+          <form onSubmit={initializeSubscription} className="grid gap-4 sm:grid-cols-2">
+            <div><Label htmlFor="billing-cpf">CPF do responsável financeiro</Label><Input id="billing-cpf" autoComplete="off" inputMode="numeric" placeholder="000.000.000-00" value={cpf} onChange={(event) => setCpf(maskInputCPF(event.target.value))} required maxLength={14} /><p className="mt-1 text-xs text-muted-foreground">Validado pelo sistema antes de configurar a cobrança.</p></div>
             <div><Label htmlFor="billing-email">E-mail de faturamento da associação</Label><Input id="billing-email" type="email" autoComplete="email" placeholder="financeiro@associacao.org.br" value={billingEmail} onChange={(event) => setBillingEmail(event.target.value)} required /><p className="mt-1 text-xs text-muted-foreground">Informe o contato financeiro desta associação. O endereço deve ser único entre as assinaturas.</p></div>
-            <div className="sm:col-span-2 rounded-lg bg-muted/50 p-4 text-sm"><p className="font-medium">Resumo do plano {selected?.name ?? ""}</p><p className="mt-1 text-muted-foreground">{activeCount} moradores ativos × {brl(selected?.price_per_member_monthly ?? 0)} = <strong className="text-foreground">{brl(monthlyEstimate)}/mês</strong> após o teste. Nenhuma cobrança será iniciada por esta tela.</p></div>
-            <Button type="submit" className="sm:col-span-2" disabled={saving || !selected || !account.data?.emailConfirmed || subscription.isLoading || !residents.data && residents.isLoading}>{saving ? <><LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> Ativando teste…</> : "Começar teste gratuito de 10 dias"}</Button>
+            <div className="sm:col-span-2 rounded-lg bg-muted/50 p-4 text-sm"><p className="font-medium">Resumo do plano {selected?.name ?? ""}</p><p className="mt-1 text-muted-foreground">{activeCount} moradores ativos × {brl(selected?.price_per_member_monthly ?? 0)} = <strong className="text-foreground">{brl(monthlyEstimate)}/mês</strong>. Esta etapa apenas configura a assinatura; a cobrança só será criada quando o responsável financeiro escolher Pix ou cartão.</p></div>
+            <Button type="submit" className="sm:col-span-2" disabled={saving || !selected || !account.data?.emailConfirmed || subscription.isLoading || (!residents.data && residents.isLoading)}>{saving ? <><LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> Configurando…</> : "Configurar plano e liberar cobrança"}</Button>
           </form>
-          <p className="mt-4 text-xs text-muted-foreground">Importante: o teste gratuito não gera cobrança. A verificação de integração está disponível no painel administrativo e não cria pagamentos.</p>
+          <p className="mt-4 text-xs text-muted-foreground">Após configurar o plano, o responsável financeiro da associação poderá acessar “Meu plano e benefícios” para gerar a cobrança. Nenhuma cobrança é criada automaticamente nesta etapa.</p>
         </section>
       )}
     </div>
