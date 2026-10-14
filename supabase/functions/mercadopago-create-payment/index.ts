@@ -151,9 +151,70 @@ Deno.serve(async (req: Request) => {
     if (!Number.isFinite(amount) || amount <= 0) return response(409, { ok: false, error: "O valor calculado é zero. Cadastre moradores ativos e confira o plano antes de pagar." });
 
     const period = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString().slice(0, 10);
-    const { data: existing } = await admin.from("mercadopago_subscription_payments").select("*")
+    let { data: existing } = await admin.from("mercadopago_subscription_payments").select("*")
       .eq("association_id", associationId).eq("billing_period", period).maybeSingle();
     if (existing?.status === "APPROVED") return response(409, { ok: false, error: "Já existe um pagamento aprovado para este mês." });
+
+    // Ao solicitar um novo Pix, invalida primeiro a tentativa pendente anterior.
+    // Nunca limpa o registro local se o Mercado Pago não confirmar a invalidação.
+    if (paymentMethod === "pix" && existing?.status === "PENDING" && (existing.provider_payment_id || existing.provider_preference_id)) {
+      if (existing.provider_payment_id) {
+        const previousPaymentResponse = await fetch(`https://api.mercadopago.com/v1/payments/${encodeURIComponent(String(existing.provider_payment_id))}`, {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
+        const previousPayment = await previousPaymentResponse.json().catch(() => ({}));
+        if (!previousPaymentResponse.ok || !previousPayment.id) {
+          return response(502, { ok: false, error: "Não foi possível verificar o Pix anterior. Ele foi mantido para evitar duas cobranças ativas; tente novamente." });
+        }
+        const previousStatus = String(previousPayment.status ?? "").toLowerCase();
+        if (previousStatus === "approved") {
+          return response(409, { ok: false, error: "O Pix anterior já foi pago. Atualize a assinatura antes de gerar outra cobrança." });
+        }
+        if (["pending", "in_process", "authorized"].includes(previousStatus)) {
+          const cancelResponse = await fetch(`https://api.mercadopago.com/v1/payments/${encodeURIComponent(String(existing.provider_payment_id))}`, {
+            method: "PUT",
+            headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+            body: JSON.stringify({ status: "cancelled" }),
+          });
+          const cancelData = await cancelResponse.json().catch(() => ({}));
+          if (!cancelResponse.ok || String(cancelData.status ?? "").toLowerCase() !== "cancelled") {
+            console.error("Mercado Pago previous Pix cancellation failed", { status: cancelResponse.status });
+            return response(502, { ok: false, error: "O Mercado Pago não confirmou o cancelamento do Pix anterior. Nenhum Pix novo foi criado." });
+          }
+        } else if (!["cancelled", "rejected", "refunded", "charged_back"].includes(previousStatus)) {
+          return response(409, { ok: false, error: "O Pix anterior está em um estado que não permite substituição automática. Consulte o suporte antes de tentar novamente." });
+        }
+      } else if (existing.provider_preference_id) {
+        const now = Date.now();
+        const expirationFrom = new Date(now - 120000).toISOString();
+        const expirationTo = new Date(now - 1000).toISOString();
+        const expireResponse = await fetch(`https://api.mercadopago.com/checkout/preferences/${encodeURIComponent(String(existing.provider_preference_id))}`, {
+          method: "PUT",
+          headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ expires: true, expiration_date_from: expirationFrom, expiration_date_to: expirationTo }),
+        });
+        await expireResponse.json().catch(() => ({}));
+        if (!expireResponse.ok) {
+          console.error("Mercado Pago previous checkout expiration failed", { status: expireResponse.status });
+          return response(502, { ok: false, error: "Não foi possível invalidar o checkout anterior no Mercado Pago. Nenhum Pix novo foi criado." });
+        }
+        const verifyResponse = await fetch(`https://api.mercadopago.com/checkout/preferences/${encodeURIComponent(String(existing.provider_preference_id))}`, {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
+        const verifyData = await verifyResponse.json().catch(() => ({}));
+        if (!verifyResponse.ok || verifyData.preference_expired !== true) {
+          console.error("Mercado Pago checkout expiration not confirmed", { status: verifyResponse.status, preference_expired: verifyData.preference_expired ?? null });
+          return response(502, { ok: false, error: "O Mercado Pago ainda não confirmou a expiração do checkout anterior. Nenhum Pix novo foi criado." });
+        }
+      }
+
+      const { error: clearPreviousError } = await admin.from("mercadopago_subscription_payments").update({
+        provider_payment_id: null, provider_preference_id: null, checkout_url: null,
+        provider_status: null, updated_at: new Date().toISOString(),
+      }).eq("id", existing.id).eq("status", "PENDING");
+      if (clearPreviousError) return response(500, { ok: false, error: "O pagamento anterior foi cancelado, mas não foi possível preparar o registro para o novo Pix. Contate o suporte." });
+      existing = { ...existing, provider_payment_id: null, provider_preference_id: null, checkout_url: null, provider_status: null };
+    }
     if (existing?.status === "PENDING" && (existing.checkout_url || existing.provider_payment_id)) {
       const existingIsPix = Boolean(existing.provider_payment_id) && !existing.provider_preference_id;
       if ((paymentMethod === "pix") !== existingIsPix) {
@@ -192,10 +253,12 @@ Deno.serve(async (req: Request) => {
       if (insertError || !inserted) return response(500, { ok: false, error: "Não foi possível registrar a cobrança. Tente novamente." });
       paymentId = inserted.id;
     } else {
+      const retryPixKey = typeof existing?.provider_status === "string" && existing.provider_status.startsWith("pix_creating:")
+        ? existing.provider_status.slice("pix_creating:".length) : null;
       const { error } = await admin.from("mercadopago_subscription_payments").update({
         amount, resident_count: residentCount, unit_price: unitPrice, status: "PENDING",
         provider_payment_id: null, provider_preference_id: null, checkout_url: null,
-        provider_status: null, updated_at: new Date().toISOString(),
+        provider_status: retryPixKey ? `pix_creating:${retryPixKey}` : null, updated_at: new Date().toISOString(),
       }).eq("id", paymentId);
       if (error) return response(500, { ok: false, error: "Não foi possível preparar uma nova tentativa de pagamento." });
     }
@@ -206,9 +269,16 @@ Deno.serve(async (req: Request) => {
         await admin.from("mercadopago_subscription_payments").update({ status: "FAILED", provider_status: "pix_missing_valid_cpf", updated_at: new Date().toISOString() }).eq("id", paymentId);
         return response(409, { ok: false, error: "Para gerar o Pix, cadastre um CPF válido do responsável financeiro na assinatura." });
       }
+      const pixIdempotencyKey = typeof existing?.provider_status === "string" && existing.provider_status.startsWith("pix_creating:")
+        ? existing.provider_status.slice("pix_creating:".length) : crypto.randomUUID();
+      const { error: idempotencySaveError } = await admin.from("mercadopago_subscription_payments")
+        .update({ provider_status: `pix_creating:${pixIdempotencyKey}`, updated_at: new Date().toISOString() })
+        .eq("id", paymentId);
+      if (idempotencySaveError) return response(500, { ok: false, error: "Não foi possível preparar uma tentativa Pix segura. Tente novamente." });
+
       const pixResponse = await fetch("https://api.mercadopago.com/v1/payments", {
         method: "POST",
-        headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json", "X-Idempotency-Key": paymentId },
+        headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json", "X-Idempotency-Key": pixIdempotencyKey },
         body: JSON.stringify({
           transaction_amount: amount,
           description: `Morada360 — Plano ${plan.name}`,
