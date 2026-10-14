@@ -275,7 +275,7 @@ function SubscriptionPage() {
               <p className="mt-1 text-sm text-muted-foreground">{memberCurrentPlan ? `${brl(memberCurrentPlan.price_per_member_monthly)} por morador ativo/mês` : "Peça ao administrador do sistema para verificar a assinatura da associação."}</p>
             </div>
             <span className="w-fit rounded-full border bg-background px-3 py-1.5 text-sm font-semibold">
-              {memberPlan.data?.status === "active" ? "Assinatura ativa" : memberPlan.data?.status === "trialing" && memberPlan.data.trial_ends_at && new Date(memberPlan.data.trial_ends_at).getTime() > Date.now() ? "Em período de avaliação" : memberPlan.data?.status === "trialing" ? "Avaliação encerrada" : memberPlan.data?.status ?? "Status indisponível"}
+              {memberPlan.data?.status === "active" ? "Assinatura ativa" : memberPlan.data?.status === "trialing" && memberPlan.data.trial_ends_at && new Date(memberPlan.data.trial_ends_at).getTime() > Date.now() ? "Em período de avaliação" : memberPlan.data?.status === "trialing" ? "Avaliação encerrada" : memberPlan.data?.status === "past_due" ? "Pagamento vencido" : memberPlan.data?.status === "payment_required" ? "Pagamento necessário" : memberPlan.data?.status === "suspended" ? "Assinatura suspensa" : memberPlan.data?.status ?? "Status indisponível"}
             </span>
           </div>
           {memberCurrentPlan && <div className="mt-5"><h3 className="font-semibold">Benefícios incluídos no seu plano</h3><ul className="mt-2 grid gap-2 sm:grid-cols-2">{memberCurrentPlan.features.map((feature) => <li key={feature} className="flex items-start gap-2 text-sm"><Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" /><span>{feature}</span></li>)}</ul></div>}
