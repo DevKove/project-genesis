@@ -22,6 +22,16 @@ Se `MERCADOPAGO_TEST_ACCESS_TOKEN` estiver ausente ou não começar com `TEST-`,
 - O fluxo normal de cobrança exige uma credencial `APP_USR-` e continua usando apenas `MERCADOPAGO_ACCESS_TOKEN`. Não há fallback entre credenciais ou URLs de checkout.
 - O webhook de produção continua consultando pagamentos com a credencial de produção. Eventos sandbox não devem atualizar pagamentos locais; a referência sintética `sandbox-...` não corresponde a um UUID de pagamento local e deve ser ignorada.
 
+## Pagamento via Pix
+
+A tela de assinatura agora oferece opções separadas de **Pix** e **cartão**. O Pix usa a API de pagamentos `POST /v1/payments` com `payment_method_id: "pix"`, o CPF do responsável financeiro já registrado na assinatura e o e-mail de faturamento. O servidor retorna QR Code, código Pix Copia e Cola e, quando fornecido, o link de instruções (`ticket_url`). A confirmação do pagamento continua dependendo do webhook validado e da consulta do pagamento no Mercado Pago.
+
+- O sistema impede gerar um segundo meio de pagamento enquanto houver uma cobrança pendente para o mesmo período.
+- O CPF é enviado apenas do servidor para o Mercado Pago; não é incluído em parâmetros públicos ou na URL.
+- A criação de Pix com a credencial de produção pode gerar uma cobrança real. **Não testar o botão de Pix em produção para validar a integração.**
+- Nenhum teste Pix real foi executado durante esta alteração. O teste sandbox já existente cobre o Checkout Pro; a verificação end-to-end do Pix requer credenciais e dados de comprador de teste compatíveis com a conta do Mercado Pago.
+- A URL de checkout e o QR Code são apresentados apenas após a resposta da API. A assinatura não deve ser considerada paga com base no retorno do navegador; somente o evento confirmado no webhook pode atualizar o pagamento.
+
 ## Plano de verificação antes de publicar
 
 1. Revisar o diff da branch `fix/mercadopago-sandbox-isolation`.
