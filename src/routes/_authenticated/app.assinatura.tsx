@@ -54,6 +54,8 @@ function SubscriptionPage() {
   const [paymentLoading, setPaymentLoading] = useState(false);
   const [diagnosticLoading, setDiagnosticLoading] = useState(false);
   const [diagnosticResult, setDiagnosticResult] = useState<{ ok: boolean; message: string; account_id?: string; country_id?: string | null; site_id?: string | null; credential_environment?: string } | null>(null);
+  const [sandboxLoading, setSandboxLoading] = useState(false);
+  const [sandboxResult, setSandboxResult] = useState<{ ok: boolean; message: string; url?: string } | null>(null);
 
   const plans = useQuery({
     queryKey: ["subscription-plans"],
@@ -166,6 +168,32 @@ function SubscriptionPage() {
       toast.error(error instanceof Error ? error.message : "Não foi possível alterar o plano.");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function runSandboxCheckout() {
+    if (!associationId || sandboxLoading) return;
+    setSandboxLoading(true);
+    setSandboxResult(null);
+    try {
+      const { data, error } = await supabase.functions.invoke("mercadopago-create-payment", {
+        body: { association_id: associationId, action: "sandbox_checkout" },
+      });
+      let payload = data as { ok?: boolean; error?: string; message?: string; checkout_url?: string } | null;
+      if (error) {
+        const ctx = (error as { context?: Response }).context;
+        payload = ctx ? await ctx.json().catch(() => null) : null;
+        if (!payload) throw error;
+      }
+      if (!payload?.ok || !payload.checkout_url) {
+        setSandboxResult({ ok: false, message: payload?.error || "Não foi possível criar o checkout de teste." });
+        return;
+      }
+      setSandboxResult({ ok: true, message: payload.message || "Checkout de teste criado.", url: payload.checkout_url });
+    } catch (e) {
+      setSandboxResult({ ok: false, message: e instanceof Error ? e.message : "Falha ao contatar o servidor." });
+    } finally {
+      setSandboxLoading(false);
     }
   }
 
@@ -392,6 +420,20 @@ function SubscriptionPage() {
             <div><dt className="text-muted-foreground">País</dt><dd className="font-medium">{diagnosticResult.country_id ?? "Não informado"}</dd></div>
             <div><dt className="text-muted-foreground">Site do Mercado Pago</dt><dd className="font-medium">{diagnosticResult.site_id ?? "Não informado"}</dd></div>
           </dl>}
+        </div>}
+        <div className="mt-5 flex flex-col gap-3 border-t pt-5 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <h3 className="font-semibold">Testar checkout (sandbox)</h3>
+            <p className="mt-1 max-w-2xl text-sm text-muted-foreground">Cria uma preferência de teste de R$ 1,00 somente com credencial TEST-. Não altera assinaturas, pagamentos nem o status da associação. Nunca usa credencial de produção.</p>
+          </div>
+          <Button type="button" variant="outline" onClick={() => void runSandboxCheckout()} disabled={sandboxLoading || !associationId} className="shrink-0">
+            {sandboxLoading ? <><LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> Criando teste…</> : <><CreditCard className="mr-2 h-4 w-4" /> Testar checkout (sandbox)</>}
+          </Button>
+        </div>
+        {sandboxResult && <div role="status" aria-live="polite" className={`mt-4 rounded-lg border p-4 text-sm ${sandboxResult.ok ? "border-emerald-500/40 bg-emerald-500/5" : "border-destructive/40 bg-destructive/5"}`}>
+          <p className="font-semibold">{sandboxResult.ok ? "Checkout de teste pronto" : "Checkout de teste não criado"}</p>
+          <p className="mt-1">{sandboxResult.message}</p>
+          {sandboxResult.url && <Button asChild className="mt-3"><a href={sandboxResult.url} target="_blank" rel="noopener noreferrer">Abrir checkout de teste</a></Button>}
         </div>}
       </section>
 

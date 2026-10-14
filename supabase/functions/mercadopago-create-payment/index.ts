@@ -75,7 +75,41 @@ Deno.serve(async (req: Request) => {
       });
     }
 
+    // Sandbox checkout test: platform admins only, TEST- credentials only.
+    // Creates a Mercado Pago TEST preference with no notification_url and writes
+    // nothing to the database, so no subscription or payment row is ever changed.
+    if (body.action === "sandbox_checkout") {
+      if (!platformAdmin) return response(403, { ok: false, sandbox: true, error: "Somente administradores da plataforma podem testar o checkout." });
+      if (!accessToken.startsWith("TEST-")) {
+        return response(409, {
+          ok: false, sandbox: true, requires_test_credential: true,
+          error: "A credencial configurada no servidor não é de teste (prefixo TEST-). Por segurança, nenhum checkout foi criado. Configure uma credencial de teste do Mercado Pago no servidor para usar este teste.",
+        });
+      }
+      const testRef = `sandbox-${crypto.randomUUID()}`;
+      const returnUrl = "https://devkove.github.io/project-genesis/app/assinatura?checkout_teste=1";
+      const mpResponse = await fetch("https://api.mercadopago.com/checkout/preferences", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json", "X-Idempotency-Key": testRef },
+        body: JSON.stringify({
+          items: [{ id: "sandbox-test", title: "Morada360 — Teste de checkout (sandbox)", quantity: 1, currency_id: "BRL", unit_price: 1 }],
+          external_reference: testRef,
+          back_urls: { success: returnUrl, failure: returnUrl, pending: returnUrl },
+          auto_return: "approved",
+          metadata: { sandbox_test: true },
+        }),
+      });
+      const mpData = await mpResponse.json().catch(() => ({}));
+      const sandboxUrl = mpData.sandbox_init_point;
+      if (!mpResponse.ok || !mpData.id || typeof sandboxUrl !== "string" || !sandboxUrl.startsWith("https://")) {
+        console.error("Mercado Pago sandbox preference failed", { status: mpResponse.status });
+        return response(502, { ok: false, sandbox: true, error: "O Mercado Pago não retornou um checkout de teste válido." });
+      }
+      return response(200, { ok: true, sandbox: true, checkout_url: sandboxUrl, preference_id: String(mpData.id), message: "Checkout de teste criado. Nenhum registro de assinatura ou pagamento foi alterado." });
+    }
+
     // Fail closed: never allow an unknown credential format to create checkout.
+
     const isTestEnvironment = accessToken.startsWith("TEST-");
     const isProductionEnvironment = accessToken.startsWith("APP_USR-");
     if (!isTestEnvironment && !isProductionEnvironment) {
@@ -135,7 +169,7 @@ Deno.serve(async (req: Request) => {
       if (error) return response(500, { ok: false, error: "Não foi possível preparar uma nova tentativa de pagamento." });
     }
 
-    const siteUrl = "https://devkove.github.io/project-genesis/";
+    const siteUrl = "https://devkove.github.io/project-genesis/app/assinatura";
     const preferencePayload = {
       items: [{ id: plan.code, title: `Morada360 — Plano ${plan.name}`, description: `Mensalidade para ${residentCount} morador(es) ativo(s)`, quantity: 1, currency_id: "BRL", unit_price: amount }],
       payer: { email: subscription.billing_email },
