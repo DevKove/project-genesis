@@ -28,9 +28,9 @@ Deno.serve(async (req: Request) => {
   if (req.method !== "POST") return json(405, { ok: false });
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-  const accessToken = Deno.env.get("MERCADOPAGO_ACCESS_TOKEN");
+  const accessToken = Deno.env.get("MERCADOPAGO_PRODUCTION_ACCESS_TOKEN");
   const webhookSecret = Deno.env.get("MERCADOPAGO_WEBHOOK_SECRET");
-  if (!supabaseUrl || !serviceKey || !accessToken || !webhookSecret) return json(503, { ok: false, error: "Webhook não configurado." });
+  if (!supabaseUrl || !serviceKey || !accessToken || !webhookSecret) return json(503, { ok: false, error: "Webhook não configurado: confirme SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, MERCADOPAGO_PRODUCTION_ACCESS_TOKEN e MERCADOPAGO_WEBHOOK_SECRET." });
 
   try {
     const payload = await req.json();
