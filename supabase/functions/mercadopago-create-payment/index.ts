@@ -104,10 +104,10 @@ Deno.serve(async (req: Request) => {
       });
       const mpData = await mpResponse.json().catch(() => ({}));
       // Checkout Pro usa init_point também com credenciais de teste; o ambiente é determinado pela credencial usada, não pelo nome do campo.
-      const sandboxUrl = mpData.init_point;
+      const sandboxUrl = mpData.sandbox_init_point;
       if (!mpResponse.ok || !mpData.id || typeof sandboxUrl !== "string" || !sandboxUrl.startsWith("https://")) {
         console.error("Mercado Pago sandbox preference failed", { status: mpResponse.status });
-        return response(502, { ok: false, sandbox: true, error: "O Mercado Pago não retornou init_point válido para a credencial de teste. Confira a credencial de teste e os detalhes do erro nos logs da função." });
+        return response(502, { ok: false, sandbox: true, error: "O Mercado Pago não retornou sandbox_init_point válido para a credencial de teste. O checkout foi bloqueado para evitar abrir o ambiente normal." });
       }
       return response(200, { ok: true, sandbox: true, checkout_url: sandboxUrl, preference_id: String(mpData.id), message: "Checkout de teste criado. Nenhum registro de assinatura ou pagamento foi alterado." });
     }
