@@ -70,6 +70,28 @@ Deno.serve(async (req: Request) => {
             : "Não foi possível validar a conta no Mercado Pago. Verifique a disponibilidade do provedor.",
         });
       }
+      // Also verify access to this association's existing preference without creating or changing any charge.
+      const diagnosticPeriod = new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), 1)).toISOString().slice(0, 10);
+      const { data: diagnosticPayment } = await admin.from("mercadopago_subscription_payments")
+        .select("provider_preference_id").eq("association_id", associationId)
+        .eq("billing_period", diagnosticPeriod).maybeSingle();
+      let preferenceCheck: Record<string, unknown> = { checked: false, reason: "no_pending_preference_found" };
+      if (diagnosticPayment?.provider_preference_id) {
+        const preferenceResponse = await fetch(`https://api.mercadopago.com/checkout/preferences/${encodeURIComponent(String(diagnosticPayment.provider_preference_id))}`, {
+          headers: { Authorization: `Bearer ${diagnosticToken}` },
+        });
+        const preferenceData = await preferenceResponse.json().catch(() => ({}));
+        preferenceCheck = {
+          checked: true,
+          http_status: preferenceResponse.status,
+          accessible: preferenceResponse.ok,
+          preference_expired: typeof preferenceData.preference_expired === "boolean" ? preferenceData.preference_expired : null,
+          collector_matches_account: preferenceData.collector_id != null ? String(preferenceData.collector_id) === String(mpData.id) : null,
+          preference_collector_id: preferenceData.collector_id != null ? String(preferenceData.collector_id) : null,
+          error_code: typeof preferenceData.error === "string" ? preferenceData.error : null,
+          message: typeof preferenceData.message === "string" ? preferenceData.message : null,
+        };
+      }
       return response(200, {
         ok: true,
         diagnostic: true,
@@ -79,7 +101,8 @@ Deno.serve(async (req: Request) => {
         site_id: typeof mpData.site_id === "string" ? mpData.site_id : null,
         credential_environment: diagnosticEnvironment,
         credential_variable: diagnosticEnvironment === "test" ? "MERCADOPAGO_TEST_ACCESS_TOKEN" : "MERCADOPAGO_PRODUCTION_ACCESS_TOKEN",
-        message: "Credencial aceita pelo Mercado Pago. Nenhuma cobrança ou preferência foi criada.",
+        preference_check: preferenceCheck,
+        message: "Credencial consultada. O diagnóstico não cria, cancela nem altera cobranças.",
       });
     }
 
@@ -195,7 +218,12 @@ Deno.serve(async (req: Request) => {
         });
         await expireResponse.json().catch(() => ({}));
         if (!expireResponse.ok) {
-          console.error("Mercado Pago previous checkout expiration failed", { status: expireResponse.status });
+          const expireError = await expireResponse.clone().json().catch(() => ({}));
+          console.error("Mercado Pago previous checkout expiration failed", {
+            status: expireResponse.status,
+            cause: expireError?.message ?? expireError?.error ?? "unknown",
+            cause_code: expireError?.cause?.[0]?.code ?? expireError?.cause?.[0]?.description ?? null,
+          });
           return response(502, { ok: false, error: "Não foi possível invalidar o checkout anterior no Mercado Pago. Nenhum Pix novo foi criado." });
         }
         const verifyResponse = await fetch(`https://api.mercadopago.com/checkout/preferences/${encodeURIComponent(String(existing.provider_preference_id))}`, {
