@@ -479,7 +479,7 @@ function SubscriptionPage() {
           <p className="mt-1">{diagnosticResult.message}</p>
           {diagnosticResult.ok && <dl className="mt-3 grid gap-2 sm:grid-cols-2">
             <div><dt className="text-muted-foreground">ID da conta</dt><dd className="font-medium">{diagnosticResult.account_id ?? "Não informado"}</dd></div>
-            <div><dt className="text-muted-foreground">Ambiente identificado pelo prefixo</dt><dd className="font-medium">{diagnosticResult.credential_environment ?? "Não identificado"}</dd></div>
+            <div><dt className="text-muted-foreground">Tipo de credencial consultada</dt><dd className="font-medium">{diagnosticResult.credential_environment ?? "Não identificado"}</dd></div>
             <div><dt className="text-muted-foreground">País</dt><dd className="font-medium">{diagnosticResult.country_id ?? "Não informado"}</dd></div>
             <div><dt className="text-muted-foreground">Site do Mercado Pago</dt><dd className="font-medium">{diagnosticResult.site_id ?? "Não informado"}</dd></div>
           </dl>}
