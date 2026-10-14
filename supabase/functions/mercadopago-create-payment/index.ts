@@ -208,6 +208,12 @@ Deno.serve(async (req: Request) => {
           return response(409, { ok: false, error: "O Pix anterior está em um estado que não permite substituição automática. Consulte o suporte antes de tentar novamente." });
         }
       } else if (existing.provider_preference_id) {
+        // A sandbox checkout is not a real charge and cannot be managed with the production seller token.
+        // Clear only the local reference for a known sandbox URL; live preferences still require confirmed expiration.
+        const existingIsSandboxPreference = !existing.provider_payment_id
+          && typeof existing.checkout_url === "string"
+          && existing.checkout_url.startsWith("https://sandbox.mercadopago.com.br/");
+        if (!existingIsSandboxPreference) {
         const now = Date.now();
         const expirationFrom = new Date(now - 120000).toISOString();
         const expirationTo = new Date(now - 1000).toISOString();
@@ -232,6 +238,7 @@ Deno.serve(async (req: Request) => {
         if (!verifyResponse.ok || verifyData.preference_expired !== true) {
           console.error("Mercado Pago checkout expiration not confirmed", { status: verifyResponse.status, preference_expired: verifyData.preference_expired ?? null });
           return response(502, { ok: false, error: "O Mercado Pago ainda não confirmou a expiração do checkout anterior. Nenhum Pix novo foi criado." });
+        }
         }
       }
 
