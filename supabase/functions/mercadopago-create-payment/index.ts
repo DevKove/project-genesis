@@ -287,12 +287,10 @@ Deno.serve(async (req: Request) => {
       if (insertError || !inserted) return response(500, { ok: false, error: "Não foi possível registrar a cobrança. Tente novamente." });
       paymentId = inserted.id;
     } else {
-      const retryPixKey = typeof existing?.provider_status === "string" && existing.provider_status.startsWith("pix_creating:")
-        ? existing.provider_status.slice("pix_creating:".length) : null;
       const { error } = await admin.from("mercadopago_subscription_payments").update({
         amount, resident_count: residentCount, unit_price: unitPrice, status: "PENDING",
         provider_payment_id: null, provider_preference_id: null, checkout_url: null,
-        provider_status: retryPixKey ? `pix_creating:${retryPixKey}` : null, updated_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
       }).eq("id", paymentId);
       if (error) return response(500, { ok: false, error: "Não foi possível preparar uma nova tentativa de pagamento." });
     }
@@ -303,12 +301,17 @@ Deno.serve(async (req: Request) => {
         await admin.from("mercadopago_subscription_payments").update({ status: "FAILED", provider_status: "pix_missing_valid_cpf", updated_at: new Date().toISOString() }).eq("id", paymentId);
         return response(409, { ok: false, error: "Para gerar o Pix, cadastre um CPF válido do responsável financeiro na assinatura." });
       }
-      const pixIdempotencyKey = typeof existing?.provider_status === "string" && existing.provider_status.startsWith("pix_creating:")
-        ? existing.provider_status.slice("pix_creating:".length) : crypto.randomUUID();
-      const { error: idempotencySaveError } = await admin.from("mercadopago_subscription_payments")
-        .update({ provider_status: `pix_creating:${pixIdempotencyKey}`, updated_at: new Date().toISOString() })
-        .eq("id", paymentId);
-      if (idempotencySaveError) return response(500, { ok: false, error: "Não foi possível preparar uma tentativa Pix segura. Tente novamente." });
+      // Atomically claim/reuse one idempotency key under a database row lock.
+      // Concurrent requests for this invoice must use the same provider key.
+      const { data: claimedPixKey, error: idempotencySaveError } = await admin.rpc(
+        "claim_mercadopago_pix_attempt",
+        { _payment_id: paymentId },
+      );
+      const pixIdempotencyKey = typeof claimedPixKey === "string" ? claimedPixKey : "";
+      if (idempotencySaveError || !pixIdempotencyKey) {
+        console.error("Mercado Pago Pix idempotency claim failed", idempotencySaveError?.message ?? "missing idempotency key");
+        return response(409, { ok: false, error: "Já existe uma tentativa Pix em preparação. Aguarde alguns instantes e consulte o pagamento antes de tentar novamente." });
+      }
 
       const pixResponse = await fetch("https://api.mercadopago.com/v1/payments", {
         method: "POST",
