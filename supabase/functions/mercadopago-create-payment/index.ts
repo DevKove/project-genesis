@@ -153,7 +153,7 @@ Deno.serve(async (req: Request) => {
       .eq("association_id", associationId).eq("billing_period", period).maybeSingle();
     if (existing?.status === "APPROVED") return response(409, { ok: false, error: "Já existe um pagamento aprovado para este mês." });
     if (existing?.status === "PENDING" && (existing.checkout_url || existing.provider_payment_id)) {
-      const existingIsPix = existing.provider_status === "pix_created";
+      const existingIsPix = Boolean(existing.provider_payment_id) && !existing.provider_preference_id;
       if ((paymentMethod === "pix") !== existingIsPix) {
         return response(409, { ok: false, error: existingIsPix
           ? "Já existe um Pix pendente para esta mensalidade. Conclua esse Pix antes de escolher cartão."
@@ -181,7 +181,7 @@ Deno.serve(async (req: Request) => {
     }
 
     if (paymentMethod === "pix") {
-      const cpfDigits = String(subscription.responsible_cpf ?? "").replace(/\\D/g, "");
+      const cpfDigits = String(subscription.responsible_cpf ?? "").replace(/\D/g, "");
       if (cpfDigits.length !== 11) {
         await admin.from("mercadopago_subscription_payments").update({ status: "FAILED", provider_status: "pix_missing_valid_cpf", updated_at: new Date().toISOString() }).eq("id", paymentId);
         return response(409, { ok: false, error: "Para gerar o Pix, cadastre um CPF válido do responsável financeiro na assinatura." });
