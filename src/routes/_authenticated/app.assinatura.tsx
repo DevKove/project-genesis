@@ -347,27 +347,49 @@ function SubscriptionPage() {
             const periodExpired = memberBilling.data.subscription_status === "active" && Boolean(memberBilling.data.current_period_end) && new Date(memberBilling.data.current_period_end!).getTime() <= now;
             const needsPayment = trialExpired || periodExpired || ["payment_required", "past_due"].includes(memberBilling.data.subscription_status);
             const pendingCheckout = memberBilling.data.latest_payment_status === "PENDING" && Boolean(memberBilling.data.latest_payment_url);
-            return (needsPayment || pendingCheckout) ? <div className="mt-5 rounded-xl border border-primary/30 bg-background p-4">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div><h3 className="font-semibold">{pendingCheckout ? "Pagamento mensal pendente" : "Renovar plano do Morada360"}</h3>
-                  <p className="mt-1 text-sm text-muted-foreground">{pendingCheckout ? "Continue para o Mercado Pago e conclua o pagamento. O plano será atualizado após confirmação segura." : "Seu teste ou período pago terminou. Gere uma cobrança mensal manual pelo Mercado Pago."}</p>
-                  {memberBilling.data.latest_payment_amount != null && pendingCheckout && <p className="mt-1 text-sm font-medium">Valor: {brl(Number(memberBilling.data.latest_payment_amount))}</p>}
+            return (needsPayment || pendingCheckout) ? <div className="mt-5 space-y-4 rounded-xl border border-primary/30 bg-background p-4 sm:p-5">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <h3 className="text-lg font-semibold">{pendingCheckout ? "Pagamento mensal pendente" : "Renovar plano do Morada360"}</h3>
+                  <p className="mt-1 text-sm text-muted-foreground">{pendingCheckout ? "Já existe uma cobrança aguardando pagamento. Continue a cobrança atual para evitar pagamentos duplicados; a assinatura só muda após confirmação do servidor." : "Escolha como deseja pagar. O Pix é gerado aqui no Morada360; o cartão abre o checkout seguro do Mercado Pago."}</p>
+                  {memberBilling.data.latest_payment_amount != null && pendingCheckout && <p className="mt-1 text-base font-semibold">Valor: {brl(Number(memberBilling.data.latest_payment_amount))}</p>}
                 </div>
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                  <Button onClick={() => void startManualPayment("pix")} disabled={paymentLoading} className="shrink-0">
-                    {paymentLoading ? <><LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> Preparando…</> : <><QrCode className="mr-2 h-4 w-4" /> Pagar com Pix</>}
-                  </Button>
-                  <Button variant="outline" onClick={() => void startManualPayment("card")} disabled={paymentLoading} className="shrink-0">
-                    {paymentLoading ? <><LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> Preparando…</> : <><CreditCard className="mr-2 h-4 w-4" /> {pendingCheckout ? "Continuar checkout" : "Pagar com cartão"}</>}
-                  </Button>
-                </div>
+                {pendingCheckout && <span className="w-fit rounded-full border border-amber-500/40 bg-amber-500/10 px-3 py-1 text-xs font-semibold text-amber-800 dark:text-amber-200">Aguardando pagamento</span>}
               </div>
+              {pendingCheckout ? (
+                <Button onClick={() => { const url = memberBilling.data.latest_payment_url; if (url && url.startsWith("https://")) window.location.assign(url); else toast.error("O link da cobrança pendente não está disponível. Atualize a página ou contate o suporte."); }} disabled={paymentLoading} className="w-full sm:w-auto">
+                  <CreditCard className="mr-2 h-4 w-4" /> Continuar pagamento pendente
+                </Button>
+              ) : (
+                <div className="grid gap-3 md:grid-cols-2">
+                  <div className="flex flex-col rounded-xl border-2 border-primary/50 bg-primary/5 p-4 sm:p-5">
+                    <div className="flex items-center gap-3">
+                      <span className="rounded-xl bg-primary/10 p-3 text-primary"><QrCode className="h-6 w-6" /></span>
+                      <div><h4 className="font-semibold">Pix</h4><p className="text-xs font-medium text-primary">QR Code + Pix Copia e Cola</p></div>
+                    </div>
+                    <p className="mt-3 flex-1 text-sm text-muted-foreground">Gere o código Pix nesta página e pague pelo aplicativo do seu banco. Confira o recebedor e o valor antes de confirmar.</p>
+                    <Button onClick={() => void startManualPayment("pix")} disabled={paymentLoading} className="mt-4 w-full">
+                      {paymentLoading ? <><LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> Preparando pagamento…</> : <><QrCode className="mr-2 h-4 w-4" /> Gerar Pix</>}
+                    </Button>
+                  </div>
+                  <div className="flex flex-col rounded-xl border bg-card p-4 sm:p-5">
+                    <div className="flex items-center gap-3">
+                      <span className="rounded-xl bg-muted p-3"><CreditCard className="h-6 w-6" /></span>
+                      <div><h4 className="font-semibold">Cartão</h4><p className="text-xs text-muted-foreground">Crédito ou opções disponíveis no Mercado Pago</p></div>
+                    </div>
+                    <p className="mt-3 flex-1 text-sm text-muted-foreground">Continue para o checkout seguro do Mercado Pago. Os meios de pagamento disponíveis dependem da conta e da configuração do provedor.</p>
+                    <Button variant="outline" onClick={() => void startManualPayment("card")} disabled={paymentLoading} className="mt-4 w-full">
+                      {paymentLoading ? <><LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> Preparando pagamento…</> : <><CreditCard className="mr-2 h-4 w-4" /> Pagar com cartão</>}
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div> : null;
           })()}
           {pixPayment && <div className="mt-5 rounded-xl border border-primary/30 bg-background p-4 sm:p-5">
             <div className="flex items-start gap-3"><QrCode className="mt-1 h-5 w-5 shrink-0 text-primary" /><div><h3 className="font-semibold">Pague com Pix</h3><p className="mt-1 text-sm text-muted-foreground">Valor: {brl(pixPayment.amount)}. Abra o aplicativo do seu banco e escaneie o QR Code ou use o Pix Copia e Cola. A assinatura só será atualizada após a confirmação do Mercado Pago.</p></div></div>
             <div className="mt-4 flex flex-col items-center gap-4 sm:flex-row sm:items-start">
-              <img src={`data:image/jpeg;base64,${pixPayment.qrCodeBase64}`} alt="QR Code para pagamento via Pix" className="h-56 w-56 rounded-lg border bg-white p-2 object-contain" />
+              <img src={`data:image/png;base64,${pixPayment.qrCodeBase64}`} alt="QR Code para pagamento via Pix" className="h-56 w-56 rounded-lg border bg-white p-2 object-contain" />
               <div className="w-full min-w-0 flex-1 space-y-3">
                 <Label htmlFor="pix-copy-paste">Pix Copia e Cola</Label>
                 <textarea id="pix-copy-paste" readOnly value={pixPayment.qrCode} className="min-h-28 w-full resize-y rounded-md border bg-muted/30 p-3 font-mono text-xs" />
