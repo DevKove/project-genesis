@@ -53,10 +53,6 @@ function SubscriptionPage() {
   const [saving, setSaving] = useState(false);
   const [paymentLoading, setPaymentLoading] = useState(false);
   const [pixPayment, setPixPayment] = useState<{ qrCode: string; qrCodeBase64: string; checkoutUrl?: string; amount: number; paymentId: string } | null>(null);
-  const [diagnosticLoading, setDiagnosticLoading] = useState(false);
-  const [diagnosticResult, setDiagnosticResult] = useState<{ ok: boolean; message: string; account_id?: string; country_id?: string | null; site_id?: string | null; credential_environment?: string } | null>(null);
-  const [sandboxLoading, setSandboxLoading] = useState(false);
-  const [sandboxResult, setSandboxResult] = useState<{ ok: boolean; message: string; url?: string } | null>(null);
 
   const plans = useQuery({
     queryKey: ["subscription-plans"],
@@ -169,64 +165,6 @@ function SubscriptionPage() {
       toast.error(error instanceof Error ? error.message : "Não foi possível alterar o plano.");
     } finally {
       setSaving(false);
-    }
-  }
-
-  async function runSandboxCheckout() {
-    if (!associationId || sandboxLoading) return;
-    setSandboxLoading(true);
-    setSandboxResult(null);
-    try {
-      const { data, error } = await supabase.functions.invoke("mercadopago-create-payment", {
-        body: { association_id: associationId, action: "sandbox_checkout" },
-      });
-      let payload = data as { ok?: boolean; error?: string; message?: string; checkout_url?: string } | null;
-      if (error) {
-        const ctx = (error as { context?: Response }).context;
-        payload = ctx ? await ctx.json().catch(() => null) : null;
-        if (!payload) throw error;
-      }
-      if (!payload?.ok || !payload.checkout_url) {
-        setSandboxResult({ ok: false, message: payload?.error || "Não foi possível criar o checkout de teste." });
-        return;
-      }
-      setSandboxResult({ ok: true, message: payload.message || "Checkout de teste criado.", url: payload.checkout_url });
-    } catch (e) {
-      setSandboxResult({ ok: false, message: e instanceof Error ? e.message : "Falha ao contatar o servidor." });
-    } finally {
-      setSandboxLoading(false);
-    }
-  }
-
-  async function runPaymentDiagnostic() {
-    if (!associationId || diagnosticLoading) return;
-    setDiagnosticLoading(true);
-    setDiagnosticResult(null);
-    try {
-      const { data, error } = await supabase.functions.invoke("mercadopago-create-payment", {
-        body: { association_id: associationId, action: "diagnostic" },
-      });
-      if (error) throw error;
-      if (!data?.diagnostic) throw new Error(data?.error || "O servidor não retornou um diagnóstico válido.");
-      if (!data.ok) {
-        setDiagnosticResult({ ok: false, message: data.error || "A validação da integração falhou." });
-        return;
-      }
-      setDiagnosticResult({
-        ok: true,
-        message: data.message || "Credencial aceita pelo Mercado Pago.",
-        account_id: data.account_id,
-        country_id: data.country_id,
-        site_id: data.site_id,
-        credential_environment: data.credential_environment,
-      });
-    } catch (error) {
-      setDiagnosticResult({
-        ok: false,
-        message: error instanceof Error ? error.message : "Não foi possível executar o diagnóstico. Confira a implantação da função.",
-      });
-    } finally {
-      setDiagnosticLoading(false);
     }
   }
 
@@ -501,45 +439,6 @@ function SubscriptionPage() {
           </div>}
         </section>
       )}
-
-      <section className="rounded-xl border bg-card p-5 sm:p-6">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div className="flex items-start gap-3">
-            <ShieldCheck className="mt-1 h-5 w-5 shrink-0 text-primary" />
-            <div>
-              <h2 className="font-semibold">Diagnóstico do Mercado Pago</h2>
-              <p className="mt-1 max-w-2xl text-sm text-muted-foreground">Valida a credencial configurada no servidor e consulta os dados básicos da conta. Este teste não cria cobranças, preferências de checkout nem registros financeiros.</p>
-            </div>
-          </div>
-          <Button type="button" variant="outline" onClick={() => void runPaymentDiagnostic()} disabled={diagnosticLoading || !associationId} className="shrink-0">
-            {diagnosticLoading ? <><LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> Verificando…</> : "Verificar integração"}
-          </Button>
-        </div>
-        {diagnosticResult && <div role="status" aria-live="polite" className={`mt-4 rounded-lg border p-4 text-sm ${diagnosticResult.ok ? "border-emerald-500/40 bg-emerald-500/5" : "border-destructive/40 bg-destructive/5"}`}>
-          <p className="font-semibold">{diagnosticResult.ok ? "Credencial validada" : "Não foi possível validar a integração"}</p>
-          <p className="mt-1">{diagnosticResult.message}</p>
-          {diagnosticResult.ok && <dl className="mt-3 grid gap-2 sm:grid-cols-2">
-            <div><dt className="text-muted-foreground">ID da conta</dt><dd className="font-medium">{diagnosticResult.account_id ?? "Não informado"}</dd></div>
-            <div><dt className="text-muted-foreground">Tipo de credencial consultada</dt><dd className="font-medium">{diagnosticResult.credential_environment ?? "Não identificado"}</dd></div>
-            <div><dt className="text-muted-foreground">País</dt><dd className="font-medium">{diagnosticResult.country_id ?? "Não informado"}</dd></div>
-            <div><dt className="text-muted-foreground">Site do Mercado Pago</dt><dd className="font-medium">{diagnosticResult.site_id ?? "Não informado"}</dd></div>
-          </dl>}
-        </div>}
-        <div className="mt-5 flex flex-col gap-3 border-t pt-5 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <h3 className="font-semibold">Testar checkout (sandbox)</h3>
-            <p className="mt-1 max-w-2xl text-sm text-muted-foreground">Abre o Checkout Pro isolado de teste por meio da URL de sandbox retornada pelo Mercado Pago. Este teste não valida o Pix direto do MORADA360 e não altera assinaturas nem registros financeiros.</p>
-          </div>
-          <Button type="button" variant="outline" onClick={() => void runSandboxCheckout()} disabled={sandboxLoading || !associationId} className="shrink-0">
-            {sandboxLoading ? <><LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> Criando teste…</> : <><CreditCard className="mr-2 h-4 w-4" /> Testar checkout (sandbox)</>}
-          </Button>
-        </div>
-        {sandboxResult && <div role="status" aria-live="polite" className={`mt-4 rounded-lg border p-4 text-sm ${sandboxResult.ok ? "border-emerald-500/40 bg-emerald-500/5" : "border-destructive/40 bg-destructive/5"}`}>
-          <p className="font-semibold">{sandboxResult.ok ? "Checkout de teste pronto" : "Checkout de teste não criado"}</p>
-          <p className="mt-1">{sandboxResult.message}</p>
-          {sandboxResult.url && <Button asChild className="mt-3"><a href={sandboxResult.url} target="_blank" rel="noopener noreferrer">Abrir checkout de teste</a></Button>}
-        </div>}
-      </section>
 
       <div className="flex items-end justify-between gap-3"><div><h2 className="text-xl font-semibold">Compare os planos</h2><p className="mt-1 text-sm text-muted-foreground">Preços por morador ativo, cobrados mensalmente por associação.</p></div></div>
       {plans.isLoading ? <div className="flex items-center gap-2 py-10 text-sm text-muted-foreground"><LoaderCircle className="h-4 w-4 animate-spin" /> Carregando planos…</div> : plans.isError ? <div role="alert" className="rounded-lg border p-4 text-sm">Não foi possível carregar os planos. <Button variant="link" onClick={() => void plans.refetch()}>Tentar novamente</Button></div> : (
