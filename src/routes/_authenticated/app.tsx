@@ -64,7 +64,7 @@ function Shell({ email, userId }: { email: string; userId: string }) {
     queryKey: ["association-plan-entitlements", current?.association_id, userId],
     enabled: Boolean(current?.association_id),
     queryFn: async () => {
-      const features = ["documents", "vendors", "audit", "settings", "notifications"] as const;
+      const features = ["documents", "vendors", "audit", "settings"] as const;
       const entries = await Promise.all(features.map(async (feature) => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const { data, error } = await (supabase as any).rpc("has_association_feature", {
@@ -241,7 +241,7 @@ function Shell({ email, userId }: { email: string; userId: string }) {
             </Sheet>
             <div className="min-w-0"><div className="flex items-center gap-2 text-xs text-muted-foreground">{platformAdmin.data && <span className="rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 font-medium text-primary">Administração global</span>}<span className="hidden sm:inline">Associação</span><ChevronRight className="hidden h-3 w-3 sm:block" /><span className="truncate">{current.associations?.name ?? "Morada360"}</span></div><p className="mt-1 truncate text-sm font-semibold">{activePage}</p></div>
           </div>
-          {planEntitlements.data?.notifications === true && <NotificationCenter userId={userId} />}
+          <NotificationCenter userId={userId} />
         </header>
         <main id="app-main" tabIndex={-1} className="app-content mx-auto max-w-[1440px] px-4 py-6 sm:px-6 sm:py-8 lg:px-10 lg:py-10">
           {requiredFeature && planEntitlements.isLoading ? (
