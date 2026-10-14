@@ -48,6 +48,7 @@ Deno.serve(async (req: Request) => {
     // Diagnóstico sem efeitos financeiros: valida o token consultando /users/me.
     // Este caminho não cria preferência, cobrança ou registro financeiro.
     if (body.action === "diagnostic") {
+      if (!productionAccessToken) return response(503, { ok: false, diagnostic: true, error: "Credencial do Mercado Pago não configurada no servidor." });
       const mpResponse = await fetch("https://api.mercadopago.com/users/me", {
         method: "GET",
         headers: { Authorization: `Bearer ${productionAccessToken ?? ""}`, "Content-Type": "application/json" },
