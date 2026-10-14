@@ -22,8 +22,9 @@ Deno.serve(async (req: Request) => {
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
   const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-  const accessToken = Deno.env.get("MERCADOPAGO_ACCESS_TOKEN");
-  if (!supabaseUrl || !anonKey || !serviceKey || !accessToken) {
+  const productionAccessToken = Deno.env.get("MERCADOPAGO_ACCESS_TOKEN");
+  const testAccessToken = Deno.env.get("MERCADOPAGO_TEST_ACCESS_TOKEN");
+  if (!supabaseUrl || !anonKey || !serviceKey) {
     return response(503, { ok: false, error: "Integração Mercado Pago ainda não configurada no servidor." });
   }
 
@@ -34,6 +35,7 @@ Deno.serve(async (req: Request) => {
 
     const body = await req.json().catch(() => ({}));
     const associationId = typeof body.association_id === "string" ? body.association_id : "";
+    const paymentMethod = body.payment_method === "pix" ? "pix" : "card";
     if (!/^[0-9a-f-]{36}$/i.test(associationId)) return response(400, { ok: false, error: "Associação inválida." });
 
     const admin = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } });
@@ -47,9 +49,10 @@ Deno.serve(async (req: Request) => {
     // Diagnóstico sem efeitos financeiros: valida o token consultando /users/me.
     // Este caminho não cria preferência, cobrança ou registro financeiro.
     if (body.action === "diagnostic") {
+      if (!productionAccessToken) return response(503, { ok: false, diagnostic: true, error: "Credencial do Mercado Pago não configurada no servidor." });
       const mpResponse = await fetch("https://api.mercadopago.com/users/me", {
         method: "GET",
-        headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+        headers: { Authorization: `Bearer ${productionAccessToken ?? ""}`, "Content-Type": "application/json" },
       });
       const mpData = await mpResponse.json().catch(() => ({}));
       if (!mpResponse.ok || !mpData.id) {
@@ -70,7 +73,7 @@ Deno.serve(async (req: Request) => {
         account_id: String(mpData.id),
         country_id: typeof mpData.country_id === "string" ? mpData.country_id : null,
         site_id: typeof mpData.site_id === "string" ? mpData.site_id : null,
-        credential_environment: accessToken.startsWith("TEST-") ? "teste" : accessToken.startsWith("APP_USR-") ? "produção" : "não identificado",
+        credential_environment: productionAccessToken?.startsWith("APP_USR-") ? "produção (prefixo APP_USR)" : productionAccessToken?.startsWith("TEST-") ? "token TEST configurado na variável de produção — revisar configuração" : "não identificado",
         message: "Credencial aceita pelo Mercado Pago. Nenhuma cobrança ou preferência foi criada.",
       });
     }
@@ -80,7 +83,7 @@ Deno.serve(async (req: Request) => {
     // nothing to the database, so no subscription or payment row is ever changed.
     if (body.action === "sandbox_checkout") {
       if (!platformAdmin) return response(403, { ok: false, sandbox: true, error: "Somente administradores da plataforma podem testar o checkout." });
-      if (!accessToken.startsWith("TEST-")) {
+      if (!testAccessToken || !testAccessToken.startsWith("TEST-")) {
         return response(409, {
           ok: false, sandbox: true, requires_test_credential: true,
           error: "A credencial configurada no servidor não é de teste (prefixo TEST-). Por segurança, nenhum checkout foi criado. Configure uma credencial de teste do Mercado Pago no servidor para usar este teste.",
@@ -90,7 +93,7 @@ Deno.serve(async (req: Request) => {
       const returnUrl = "https://devkove.github.io/project-genesis/app/assinatura?checkout_teste=1";
       const mpResponse = await fetch("https://api.mercadopago.com/checkout/preferences", {
         method: "POST",
-        headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json", "X-Idempotency-Key": testRef },
+        headers: { Authorization: `Bearer ${testAccessToken}`, "Content-Type": "application/json", "X-Idempotency-Key": testRef },
         body: JSON.stringify({
           items: [{ id: "sandbox-test", title: "Morada360 — Teste de checkout (sandbox)", quantity: 1, currency_id: "BRL", unit_price: 1 }],
           external_reference: testRef,
@@ -110,14 +113,16 @@ Deno.serve(async (req: Request) => {
 
     // Fail closed: never allow an unknown credential format to create checkout.
 
-    const isTestEnvironment = accessToken.startsWith("TEST-");
+    if (!productionAccessToken) return response(503, { ok: false, error: "Credencial de produção do Mercado Pago não configurada no servidor." });
+    const accessToken = productionAccessToken;
+    const isTestEnvironment = false;
     const isProductionEnvironment = accessToken.startsWith("APP_USR-");
     if (!isTestEnvironment && !isProductionEnvironment) {
       return response(503, { ok: false, error: "Ambiente da credencial do Mercado Pago não identificado. Checkout bloqueado por segurança." });
     }
 
     const { data: subscription, error: subError } = await admin.from("association_subscriptions")
-      .select("id,association_id,plan_code,status,trial_ends_at,current_period_end,billing_email")
+      .select("id,association_id,plan_code,status,trial_ends_at,current_period_end,billing_email,responsible_cpf")
       .eq("association_id", associationId).maybeSingle();
     if (subError || !subscription) return response(404, { ok: false, error: "Assinatura não encontrada para esta associação." });
 
@@ -147,8 +152,32 @@ Deno.serve(async (req: Request) => {
     const { data: existing } = await admin.from("mercadopago_subscription_payments").select("*")
       .eq("association_id", associationId).eq("billing_period", period).maybeSingle();
     if (existing?.status === "APPROVED") return response(409, { ok: false, error: "Já existe um pagamento aprovado para este mês." });
-    if (existing?.status === "PENDING" && existing.checkout_url) {
-      return response(200, { ok: true, checkout_url: existing.checkout_url, payment_id: existing.id, amount: existing.amount, reused: true });
+    if (existing?.status === "PENDING" && (existing.checkout_url || existing.provider_payment_id)) {
+      const existingIsPix = Boolean(existing.provider_payment_id) && !existing.provider_preference_id;
+      if ((paymentMethod === "pix") !== existingIsPix) {
+        return response(409, { ok: false, error: existingIsPix
+          ? "Já existe um Pix pendente para esta mensalidade. Conclua esse Pix antes de escolher cartão."
+          : "Já existe um checkout pendente para esta mensalidade. Conclua ou aguarde a atualização desse pagamento antes de gerar um Pix." });
+      }
+      if (existingIsPix && paymentMethod === "pix" && existing.provider_payment_id) {
+        const existingPixResponse = await fetch(`https://api.mercadopago.com/v1/payments/${encodeURIComponent(String(existing.provider_payment_id))}`, {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
+        const existingPixData = await existingPixResponse.json().catch(() => ({}));
+        const transactionData = existingPixData?.point_of_interaction?.transaction_data ?? {};
+        if (existingPixResponse.ok && existingPixData.id) {
+          return response(200, {
+            ok: true, pix: true, payment_id: existing.id, provider_payment_id: String(existingPixData.id),
+            amount: existing.amount, status: existingPixData.status,
+            qr_code: typeof transactionData.qr_code === "string" ? transactionData.qr_code : null,
+            qr_code_base64: typeof transactionData.qr_code_base64 === "string" ? transactionData.qr_code_base64 : null,
+            checkout_url: typeof transactionData.ticket_url === "string" ? transactionData.ticket_url : existing.checkout_url,
+            reused: true,
+          });
+        }
+        return response(502, { ok: false, error: "Não foi possível recuperar os dados do Pix pendente. Tente novamente em instantes." });
+      }
+      return response(200, { ok: true, pix: existingIsPix, checkout_url: existing.checkout_url, payment_id: existing.id, amount: existing.amount, reused: true });
     }
 
     let paymentId = existing?.id as string | undefined;
@@ -167,6 +196,48 @@ Deno.serve(async (req: Request) => {
         provider_status: null, updated_at: new Date().toISOString(),
       }).eq("id", paymentId);
       if (error) return response(500, { ok: false, error: "Não foi possível preparar uma nova tentativa de pagamento." });
+    }
+
+    if (paymentMethod === "pix") {
+      const cpfDigits = String(subscription.responsible_cpf ?? "").replace(/\D/g, "");
+      if (cpfDigits.length !== 11) {
+        await admin.from("mercadopago_subscription_payments").update({ status: "FAILED", provider_status: "pix_missing_valid_cpf", updated_at: new Date().toISOString() }).eq("id", paymentId);
+        return response(409, { ok: false, error: "Para gerar o Pix, cadastre um CPF válido do responsável financeiro na assinatura." });
+      }
+      const pixResponse = await fetch("https://api.mercadopago.com/v1/payments", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json", "X-Idempotency-Key": paymentId },
+        body: JSON.stringify({
+          transaction_amount: amount,
+          description: `Morada360 — Plano ${plan.name}`,
+          payment_method_id: "pix",
+          external_reference: paymentId,
+          notification_url: `${supabaseUrl}/functions/v1/mercadopago-webhook`,
+          payer: { email: subscription.billing_email, identification: { type: "CPF", number: cpfDigits } },
+          metadata: { payment_id: paymentId, association_id: associationId, subscription_id: subscription.id, billing_period: period, resident_count: residentCount, payment_method: "pix" },
+        }),
+      });
+      const pixData = await pixResponse.json().catch(() => ({}));
+      const transactionData = pixData?.point_of_interaction?.transaction_data ?? {};
+      const qrCode = typeof transactionData.qr_code === "string" ? transactionData.qr_code : null;
+      const qrCodeBase64 = typeof transactionData.qr_code_base64 === "string" ? transactionData.qr_code_base64 : null;
+      const ticketUrl = typeof transactionData.ticket_url === "string" ? transactionData.ticket_url : null;
+      if (!pixResponse.ok || !pixData.id || (!qrCode || !qrCodeBase64) && !ticketUrl) {
+        await admin.from("mercadopago_subscription_payments").update({ status: "FAILED", provider_status: `pix_error_${pixResponse.status || "invalid_response"}`, updated_at: new Date().toISOString() }).eq("id", paymentId);
+        console.error("Mercado Pago Pix creation failed", { status: pixResponse.status, cause: pixData?.message ?? pixData?.error ?? "invalid_response" });
+        return response(502, { ok: false, error: "O Mercado Pago não conseguiu gerar o Pix. Nenhum pagamento foi confirmado." });
+      }
+      const providerStatus = String(pixData.status ?? "pending").toLowerCase();
+      const { error: pixSaveError } = await admin.from("mercadopago_subscription_payments").update({
+        provider_payment_id: String(pixData.id), provider_preference_id: null, checkout_url: ticketUrl,
+        status: providerStatus === "approved" ? "APPROVED" : "PENDING",
+        provider_status: providerStatus === "approved" ? "approved" : "pix_created", updated_at: new Date().toISOString(),
+      }).eq("id", paymentId);
+      if (pixSaveError) {
+        console.error("Mercado Pago Pix local save failed", { payment_id: paymentId, cause: pixSaveError.message });
+        return response(500, { ok: false, error: "O Pix foi criado, mas não foi possível atualizar o registro local. Entre em contato com o suporte antes de tentar novamente." });
+      }
+      return response(200, { ok: true, pix: true, payment_id: paymentId, provider_payment_id: String(pixData.id), amount, status: providerStatus, qr_code: qrCode, qr_code_base64: qrCodeBase64, checkout_url: ticketUrl, reused: false });
     }
 
     const siteUrl = "https://devkove.github.io/project-genesis/app/assinatura";

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { BadgeCheck, CalendarClock, Check, CreditCard, Crown, LoaderCircle, MailCheck, ShieldCheck, Users } from "lucide-react";
+import { BadgeCheck, CalendarClock, Check, Copy, CreditCard, Crown, LoaderCircle, MailCheck, QrCode, ShieldCheck, Users } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAssoc } from "@/lib/assoc-context";
@@ -52,6 +52,7 @@ function SubscriptionPage() {
   const [billingEmail, setBillingEmail] = useState("");
   const [saving, setSaving] = useState(false);
   const [paymentLoading, setPaymentLoading] = useState(false);
+  const [pixPayment, setPixPayment] = useState<{ qrCode: string; qrCodeBase64: string; checkoutUrl?: string; amount: number; paymentId: string } | null>(null);
   const [diagnosticLoading, setDiagnosticLoading] = useState(false);
   const [diagnosticResult, setDiagnosticResult] = useState<{ ok: boolean; message: string; account_id?: string; country_id?: string | null; site_id?: string | null; credential_environment?: string } | null>(null);
   const [sandboxLoading, setSandboxLoading] = useState(false);
@@ -229,24 +230,46 @@ function SubscriptionPage() {
     }
   }
 
-  async function startManualPayment() {
+  async function startManualPayment(method: "card" | "pix") {
     if (!associationId || paymentLoading) return;
     setPaymentLoading(true);
+    if (method !== "pix") setPixPayment(null);
     try {
-      if (memberBilling.data?.latest_payment_status === "PENDING" && memberBilling.data.latest_payment_url) {
-        window.location.assign(memberBilling.data.latest_payment_url);
-        return;
-      }
       const { data, error } = await supabase.functions.invoke("mercadopago-create-payment", {
-        body: { association_id: associationId },
+        body: { association_id: associationId, payment_method: method },
       });
-      if (error) throw error;
-      if (!data?.ok || typeof data.checkout_url !== "string") {
-        throw new Error(data?.error || "Não foi possível gerar o link de pagamento.");
+      if (error) {
+        const ctx = (error as { context?: Response }).context;
+        const payload = ctx ? await ctx.json().catch(() => null) : null;
+        if (payload?.error) throw new Error(String(payload.error));
+        throw error;
+      }
+      if (!data?.ok) throw new Error(data?.error || "Não foi possível gerar o pagamento.");
+      if (method === "pix") {
+        if (typeof data.qr_code === "string" && typeof data.qr_code_base64 === "string") {
+          setPixPayment({
+            qrCode: data.qr_code,
+            qrCodeBase64: data.qr_code_base64,
+            checkoutUrl: typeof data.checkout_url === "string" ? data.checkout_url : undefined,
+            amount: Number(data.amount ?? 0),
+            paymentId: String(data.payment_id ?? ""),
+          });
+          toast.success("Pix gerado. Pague pelo QR Code ou copie o código Pix.");
+          return;
+        }
+        if (typeof data.checkout_url === "string" && data.checkout_url.startsWith("https://")) {
+          window.location.assign(data.checkout_url);
+          return;
+        }
+        throw new Error("O Mercado Pago não retornou o QR Code Pix nem as instruções de pagamento.");
+      }
+      if (typeof data.checkout_url !== "string" || !data.checkout_url.startsWith("https://")) {
+        throw new Error("O Mercado Pago não retornou um link de checkout válido.");
       }
       window.location.assign(data.checkout_url);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Não foi possível iniciar o pagamento.");
+    } finally {
       setPaymentLoading(false);
     }
   }
@@ -330,12 +353,30 @@ function SubscriptionPage() {
                   <p className="mt-1 text-sm text-muted-foreground">{pendingCheckout ? "Continue para o Mercado Pago e conclua o pagamento. O plano será atualizado após confirmação segura." : "Seu teste ou período pago terminou. Gere uma cobrança mensal manual pelo Mercado Pago."}</p>
                   {memberBilling.data.latest_payment_amount != null && pendingCheckout && <p className="mt-1 text-sm font-medium">Valor: {brl(Number(memberBilling.data.latest_payment_amount))}</p>}
                 </div>
-                <Button onClick={() => void startManualPayment()} disabled={paymentLoading} className="shrink-0">
-                  {paymentLoading ? <><LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> Preparando…</> : <><CreditCard className="mr-2 h-4 w-4" /> {pendingCheckout ? "Continuar pagamento" : "Pagar mensalidade"}</>}
-                </Button>
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                  <Button onClick={() => void startManualPayment("pix")} disabled={paymentLoading} className="shrink-0">
+                    {paymentLoading ? <><LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> Preparando…</> : <><QrCode className="mr-2 h-4 w-4" /> Pagar com Pix</>}
+                  </Button>
+                  <Button variant="outline" onClick={() => void startManualPayment("card")} disabled={paymentLoading} className="shrink-0">
+                    {paymentLoading ? <><LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> Preparando…</> : <><CreditCard className="mr-2 h-4 w-4" /> {pendingCheckout ? "Continuar checkout" : "Pagar com cartão"}</>}
+                  </Button>
+                </div>
               </div>
             </div> : null;
           })()}
+          {pixPayment && <div className="mt-5 rounded-xl border border-primary/30 bg-background p-4 sm:p-5">
+            <div className="flex items-start gap-3"><QrCode className="mt-1 h-5 w-5 shrink-0 text-primary" /><div><h3 className="font-semibold">Pague com Pix</h3><p className="mt-1 text-sm text-muted-foreground">Valor: {brl(pixPayment.amount)}. Abra o aplicativo do seu banco e escaneie o QR Code ou use o Pix Copia e Cola. A assinatura só será atualizada após a confirmação do Mercado Pago.</p></div></div>
+            <div className="mt-4 flex flex-col items-center gap-4 sm:flex-row sm:items-start">
+              <img src={`data:image/jpeg;base64,${pixPayment.qrCodeBase64}`} alt="QR Code para pagamento via Pix" className="h-56 w-56 rounded-lg border bg-white p-2 object-contain" />
+              <div className="w-full min-w-0 flex-1 space-y-3">
+                <Label htmlFor="pix-copy-paste">Pix Copia e Cola</Label>
+                <textarea id="pix-copy-paste" readOnly value={pixPayment.qrCode} className="min-h-28 w-full resize-y rounded-md border bg-muted/30 p-3 font-mono text-xs" />
+                <Button type="button" onClick={async () => { try { await navigator.clipboard.writeText(pixPayment.qrCode); toast.success("Código Pix copiado."); } catch { toast.error("Não foi possível copiar automaticamente. Selecione e copie o código Pix."); } }} className="w-full sm:w-auto"><Copy className="mr-2 h-4 w-4" /> Copiar código Pix</Button>
+                {pixPayment.checkoutUrl && <a href={pixPayment.checkoutUrl} target="_blank" rel="noopener noreferrer" className="block text-sm font-medium text-primary underline underline-offset-4">Abrir instruções de pagamento</a>}
+                <p className="text-xs text-muted-foreground">Referência do pagamento: {pixPayment.paymentId || "processando"}</p>
+              </div>
+            </div>
+          </div>}
         </section>
         <section className="space-y-3">
           <div><h2 className="text-xl font-semibold">Conheça os planos superiores</h2><p className="mt-1 text-sm text-muted-foreground">Veja o que sua associação pode desbloquear com um upgrade. A mudança precisa ser aprovada pelo administrador do sistema.</p></div>
