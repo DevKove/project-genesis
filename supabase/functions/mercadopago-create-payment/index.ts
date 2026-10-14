@@ -159,6 +159,24 @@ Deno.serve(async (req: Request) => {
           ? "Já existe um Pix pendente para esta mensalidade. Conclua esse Pix antes de escolher cartão."
           : "Já existe um checkout pendente para esta mensalidade. Conclua ou aguarde a atualização desse pagamento antes de gerar um Pix." });
       }
+      if (existingIsPix && paymentMethod === "pix" && existing.provider_payment_id) {
+        const existingPixResponse = await fetch(`https://api.mercadopago.com/v1/payments/${encodeURIComponent(String(existing.provider_payment_id))}`, {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
+        const existingPixData = await existingPixResponse.json().catch(() => ({}));
+        const transactionData = existingPixData?.point_of_interaction?.transaction_data ?? {};
+        if (existingPixResponse.ok && existingPixData.id) {
+          return response(200, {
+            ok: true, pix: true, payment_id: existing.id, provider_payment_id: String(existingPixData.id),
+            amount: existing.amount, status: existingPixData.status,
+            qr_code: typeof transactionData.qr_code === "string" ? transactionData.qr_code : null,
+            qr_code_base64: typeof transactionData.qr_code_base64 === "string" ? transactionData.qr_code_base64 : null,
+            checkout_url: typeof transactionData.ticket_url === "string" ? transactionData.ticket_url : existing.checkout_url,
+            reused: true,
+          });
+        }
+        return response(502, { ok: false, error: "Não foi possível recuperar os dados do Pix pendente. Tente novamente em instantes." });
+      }
       return response(200, { ok: true, pix: existingIsPix, checkout_url: existing.checkout_url, payment_id: existing.id, amount: existing.amount, reused: true });
     }
 
