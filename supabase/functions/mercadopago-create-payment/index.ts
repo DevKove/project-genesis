@@ -22,8 +22,9 @@ Deno.serve(async (req: Request) => {
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
   const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-  const accessToken = Deno.env.get("MERCADOPAGO_ACCESS_TOKEN");
-  if (!supabaseUrl || !anonKey || !serviceKey || !accessToken) {
+  const productionAccessToken = Deno.env.get("MERCADOPAGO_ACCESS_TOKEN");
+  const testAccessToken = Deno.env.get("MERCADOPAGO_TEST_ACCESS_TOKEN");
+  if (!supabaseUrl || !anonKey || !serviceKey) {
     return response(503, { ok: false, error: "Integração Mercado Pago ainda não configurada no servidor." });
   }
 
@@ -49,7 +50,7 @@ Deno.serve(async (req: Request) => {
     if (body.action === "diagnostic") {
       const mpResponse = await fetch("https://api.mercadopago.com/users/me", {
         method: "GET",
-        headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+        headers: { Authorization: `Bearer ${productionAccessToken ?? ""}`, "Content-Type": "application/json" },
       });
       const mpData = await mpResponse.json().catch(() => ({}));
       if (!mpResponse.ok || !mpData.id) {
@@ -70,7 +71,7 @@ Deno.serve(async (req: Request) => {
         account_id: String(mpData.id),
         country_id: typeof mpData.country_id === "string" ? mpData.country_id : null,
         site_id: typeof mpData.site_id === "string" ? mpData.site_id : null,
-        credential_environment: accessToken.startsWith("TEST-") ? "teste" : accessToken.startsWith("APP_USR-") ? "produção" : "não identificado",
+        credential_environment: productionAccessToken?.startsWith("APP_USR-") ? "produção (prefixo APP_USR)" : productionAccessToken?.startsWith("TEST-") ? "token TEST configurado na variável de produção — revisar configuração" : "não identificado",
         message: "Credencial aceita pelo Mercado Pago. Nenhuma cobrança ou preferência foi criada.",
       });
     }
@@ -80,7 +81,7 @@ Deno.serve(async (req: Request) => {
     // nothing to the database, so no subscription or payment row is ever changed.
     if (body.action === "sandbox_checkout") {
       if (!platformAdmin) return response(403, { ok: false, sandbox: true, error: "Somente administradores da plataforma podem testar o checkout." });
-      if (!accessToken.startsWith("TEST-")) {
+      if (!testAccessToken || !testAccessToken.startsWith("TEST-")) {
         return response(409, {
           ok: false, sandbox: true, requires_test_credential: true,
           error: "A credencial configurada no servidor não é de teste (prefixo TEST-). Por segurança, nenhum checkout foi criado. Configure uma credencial de teste do Mercado Pago no servidor para usar este teste.",
@@ -90,7 +91,7 @@ Deno.serve(async (req: Request) => {
       const returnUrl = "https://devkove.github.io/project-genesis/app/assinatura?checkout_teste=1";
       const mpResponse = await fetch("https://api.mercadopago.com/checkout/preferences", {
         method: "POST",
-        headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json", "X-Idempotency-Key": testRef },
+        headers: { Authorization: `Bearer ${testAccessToken}`, "Content-Type": "application/json", "X-Idempotency-Key": testRef },
         body: JSON.stringify({
           items: [{ id: "sandbox-test", title: "Morada360 — Teste de checkout (sandbox)", quantity: 1, currency_id: "BRL", unit_price: 1 }],
           external_reference: testRef,
@@ -110,7 +111,9 @@ Deno.serve(async (req: Request) => {
 
     // Fail closed: never allow an unknown credential format to create checkout.
 
-    const isTestEnvironment = accessToken.startsWith("TEST-");
+    if (!productionAccessToken) return response(503, { ok: false, error: "Credencial de produção do Mercado Pago não configurada no servidor." });
+    const accessToken = productionAccessToken;
+    const isTestEnvironment = false;
     const isProductionEnvironment = accessToken.startsWith("APP_USR-");
     if (!isTestEnvironment && !isProductionEnvironment) {
       return response(503, { ok: false, error: "Ambiente da credencial do Mercado Pago não identificado. Checkout bloqueado por segurança." });
