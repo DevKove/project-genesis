@@ -54,6 +54,11 @@ Deno.serve(async (req: Request) => {
     if (!/^[0-9a-f-]{36}$/i.test(paymentId)) return json(200, { ok: true, ignored: true });
     const { data: localPayment } = await admin.from("mercadopago_subscription_payments").select("*").eq("id", paymentId).maybeSingle();
     if (!localPayment) return json(200, { ok: true, ignored: true });
+    // Ignore eventos atrasados de uma tentativa anterior depois que um novo pagamento
+    // foi associado à mesma mensalidade.
+    if (localPayment.provider_payment_id && String(localPayment.provider_payment_id) !== String(mpPayment.id)) {
+      return json(200, { ok: true, ignored: true, reason: "stale_payment_attempt" });
+    }
     const amountMatches = Math.abs(Number(mpPayment.transaction_amount) - Number(localPayment.amount)) < 0.01;
     if (mpPayment.currency_id !== "BRL" || !amountMatches || String(mpPayment.external_reference) !== localPayment.id) {
       return json(422, { ok: false, error: "Pagamento não corresponde à cobrança registrada." });
