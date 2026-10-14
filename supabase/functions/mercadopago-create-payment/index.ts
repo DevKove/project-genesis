@@ -224,6 +224,23 @@ Deno.serve(async (req: Request) => {
       const qrCode = typeof transactionData.qr_code === "string" ? transactionData.qr_code : null;
       const qrCodeBase64 = typeof transactionData.qr_code_base64 === "string" ? transactionData.qr_code_base64 : null;
       const ticketUrl = typeof transactionData.ticket_url === "string" ? transactionData.ticket_url : null;
+
+      // The production payment endpoint must never display a sandbox QR. A test
+      // credential mistakenly stored as the production secret can otherwise return
+      // a QR that real banking apps reject (for example, an invalid Pix key).
+      if (pixResponse.ok && pixData.id && pixData.live_mode !== true) {
+        await admin.from("mercadopago_subscription_payments").update({
+          status: "FAILED", provider_status: "pix_not_live_mode", updated_at: new Date().toISOString(),
+        }).eq("id", paymentId);
+        console.error("Mercado Pago Pix blocked: provider returned non-live payment", {
+          provider_payment_id: String(pixData.id), live_mode: pixData.live_mode ?? null,
+        });
+        return response(502, {
+          ok: false,
+          error: "O Mercado Pago retornou um Pix em ambiente de teste. Esse QR Code não pode ser pago por um banco real. A cobrança foi bloqueada; confirme que MERCADOPAGO_PRODUCTION_ACCESS_TOKEN contém uma credencial de produção.",
+        });
+      }
+
       if (!pixResponse.ok || !pixData.id || (!qrCode || !qrCodeBase64) && !ticketUrl) {
         await admin.from("mercadopago_subscription_payments").update({ status: "FAILED", provider_status: `pix_error_${pixResponse.status || "invalid_response"}`, updated_at: new Date().toISOString() }).eq("id", paymentId);
         console.error("Mercado Pago Pix creation failed", { status: pixResponse.status, cause: pixData?.message ?? pixData?.error ?? "invalid_response" });
