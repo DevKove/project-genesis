@@ -216,13 +216,12 @@ Deno.serve(async (req: Request) => {
           headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
           body: JSON.stringify({ expires: true, expiration_date_from: expirationFrom, expiration_date_to: expirationTo }),
         });
-        await expireResponse.json().catch(() => ({}));
+        const expireData = await expireResponse.json().catch(() => ({}));
         if (!expireResponse.ok) {
-          const expireError = await expireResponse.clone().json().catch(() => ({}));
           console.error("Mercado Pago previous checkout expiration failed", {
             status: expireResponse.status,
-            cause: expireError?.message ?? expireError?.error ?? "unknown",
-            cause_code: expireError?.cause?.[0]?.code ?? expireError?.cause?.[0]?.description ?? null,
+            cause: expireData?.message ?? expireData?.error ?? "unknown",
+            cause_code: expireData?.cause?.[0]?.code ?? expireData?.cause?.[0]?.description ?? null,
           });
           return response(502, { ok: false, error: "Não foi possível invalidar o checkout anterior no Mercado Pago. Nenhum Pix novo foi criado." });
         }
