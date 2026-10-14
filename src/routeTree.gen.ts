@@ -23,6 +23,7 @@ import { Route as AuthenticatedConviteRouteImport } from './routes/_authenticate
 import { Route as AuthenticatedAppIndexRouteImport } from './routes/_authenticated/app.index'
 import { Route as AuthenticatedAppAdminAprovacoesRouteImport } from './routes/_authenticated/app.admin-aprovacoes'
 import { Route as AuthenticatedAppAdminPerfisRouteImport } from './routes/_authenticated/app.admin-perfis'
+import { Route as AuthenticatedAppAssinaturaRouteImport } from './routes/_authenticated/app.assinatura'
 import { Route as AuthenticatedAppAuditoriaRouteImport } from './routes/_authenticated/app.auditoria'
 import { Route as AuthenticatedAppComunicadosRouteImport } from './routes/_authenticated/app.comunicados'
 import { Route as AuthenticatedAppConfiguracoesRouteImport } from './routes/_authenticated/app.configuracoes'
@@ -107,6 +108,12 @@ const AuthenticatedAppAdminPerfisRoute =
     path: '/admin-perfis',
     getParentRoute: () => AuthenticatedAppRoute,
   } as any)
+const AuthenticatedAppAssinaturaRoute =
+  AuthenticatedAppAssinaturaRouteImport.update({
+    id: '/assinatura',
+    path: '/assinatura',
+    getParentRoute: () => AuthenticatedAppRoute,
+  } as any)
 const AuthenticatedAppAuditoriaRoute =
   AuthenticatedAppAuditoriaRouteImport.update({
     id: '/auditoria',
@@ -185,6 +192,7 @@ export interface FileRoutesByFullPath {
   '/convite': typeof AuthenticatedConviteRoute
   '/app/admin-aprovacoes': typeof AuthenticatedAppAdminAprovacoesRoute
   '/app/admin-perfis': typeof AuthenticatedAppAdminPerfisRoute
+  '/app/assinatura': typeof AuthenticatedAppAssinaturaRoute
   '/app/auditoria': typeof AuthenticatedAppAuditoriaRoute
   '/app/comunicados': typeof AuthenticatedAppComunicadosRoute
   '/app/configuracoes': typeof AuthenticatedAppConfiguracoesRoute
@@ -210,6 +218,7 @@ export interface FileRoutesByTo {
   '/convite': typeof AuthenticatedConviteRoute
   '/app/admin-aprovacoes': typeof AuthenticatedAppAdminAprovacoesRoute
   '/app/admin-perfis': typeof AuthenticatedAppAdminPerfisRoute
+  '/app/assinatura': typeof AuthenticatedAppAssinaturaRoute
   '/app/auditoria': typeof AuthenticatedAppAuditoriaRoute
   '/app/comunicados': typeof AuthenticatedAppComunicadosRoute
   '/app/configuracoes': typeof AuthenticatedAppConfiguracoesRoute
@@ -238,6 +247,7 @@ export interface FileRoutesById {
   '/_authenticated/convite': typeof AuthenticatedConviteRoute
   '/_authenticated/app/admin-aprovacoes': typeof AuthenticatedAppAdminAprovacoesRoute
   '/_authenticated/app/admin-perfis': typeof AuthenticatedAppAdminPerfisRoute
+  '/_authenticated/app/assinatura': typeof AuthenticatedAppAssinaturaRoute
   '/_authenticated/app/auditoria': typeof AuthenticatedAppAuditoriaRoute
   '/_authenticated/app/comunicados': typeof AuthenticatedAppComunicadosRoute
   '/_authenticated/app/configuracoes': typeof AuthenticatedAppConfiguracoesRoute
@@ -266,6 +276,7 @@ export interface FileRouteTypes {
     | '/convite'
     | '/app/admin-aprovacoes'
     | '/app/admin-perfis'
+    | '/app/assinatura'
     | '/app/auditoria'
     | '/app/comunicados'
     | '/app/configuracoes'
@@ -291,6 +302,7 @@ export interface FileRouteTypes {
     | '/convite'
     | '/app/admin-aprovacoes'
     | '/app/admin-perfis'
+    | '/app/assinatura'
     | '/app/auditoria'
     | '/app/comunicados'
     | '/app/configuracoes'
@@ -318,6 +330,7 @@ export interface FileRouteTypes {
     | '/_authenticated/convite'
     | '/_authenticated/app/admin-aprovacoes'
     | '/_authenticated/app/admin-perfis'
+    | '/_authenticated/app/assinatura'
     | '/_authenticated/app/auditoria'
     | '/_authenticated/app/comunicados'
     | '/_authenticated/app/configuracoes'
@@ -443,6 +456,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAppAdminPerfisRouteImport
       parentRoute: typeof AuthenticatedAppRoute
     }
+    '/_authenticated/app/assinatura': {
+      id: '/_authenticated/app/assinatura'
+      path: '/assinatura'
+      fullPath: '/app/assinatura'
+      preLoaderRoute: typeof AuthenticatedAppAssinaturaRouteImport
+      parentRoute: typeof AuthenticatedAppRoute
+    }
     '/_authenticated/app/auditoria': {
       id: '/_authenticated/app/auditoria'
       path: '/auditoria'
@@ -526,6 +546,7 @@ declare module '@tanstack/react-router' {
 interface AuthenticatedAppRouteChildren {
   AuthenticatedAppAdminAprovacoesRoute: typeof AuthenticatedAppAdminAprovacoesRoute
   AuthenticatedAppAdminPerfisRoute: typeof AuthenticatedAppAdminPerfisRoute
+  AuthenticatedAppAssinaturaRoute: typeof AuthenticatedAppAssinaturaRoute
   AuthenticatedAppAuditoriaRoute: typeof AuthenticatedAppAuditoriaRoute
   AuthenticatedAppComunicadosRoute: typeof AuthenticatedAppComunicadosRoute
   AuthenticatedAppConfiguracoesRoute: typeof AuthenticatedAppConfiguracoesRoute
@@ -543,6 +564,7 @@ interface AuthenticatedAppRouteChildren {
 const AuthenticatedAppRouteChildren: AuthenticatedAppRouteChildren = {
   AuthenticatedAppAdminAprovacoesRoute: AuthenticatedAppAdminAprovacoesRoute,
   AuthenticatedAppAdminPerfisRoute: AuthenticatedAppAdminPerfisRoute,
+  AuthenticatedAppAssinaturaRoute: AuthenticatedAppAssinaturaRoute,
   AuthenticatedAppAuditoriaRoute: AuthenticatedAppAuditoriaRoute,
   AuthenticatedAppComunicadosRoute: AuthenticatedAppComunicadosRoute,
   AuthenticatedAppConfiguracoesRoute: AuthenticatedAppConfiguracoesRoute,
