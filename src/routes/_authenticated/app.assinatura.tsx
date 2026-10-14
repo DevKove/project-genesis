@@ -487,7 +487,7 @@ function SubscriptionPage() {
         <div className="mt-5 flex flex-col gap-3 border-t pt-5 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <h3 className="font-semibold">Testar checkout (sandbox)</h3>
-            <p className="mt-1 max-w-2xl text-sm text-muted-foreground">Cria uma preferência de teste de R$ 1,00 somente com credencial TEST-. Não altera assinaturas, pagamentos nem o status da associação. Nunca usa credencial de produção.</p>
+            <p className="mt-1 max-w-2xl text-sm text-muted-foreground">Abre o Checkout Pro isolado de teste por meio da URL de sandbox retornada pelo Mercado Pago. Este teste não valida o Pix direto do MORADA360 e não altera assinaturas nem registros financeiros.</p>
           </div>
           <Button type="button" variant="outline" onClick={() => void runSandboxCheckout()} disabled={sandboxLoading || !associationId} className="shrink-0">
             {sandboxLoading ? <><LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> Criando teste…</> : <><CreditCard className="mr-2 h-4 w-4" /> Testar checkout (sandbox)</>}
