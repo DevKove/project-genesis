@@ -18,7 +18,7 @@ SECURITY DEFINER
 SET search_path TO ''
 AS $function$
 DECLARE
-  current_time timestamptz := clock_timestamp();
+  v_now timestamptz := clock_timestamp();
   allowed boolean;
 BEGIN
   IF _ip_hash IS NULL OR _ip_hash !~ '^[a-f0-9]{64}$' THEN
@@ -28,26 +28,26 @@ BEGIN
   INSERT INTO public.association_code_lookup_limits (
     ip_hash, minute_started_at, minute_count, hour_started_at, hour_count, updated_at
   ) VALUES (
-    _ip_hash, current_time, 1, current_time, 1, current_time
+    _ip_hash, v_now, 1, v_now, 1, v_now
   )
   ON CONFLICT (ip_hash) DO UPDATE SET
     minute_count = CASE
-      WHEN public.association_code_lookup_limits.minute_started_at <= current_time - interval '1 minute' THEN 1
+      WHEN public.association_code_lookup_limits.minute_started_at <= v_now - interval '1 minute' THEN 1
       ELSE public.association_code_lookup_limits.minute_count + 1
     END,
     minute_started_at = CASE
-      WHEN public.association_code_lookup_limits.minute_started_at <= current_time - interval '1 minute' THEN current_time
+      WHEN public.association_code_lookup_limits.minute_started_at <= v_now - interval '1 minute' THEN v_now
       ELSE public.association_code_lookup_limits.minute_started_at
     END,
     hour_count = CASE
-      WHEN public.association_code_lookup_limits.hour_started_at <= current_time - interval '1 hour' THEN 1
+      WHEN public.association_code_lookup_limits.hour_started_at <= v_now - interval '1 hour' THEN 1
       ELSE public.association_code_lookup_limits.hour_count + 1
     END,
     hour_started_at = CASE
-      WHEN public.association_code_lookup_limits.hour_started_at <= current_time - interval '1 hour' THEN current_time
+      WHEN public.association_code_lookup_limits.hour_started_at <= v_now - interval '1 hour' THEN v_now
       ELSE public.association_code_lookup_limits.hour_started_at
     END,
-    updated_at = current_time;
+    updated_at = v_now;
 
   SELECT minute_count <= 10 AND hour_count <= 50
     INTO allowed
