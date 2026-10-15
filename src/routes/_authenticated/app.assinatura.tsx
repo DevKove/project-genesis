@@ -191,7 +191,7 @@ function SubscriptionPage() {
         throw new Error(data?.error || "O servidor não confirmou um checkout de teste seguro.");
       }
       const checkoutUrl = new URL(data.checkout_url);
-      if (checkoutUrl.protocol !== "https:" || !/(^|\\.)mercadopago\\.com(\\.br)?$/.test(checkoutUrl.hostname)) {
+      if (checkoutUrl.protocol !== "https:" || !/(^|\.)mercadopago\.com(\.br)?$/.test(checkoutUrl.hostname)) {
         throw new Error("O Mercado Pago não retornou um endereço de checkout de teste confiável. A navegação foi bloqueada.");
       }
       toast.success("Checkout de teste preparado. Nenhum pagamento do Morada360 foi registrado.");
