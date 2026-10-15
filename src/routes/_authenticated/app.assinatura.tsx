@@ -52,6 +52,7 @@ function SubscriptionPage() {
   const [billingEmail, setBillingEmail] = useState("");
   const [saving, setSaving] = useState(false);
   const [paymentLoading, setPaymentLoading] = useState(false);
+  const [sandboxLoading, setSandboxLoading] = useState(false);
   const [pixPayment, setPixPayment] = useState<{ qrCode: string; qrCodeBase64: string; checkoutUrl?: string; amount: number; paymentId: string } | null>(null);
 
   const plans = useQuery({
@@ -165,6 +166,40 @@ function SubscriptionPage() {
       toast.error(error instanceof Error ? error.message : "Não foi possível alterar o plano.");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function startSandboxCheckout() {
+    if (!associationId || !isPlatformAdmin || sandboxLoading) return;
+    const confirmed = window.confirm(
+      "Abrir um checkout de TESTE do Mercado Pago para a associação selecionada? Será usada somente a credencial de teste; nenhuma assinatura ou cobrança real do Morada360 será criada ou alterada."
+    );
+    if (!confirmed) return;
+
+    setSandboxLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("mercadopago-create-payment", {
+        body: { association_id: associationId, action: "sandbox_checkout" },
+      });
+      if (error) {
+        const ctx = (error as { context?: Response }).context;
+        const payload = ctx ? await ctx.json().catch(() => null) : null;
+        if (payload?.error) throw new Error(String(payload.error));
+        throw error;
+      }
+      if (!data?.ok || data?.sandbox !== true || typeof data.checkout_url !== "string") {
+        throw new Error(data?.error || "O servidor não confirmou um checkout de teste seguro.");
+      }
+      const checkoutUrl = new URL(data.checkout_url);
+      if (checkoutUrl.protocol !== "https:" || !/(^|\\.)mercadopago\\.com(\\.br)?$/.test(checkoutUrl.hostname)) {
+        throw new Error("O Mercado Pago não retornou um endereço de checkout de teste confiável. A navegação foi bloqueada.");
+      }
+      toast.success("Checkout de teste preparado. Nenhum pagamento do Morada360 foi registrado.");
+      window.location.assign(checkoutUrl.toString());
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Não foi possível iniciar o checkout de teste.");
+    } finally {
+      setSandboxLoading(false);
     }
   }
 
@@ -373,12 +408,25 @@ function SubscriptionPage() {
         </div>
         <div className="rounded-xl border bg-card p-5">
           <div className="flex items-center gap-2 text-sm text-muted-foreground"><CalendarClock className="h-4 w-4" /> Período de avaliação</div>
-          <p className="mt-2 text-3xl font-bold">10 dias</p>
-          <p className="mt-1 text-xs text-muted-foreground">Sem cobrança durante o teste gratuito</p>
+          <p className="mt-2 text-xl font-bold">Desativado</p>
+          <p className="mt-1 text-xs text-muted-foreground">Novas assinaturas não recebem teste gratuito automaticamente</p>
         </div>
       </section>
 
       {subscription.isError && <div role="alert" className="rounded-lg border border-destructive/40 p-4 text-sm">Não foi possível consultar a assinatura. Verifique as permissões e tente novamente. <Button variant="link" onClick={() => void subscription.refetch()}>Tentar novamente</Button></div>}
+      <section className="rounded-xl border border-dashed border-amber-500/50 bg-amber-500/5 p-5 sm:p-6">
+        <div className="flex items-start gap-3">
+          <ShieldCheck className="mt-1 h-5 w-5 shrink-0 text-amber-700 dark:text-amber-300" />
+          <div className="min-w-0 flex-1">
+            <h2 className="font-semibold">Teste seguro do Mercado Pago</h2>
+            <p className="mt-1 text-sm text-muted-foreground">Cria uma preferência de checkout de baixo valor usando exclusivamente a credencial de teste configurada no servidor. Não registra pagamento nem altera a assinatura da associação. Se a credencial de teste não estiver configurada, o servidor bloqueará a operação sem recorrer à credencial de produção.</p>
+            <Button type="button" variant="outline" onClick={() => void startSandboxCheckout()} disabled={sandboxLoading || !associationId} className="mt-4">
+              {sandboxLoading ? <><LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> Preparando checkout de teste…</> : <><ShieldCheck className="mr-2 h-4 w-4" /> Testar checkout (sandbox)</>}
+            </Button>
+          </div>
+        </div>
+      </section>
+
       {subscription.data && (
         <section className="rounded-xl border border-primary/30 bg-primary/5 p-5 sm:p-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
