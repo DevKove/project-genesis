@@ -62,5 +62,5 @@ REVOKE ALL ON FUNCTION public.consume_association_code_lookup_limit(text) FROM P
 GRANT EXECUTE ON FUNCTION public.consume_association_code_lookup_limit(text) TO service_role;
 
 -- After the rate-limited Edge Function is deployed, remove direct browser access.
-REVOKE EXECUTE ON FUNCTION public.lookup_association_by_code(text) FROM anon, authenticated;
+REVOKE ALL ON FUNCTION public.lookup_association_by_code(text) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.lookup_association_by_code(text) TO service_role;
