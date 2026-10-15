@@ -318,7 +318,7 @@ function SubscriptionPage() {
             const now = Date.now();
             const trialExpired = memberBilling.data.subscription_status === "trialing" && Boolean(memberBilling.data.trial_ends_at) && new Date(memberBilling.data.trial_ends_at!).getTime() <= now;
             const periodExpired = memberBilling.data.subscription_status === "active" && Boolean(memberBilling.data.current_period_end) && new Date(memberBilling.data.current_period_end!).getTime() <= now;
-            const needsPayment = trialExpired || periodExpired || ["payment_required", "past_due"].includes(memberBilling.data.subscription_status);
+            const needsPayment = memberBilling.data.subscription_status === "trialing" || trialExpired || periodExpired || ["payment_required", "past_due"].includes(memberBilling.data.subscription_status);
             const pendingCheckout = memberBilling.data.latest_payment_status === "PENDING" && Boolean(memberBilling.data.latest_payment_url);
             return (needsPayment || pendingCheckout) ? <div className="mt-5 space-y-4 rounded-xl border border-primary/30 bg-background p-4 sm:p-5">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
@@ -436,17 +436,17 @@ function SubscriptionPage() {
               <p className="mt-1 text-sm text-muted-foreground">E-mail de faturamento: {subscription.data.billing_email}</p>
             </div>
             <span className="w-fit rounded-full border bg-background px-3 py-1 text-xs font-semibold">
-              {trialExpired ? "Teste encerrado — pagamento necessário" : subscription.data.status === "trialing" ? "Teste gratuito em andamento" : subscription.data.status === "active" ? "Ativa" : subscription.data.status}
+              {subscription.data.status === "trialing" ? "Pagamento necessário — avaliação desativada" : trialExpired ? "Pagamento necessário" : subscription.data.status === "active" ? "Ativa" : subscription.data.status}
             </span>
           </div>
           <div className="mt-5 grid gap-3 sm:grid-cols-2">
             <div className="rounded-lg border bg-background p-4"><p className="text-xs text-muted-foreground">Início do teste</p><p className="mt-1 font-semibold">{dateTime(subscription.data.trial_started_at)}</p></div>
             <div className="rounded-lg border bg-background p-4"><p className="text-xs text-muted-foreground">Fim do teste</p><p className="mt-1 font-semibold">{dateTime(subscription.data.trial_ends_at)}</p></div>
           </div>
-          <p className="mt-4 text-sm text-muted-foreground">{trialExpired ? "O período de avaliação terminou. Verifique a integração abaixo antes de liberar o fluxo de pagamento. Nenhuma cobrança é criada por este diagnóstico." : "A avaliação é concedida uma única vez por associação e não pode ser reiniciada."}</p>
+          <p className="mt-4 text-sm text-muted-foreground">{subscription.data.status === "trialing" ? "Esta assinatura ainda tem o status antigo de avaliação. A avaliação gratuita foi desativada; regularize a assinatura para ativar o acesso após a confirmação do pagamento." : trialExpired ? "A avaliação gratuita foi desativada. Verifique a integração antes de iniciar uma cobrança." : "O teste gratuito está desativado para novas assinaturas."}</p>
         </section>
       )}
-      {subscription.data && (trialExpired || ["payment_required", "past_due"].includes(subscription.data.status)) && (
+      {subscription.data && (subscription.data.status === "trialing" || trialExpired || ["payment_required", "past_due"].includes(subscription.data.status)) && (
         <section className="rounded-xl border border-primary/30 bg-primary/5 p-5 sm:p-6">
           <div className="flex items-start gap-3">
             <QrCode className="mt-1 h-6 w-6 shrink-0 text-primary" />
