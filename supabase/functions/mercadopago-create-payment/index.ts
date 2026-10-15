@@ -152,9 +152,8 @@ Deno.serve(async (req: Request) => {
     if (subError || !subscription) return response(404, { ok: false, error: "Assinatura não encontrada para esta associação." });
 
     const now = new Date();
-    if (subscription.status === "trialing" && new Date(subscription.trial_ends_at) > now) {
-      return response(409, { ok: false, error: "Seu teste gratuito ainda está ativo. Nenhuma cobrança é necessária agora." });
-    }
+    // Avaliação gratuita desativada: assinaturas antigas ainda marcadas como trialing
+    // podem iniciar pagamento. A assinatura só passa a ativa após confirmação pelo webhook.
     if (subscription.status === "cancelled" || subscription.status === "suspended") {
       return response(409, { ok: false, error: "Esta assinatura não pode gerar cobrança. Entre em contato com o suporte." });
     }
