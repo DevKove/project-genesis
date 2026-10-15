@@ -13,6 +13,10 @@ import { buildAppUrl } from "@/lib/app-url";
 
 type Search = { redirect?: string | undefined; association_id?: string | undefined; association_code?: string | undefined; association_required?: string | undefined };
 
+async function lookupAssociationByCode(code: string) {
+  return supabase.functions.invoke("lookup-association-by-code", { body: { code } });
+}
+
 export const Route = createFileRoute("/auth")({
   validateSearch: (s: Record<string, unknown>): Search => ({ redirect: typeof s["redirect"] === "string" ? s["redirect"] : undefined, association_id: typeof s["association_id"] === "string" ? s["association_id"] : undefined, association_code: typeof s["association_code"] === "string" ? s["association_code"] : undefined, association_required: typeof s["association_required"] === "string" ? s["association_required"] : undefined }),
   head: () => ({
@@ -64,7 +68,7 @@ function AuthPage() {
           || "";
       } catch { /* Storage may be unavailable; continue with the callback URL. */ }
       if (pendingAssociationCode && /^\d{6}$/.test(pendingAssociationCode)) {
-        const { data: codeMatches, error: codeError } = await supabase.rpc("lookup_association_by_code", { _code: pendingAssociationCode });
+        const { data: codeMatches, error: codeError } = await lookupAssociationByCode(pendingAssociationCode);
         if (codeError || !codeMatches?.length) {
           toast.error("O código da associação não pôde ser validado. Entre novamente e informe o código correto.");
           handledSession.current = null;
@@ -84,7 +88,7 @@ function AuthPage() {
       }
       let requestedAssociationId = callbackAssociationId || pendingAssociationId.current || storedAssociationId;
       if (!requestedAssociationId && pendingAssociationCode && /^\d{6}$/.test(pendingAssociationCode)) {
-        const { data: recoveredMatches, error: recoveredLookupError } = await supabase.rpc("lookup_association_by_code", { _code: pendingAssociationCode });
+        const { data: recoveredMatches, error: recoveredLookupError } = await lookupAssociationByCode(pendingAssociationCode);
         if (!recoveredLookupError && recoveredMatches?.length) requestedAssociationId = recoveredMatches[0].id;
       }
       try { sessionStorage.removeItem("morada360.pendingAssociationId"); } catch { /* Ignore unavailable session storage. */ }
@@ -181,7 +185,7 @@ function AuthPage() {
     if (!adminAccess) {
       const code = (associationCodeInput.current?.value ?? associationCode).replace(/\D/g, "").slice(0, 6);
       if (!/^\d{6}$/.test(code)) { toast.error("Informe o código de 6 dígitos da sua associação."); return; }
-      const { data: matches, error: lookupError } = await supabase.rpc("lookup_association_by_code", { _code: code });
+      const { data: matches, error: lookupError } = await lookupAssociationByCode(code);
       if (lookupError || !matches?.length) { toast.error("Código não encontrado. Confira os 6 dígitos com a administração."); return; }
       pendingAssociationId.current = matches[0].id;
       try { sessionStorage.setItem("morada360.pendingAssociationId", matches[0].id); } catch { /* Keep the in-memory value when storage is unavailable. */ }
@@ -219,7 +223,7 @@ function AuthPage() {
         toast.error("Informe o código da associação com exatamente 6 dígitos.");
         return;
       }
-      const { data: matches, error: lookupError } = await supabase.rpc("lookup_association_by_code", { _code: code });
+      const { data: matches, error: lookupError } = await lookupAssociationByCode(code);
       if (lookupError || !matches?.length) {
         toast.error("Código não encontrado. Confira os 6 dígitos com a administração da associação.");
         return;
@@ -267,7 +271,7 @@ function AuthPage() {
         toast.error("Informe o código da associação com exatamente 6 dígitos.");
         return;
       }
-      const { data: matches, error: lookupError } = await supabase.rpc("lookup_association_by_code", { _code: code });
+      const { data: matches, error: lookupError } = await lookupAssociationByCode(code);
       if (lookupError || !matches?.length) {
         toast.error("Código não encontrado. Confira os 6 dígitos com a administração da associação.");
         return;
