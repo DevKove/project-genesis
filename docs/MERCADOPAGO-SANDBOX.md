@@ -8,18 +8,18 @@ Permitir um teste explícito do Checkout Pro sem usar a credencial de produção
 
 Configure em **Project Settings → Edge Functions → Secrets** (ou no gerenciamento de segredos equivalente):
 
-- `MERCADOPAGO_ACCESS_TOKEN`: credencial usada pelo fluxo normal de produção. Não substituir durante a preparação do teste.
-- `MERCADOPAGO_TEST_ACCESS_TOKEN`: credencial de teste do Mercado Pago, obtida no painel Developers. O valor deve ter o prefixo `TEST-`; não registrar o valor em arquivos, commits, logs ou chats.
+- `MERCADOPAGO_PRODUCTION_ACCESS_TOKEN`: credencial de produção usada somente pelo fluxo normal de cobrança e pelo webhook. Não substituir durante a preparação do teste.
+- `MERCADOPAGO_TEST_ACCESS_TOKEN`: credencial de teste do Mercado Pago, obtida no painel Developers. Use a credencial identificada como **credencial de teste** no painel Developers do Mercado Pago. Não determine o ambiente apenas pelo prefixo (inclusive `APP_USR`); não registre o valor em arquivos, commits, logs ou chats.
 - Os demais segredos existentes da aplicação permanecem inalterados.
 
-Se `MERCADOPAGO_TEST_ACCESS_TOKEN` estiver ausente ou não começar com `TEST-`, a ação `sandbox_checkout` deve falhar fechada. Ela não pode recorrer a `MERCADOPAGO_ACCESS_TOKEN`.
+Se `MERCADOPAGO_TEST_ACCESS_TOKEN` estiver ausente, a ação `sandbox_checkout` deve falhar fechada. Ela não pode recorrer à credencial de produção.
 
 ## Comportamento esperado
 
 - `action: "diagnostic"` consulta `/users/me` com a credencial normal configurada e não cria preferência ou cobrança.
 - `action: "sandbox_checkout"` é restrita ao administrador da plataforma, usa somente `MERCADOPAGO_TEST_ACCESS_TOKEN`, cria uma preferência de valor baixo exclusivamente para teste e retorna somente `sandbox_init_point`.
 - O checkout de sandbox não inclui `notification_url`, não grava em `mercadopago_subscription_payments` e não altera assinaturas.
-- O fluxo normal de cobrança exige uma credencial `APP_USR-` e continua usando apenas `MERCADOPAGO_ACCESS_TOKEN`. Não há fallback entre credenciais ou URLs de checkout.
+- O fluxo normal de cobrança usa somente `MERCADOPAGO_PRODUCTION_ACCESS_TOKEN`. O prefixo da credencial não é usado como único critério para distinguir ambiente. Não há fallback entre credenciais ou URLs de checkout.
 - O webhook de produção continua consultando pagamentos com a credencial de produção. Eventos sandbox não devem atualizar pagamentos locais; a referência sintética `sandbox-...` não corresponde a um UUID de pagamento local e deve ser ignorada.
 
 ## Pagamento via Pix
